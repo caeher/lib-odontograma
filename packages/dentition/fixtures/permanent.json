@@ -1,0 +1,502 @@
+[
+  {
+    "id": "18",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 8,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "17",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 7,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "16",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 6,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "15",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 5,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "55"
+  },
+  {
+    "id": "14",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 4,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "54"
+  },
+  {
+    "id": "13",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 3,
+    "toothClass": "canine",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "53"
+  },
+  {
+    "id": "12",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 2,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "52"
+  },
+  {
+    "id": "11",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 1,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "51"
+  },
+  {
+    "id": "21",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 1,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "61"
+  },
+  {
+    "id": "22",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 2,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "62"
+  },
+  {
+    "id": "23",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 3,
+    "toothClass": "canine",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "63"
+  },
+  {
+    "id": "24",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 4,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "64"
+  },
+  {
+    "id": "25",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 5,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "65"
+  },
+  {
+    "id": "26",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 6,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "27",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 7,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "28",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 8,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "31",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 1,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "71"
+  },
+  {
+    "id": "32",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 2,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "72"
+  },
+  {
+    "id": "33",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 3,
+    "toothClass": "canine",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "73"
+  },
+  {
+    "id": "34",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 4,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "74"
+  },
+  {
+    "id": "35",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 5,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "75"
+  },
+  {
+    "id": "36",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 6,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "37",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 7,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "38",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 8,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "48",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 8,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "47",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 7,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "46",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 6,
+    "toothClass": "molar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ]
+  },
+  {
+    "id": "45",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 5,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "85"
+  },
+  {
+    "id": "44",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 4,
+    "toothClass": "premolar",
+    "applicableSurfaces": [
+      "M",
+      "O",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "84"
+  },
+  {
+    "id": "43",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 3,
+    "toothClass": "canine",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "83"
+  },
+  {
+    "id": "42",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 2,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "82"
+  },
+  {
+    "id": "41",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 1,
+    "toothClass": "incisor",
+    "applicableSurfaces": [
+      "M",
+      "I",
+      "D",
+      "B",
+      "L"
+    ],
+    "predecessorId": "81"
+  }
+]

@@ -1,0 +1,97 @@
+{
+  "description": "Primary and permanent successors coexist as independent catalog ids in mixed dentition",
+  "successorPairs": [
+    {
+      "primary": "55",
+      "permanent": "15"
+    },
+    {
+      "primary": "54",
+      "permanent": "14"
+    },
+    {
+      "primary": "53",
+      "permanent": "13"
+    },
+    {
+      "primary": "52",
+      "permanent": "12"
+    },
+    {
+      "primary": "51",
+      "permanent": "11"
+    },
+    {
+      "primary": "61",
+      "permanent": "21"
+    },
+    {
+      "primary": "62",
+      "permanent": "22"
+    },
+    {
+      "primary": "63",
+      "permanent": "23"
+    },
+    {
+      "primary": "64",
+      "permanent": "24"
+    },
+    {
+      "primary": "65",
+      "permanent": "25"
+    },
+    {
+      "primary": "71",
+      "permanent": "31"
+    },
+    {
+      "primary": "72",
+      "permanent": "32"
+    },
+    {
+      "primary": "73",
+      "permanent": "33"
+    },
+    {
+      "primary": "74",
+      "permanent": "34"
+    },
+    {
+      "primary": "75",
+      "permanent": "35"
+    },
+    {
+      "primary": "85",
+      "permanent": "45"
+    },
+    {
+      "primary": "84",
+      "permanent": "44"
+    },
+    {
+      "primary": "83",
+      "permanent": "43"
+    },
+    {
+      "primary": "82",
+      "permanent": "42"
+    },
+    {
+      "primary": "81",
+      "permanent": "41"
+    }
+  ],
+  "mixedCatalogIncludesBoth": [
+    {
+      "primary": "55",
+      "permanent": "15",
+      "bothInMixed": true
+    },
+    {
+      "primary": "85",
+      "permanent": "45",
+      "bothInMixed": true
+    }
+  ]
+}

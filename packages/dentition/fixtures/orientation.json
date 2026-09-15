@@ -1,0 +1,54 @@
+{
+  "samples": [
+    {
+      "tooth": "16",
+      "surface": "M",
+      "face": "right"
+    },
+    {
+      "tooth": "16",
+      "surface": "D",
+      "face": "left"
+    },
+    {
+      "tooth": "16",
+      "surface": "B",
+      "face": "top"
+    },
+    {
+      "tooth": "16",
+      "surface": "L",
+      "face": "bottom"
+    },
+    {
+      "tooth": "26",
+      "surface": "M",
+      "face": "left"
+    },
+    {
+      "tooth": "26",
+      "surface": "D",
+      "face": "right"
+    },
+    {
+      "tooth": "36",
+      "surface": "B",
+      "face": "bottom"
+    },
+    {
+      "tooth": "36",
+      "surface": "L",
+      "face": "top"
+    },
+    {
+      "tooth": "11",
+      "surface": "I",
+      "face": "center"
+    },
+    {
+      "tooth": "16",
+      "surface": "O",
+      "face": "center"
+    }
+  ]
+}
