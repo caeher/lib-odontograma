@@ -1,6 +1,8 @@
 import { Odontogram } from "@odontogram/core";
 import { svgPlugin } from "@odontogram/svg";
 import type { Notation, OdontographicMark } from "@odontogram/core";
+import "@odontogram/core/style.css";
+import "@odontogram/svg/style.css";
 
 const container = document.getElementById("odontogram-container")!;
 const logEl = document.getElementById("log")!;
@@ -10,7 +12,8 @@ const notations: Notation[] = ["fdi", "universal", "palmer"];
 let notationIdx = 0;
 
 function log(msg: string): void {
-  logEl.textContent = `${new Date().toLocaleTimeString()} — ${msg}\n${logEl.textContent ?? ""}`.slice(0, 2000);
+  logEl.textContent =
+    `${new Date().toLocaleTimeString()} — ${msg}\n${logEl.textContent ?? ""}`.slice(0, 2000);
 }
 
 const odontogram = new Odontogram(container, {
@@ -40,8 +43,7 @@ const odontogram = new Odontogram(container, {
   marksSet: ({ marks }) => {
     log(`Marks updated: ${marks.length} total`);
   },
-  toothClassNames: ({ tooth, isSelected }) =>
-    isSelected ? "tooth-selected" : `tooth-${tooth}`,
+  toothClassNames: ({ tooth, isSelected }) => (isSelected ? "tooth-selected" : `tooth-${tooth}`),
 });
 
 odontogram.render();
