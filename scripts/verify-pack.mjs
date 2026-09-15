@@ -138,11 +138,15 @@ if (!svgEl) throw new Error("SVG element .odontogram-svg not rendered by plugin"
 // Test state updates & marks
 odontogram.setState({
   marks: [{ id: "m1", tooth: "16", surfaces: ["O"], type: "caries" }],
+  teeth: { "48": { presence: "missing" } },
 });
 
 const state = odontogram.getState();
 if (state.marks.length !== 1 || state.marks[0].tooth !== "16") {
   throw new Error("Marks not updated correctly in getState()");
+}
+if (state.teeth["48"]?.presence !== "missing") {
+  throw new Error("Teeth overlay not updated correctly in getState()");
 }
 
 // Test batch rendering
@@ -225,6 +229,8 @@ import {
   type SurfaceId,
   type ToothClickArg,
   type ToothId,
+  type ToothPresence,
+  type ToothState,
   type ViewMountArg,
   type ViewRenderContext,
   type ViewType,
@@ -234,8 +240,10 @@ import { svgPlugin } from "@odontogram/svg";
 
 import {
   fromNotation,
-  getArch,
+  getAnatomicalArch,
+  getApplicableSurfaces,
   getDeciduousTeeth,
+  getLayoutArch,
   getMixedTeeth,
   getPermanentTeeth,
   getQuadrant,
@@ -243,9 +251,11 @@ import {
   isDeciduousTooth,
   isPermanentTooth,
   isValidSurface,
+  mapSurfaceToFace,
   SURFACE_CODES,
   SURFACE_LABELS,
   toNotation,
+  type ClinicalSurface,
   type Notation,
   type SurfaceCode,
 } from "@odontogram/dentition";
@@ -326,13 +336,16 @@ const options: OdontogramOptions = {
 const permanent = getPermanentTeeth();
 const deciduous = getDeciduousTeeth();
 const mixed = getMixedTeeth();
-const arch = getArch("11");
+const layoutArch = getLayoutArch("11");
+const anatomicalArch = getAnatomicalArch("11");
 const quadrant = getQuadrant("21");
 const isPerm = isPermanentTooth("16");
 const isDec = isDeciduousTooth("55");
 const converted = toNotation("11", "universal");
 const roundtrip = fromNotation(converted, "universal");
 const validSurface = isValidSurface("O");
+const surfaces = getApplicableSurfaces("11");
+const face = mapSurfaceToFace("16", "M" as ClinicalSurface);
 
 // Instantiate and check methods
 const container = document.createElement("div");
@@ -342,8 +355,9 @@ odontogram.render();
 odontogram.setOption("notation", "universal");
 const currentNotation = odontogram.getOption("notation");
 odontogram.changeView("deciduous");
-odontogram.setState({ marks: [mark], selection });
+odontogram.setState({ marks: [mark], selection, teeth: { "16": { presence: "missing" as ToothPresence } } });
 const state: OdontogramState = odontogram.getState();
+const toothState: ToothState = { presence: "unerupted" };
 
 odontogram.batchRendering(() => {
   odontogram.setOption("selectable", false);
