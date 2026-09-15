@@ -58,7 +58,29 @@ Stage 01 ships one plugin: `@odontogram/svg`. Future plugins may include:
 
 ### Adapters (future)
 
-Thin wrappers for React, Vue, Svelte, etc. that manage `Odontogram` lifecycle (mount/unmount) and bridge props to options/state. **Not implemented in Stage 01** — documented as the recommended integration path.
+Thin wrappers for React, Vue, Svelte, etc. that manage `Odontogram` lifecycle (mount/unmount) and bridge props to options/state. **Documented as the standard integration pattern:**
+
+- **Packaging structure:** Dedicated packages (e.g. `@odontogram/react`, `@odontogram/vue`).
+- **Dependencies:** Declare `@odontogram/core` and the host framework (e.g. `react >= 18`) as `peerDependencies`. Adapters never bundle core to prevent instance duplication.
+- **Renderer agnosticism:** Adapters accept `plugins` (e.g. `[svgPlugin]`) as props rather than hardcoding a specific renderer.
+- **Controlled vs Uncontrolled:** Prop updates trigger `setOption()` / `setState()` wrapped in `batchRendering()`, and callbacks notify parent component state.
+
+## Distribution and packaging strategy
+
+### Package scope independence
+
+Package names use `@odontogram/*` by default (`@odontogram/core`, `@odontogram/dentition`, `@odontogram/svg`). The architecture makes no assumptions about specific npm scope availability:
+
+- Packages can be republished under alternative scopes (e.g. `@my-org/core`) or unscoped (`odontogram-core`) without internal code changes.
+- Internal workspace dependencies use standard version ranges (`0.1.0`).
+
+### Public entry points and CSS
+
+Each package explicitly defines public entry points in `package.json` `exports`:
+
+- **JavaScript & Types:** ESM bundle (`dist/index.js`) and TypeScript declarations (`dist/index.d.ts`).
+- **Styles:** Distributable CSS is exposed via `@odontogram/core/style.css` and `@odontogram/svg/style.css`.
+- **Tree-shaking:** `sideEffects` is declared explicitly (`false` for dentition; `["dist/style.css"]` for packages distributing CSS).
 
 ## Dependency rules
 
@@ -77,18 +99,18 @@ dentition → (no internal deps)
 
 ## FullCalendar inspiration (not dependency)
 
-| FullCalendar concept | Odontogram equivalent |
-|---------------------|----------------------|
-| `Calendar` class | `Odontogram` class |
-| `plugins` option | `plugins` option |
-| `initialView` / `changeView` | `initialView` / `changeView` |
-| `getOption` / `setOption` | `getOption` / `setOption` |
-| Events / event sources | Marks / state |
-| `batchRendering` | `batchRendering` |
+| FullCalendar concept             | Odontogram equivalent                      |
+| -------------------------------- | ------------------------------------------ |
+| `Calendar` class                 | `Odontogram` class                         |
+| `plugins` option                 | `plugins` option                           |
+| `initialView` / `changeView`     | `initialView` / `changeView`               |
+| `getOption` / `setOption`        | `getOption` / `setOption`                  |
+| Events / event sources           | Marks / state                              |
+| `batchRendering`                 | `batchRendering`                           |
 | View plugins (dayGrid, timeGrid) | View plugins (permanent, deciduous, mixed) |
-| `eventClick`, `dateClick` | `toothClick`, `surfaceClick` |
-| `eventDidMount` | `toothDidMount`, `markDidMount` |
-| Connectors (React, Vue) | Adapters (future) |
+| `eventClick`, `dateClick`        | `toothClick`, `surfaceClick`               |
+| `eventDidMount`                  | `toothDidMount`, `markDidMount`            |
+| Connectors (React, Vue)          | Adapters (future)                          |
 
 The goal is API familiarity for developers who know FullCalendar, without any runtime coupling.
 

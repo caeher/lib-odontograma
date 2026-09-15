@@ -1,0 +1,13 @@
+lib-odontograma
+Copyright 2026 lib-odontograma contributors
+
+This product includes software developed under the Apache License 2.0.
+
+Attributions and References:
+- Dental Tooth Numbering Systems:
+  * FDI Two-Digit Notation (ISO 3950 / FDI World Dental Federation)
+  * Universal Numbering System (American Dental Association)
+  * Palmer Notation Method
+- Architecture Patterns:
+  * FullCalendar-inspired decoupled plugin, view context, and option lifecycle pattern.
+    Note: No FullCalendar code, dependencies, or proprietary assets are bundled or used.
