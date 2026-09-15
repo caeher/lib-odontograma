@@ -56,7 +56,7 @@ odontogram.setState({
 | Package                 | Version | Description                                                            |
 | ----------------------- | ------- | ---------------------------------------------------------------------- |
 | `@odontogram/core`      | `0.1.0` | Instance API, options, state, plugins, hooks, host styles              |
-| `@odontogram/dentition` | `0.1.0` | FDI / Universal / Palmer numbering, surface codes, tooth catalogs      |
+| `@odontogram/dentition` | `0.1.0` | Canonical tooth catalog, clinical surfaces, notation labels, orientation mapping |
 | `@odontogram/svg`       | `0.1.0` | Schematic SVG view plugin (permanent, deciduous, mixed) and SVG styles |
 
 ## Documentation
@@ -65,6 +65,7 @@ odontogram.setState({
 - [Architecture](docs/architecture.md) — layer boundaries, packaging, and dependency rules
 - [Feature matrix](docs/feature-matrix.md) — compatibility across packages
 - [API reference](docs/api.md) — constructor, methods, options, state, hooks
+- [Dental model review](docs/dental-review.md) — catalog fixtures, terminology, professional review gate
 - [Attributions & References](docs/attributions.md) — dental standards and architectural patterns
 
 ## Development & Verification

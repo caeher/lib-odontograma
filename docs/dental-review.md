@@ -1,0 +1,106 @@
+# Dental Model Review
+
+This document accompanies the canonical dental model in `@odontogram/dentition`. It records terminology, catalog structure, orientation rules, and the professional review gate before identifiers are considered stabilized.
+
+## Review status
+
+**Status: pending professional sign-off**
+
+Identifiers, surface assignments, and orientation rules in this release are **not stabilized** until reviewed and signed off by a licensed dental professional. See the checklist at the end of this document.
+
+## Glossary
+
+| Term | Definition |
+| --- | --- |
+| **Tooth** | A catalog entry identified by FDI two-digit string (e.g. `"16"`, `"55"`). |
+| **Dentition** | `"permanent"` (adult) or `"primary"` (deciduous). Distinct FDI quadrant ranges; not age-derived. |
+| **Arch** | `"maxillary"` (upper) or `"mandibular"` (lower). Layout alias: `"upper"` / `"lower"`. |
+| **Quadrant** | FDI quadrant digit: `1–4` permanent, `5–8` primary. |
+| **Position** | Tooth position within quadrant: `1–8` permanent, `1–5` primary. |
+| **Clinical surface** | Anatomical surface code: `M`, `O`, `I`, `D`, `B`, `L`. |
+| **Graphic face** | Schematic box region: `left`, `right`, `top`, `bottom`, `center`. Not a clinical surface. |
+| **Presence** | Chart overlay: `present`, `missing`, or `unerupted`. Omitted ids are **not** missing. |
+
+## Catalogs
+
+Committed fixtures (golden references):
+
+- [`packages/dentition/fixtures/permanent.json`](../packages/dentition/fixtures/permanent.json) — 32 permanent teeth
+- [`packages/dentition/fixtures/primary.json`](../packages/dentition/fixtures/primary.json) — 20 primary teeth
+- [`packages/dentition/fixtures/mixed-coexistence.json`](../packages/dentition/fixtures/mixed-coexistence.json) — successor pairs without replacement
+- [`packages/dentition/fixtures/orientation.json`](../packages/dentition/fixtures/orientation.json) — clinical surface → graphic face samples
+
+### Applicable surfaces by tooth class
+
+| Tooth class | Surfaces |
+| --- | --- |
+| Incisor, canine | M, I, D, B, L |
+| Premolar, molar | M, O, D, B, L |
+
+Incisors use **incisal (`I`)**, not occlusal (`O`). Posterior teeth use occlusal only.
+
+### Mixed dentition coexistence
+
+Mixed dentition is the **union** of permanent and primary catalogs (52 ids). Primary tooth `55` and permanent successor `15` are independent ids. Successor/predecessor links are metadata only — no age-based replacement.
+
+Example successor pairs:
+
+| Primary | Permanent successor |
+| --- | --- |
+| 55 | 15 |
+| 51 | 11 |
+| 85 | 45 |
+| 71 | 31 |
+
+## Orientation rules (occlusal schematic)
+
+Patient faces the viewer; patient's right appears on screen left.
+
+1. **Mesial / distal** — Mesial toward arch midline; horizontal flip by patient side (quadrants 1/4/5/8 vs 2/3/6/7).
+2. **Buccal / lingual** — Buccal toward vestibule; vertical flip by arch (maxillary vs mandibular).
+3. **Occlusal / incisal** — Both map to graphic `center`.
+
+API: `mapSurfaceToFace(toothId, surface)` in `@odontogram/dentition`.
+
+## Presence model
+
+Tooth presence is stored in `OdontogramState.teeth` as a sparse overlay:
+
+```ts
+teeth: {
+  "16": { presence: "missing" },
+  "26": { presence: "unerupted" },
+}
+```
+
+- Omitted ids default to `"present"` for rendering only.
+- Omission does **not** mean missing or unerupted.
+- Marks represent findings/procedures, not absence (see issue #5).
+
+## Professional review checklist
+
+- [ ] FDI quadrant and position assignments match ISO 3950
+- [ ] Permanent catalog complete (32 teeth)
+- [ ] Primary catalog complete (20 teeth)
+- [ ] Successor/predecessor map clinically accurate
+- [ ] Applicable surfaces by tooth class approved
+- [ ] Mesial/distal orientation rules verified for all quadrants
+- [ ] Buccal/lingual orientation rules verified for both arches
+- [ ] Terminology (primary vs deciduous, vestibular/buccal, palatal/lingual) approved
+- [ ] Reviewer name, credentials, and date recorded below
+
+### Sign-off
+
+| Reviewer | Credentials | Date | Notes |
+| --- | --- | --- | --- |
+| _pending_ | _pending_ | _pending_ | _pending_ |
+
+## Regenerating fixtures
+
+After catalog changes, regenerate fixtures and re-run tests:
+
+```bash
+cd packages/dentition
+npx tsx scripts/generate-fixtures.mts
+npm test
+```

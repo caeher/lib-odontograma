@@ -24,9 +24,11 @@ Attach marks to teeth and surfaces to represent clinical findings or procedures.
 
 - A unique `id`
 - Target `tooth` (canonical FDI id)
-- One or more `surfaces`
-- A `type` string (e.g. `caries`, `restoration`, `missing`)
+- One or more `surfaces` (clinical codes: M, O, I, D, B, L)
+- A `type` string (e.g. `caries`, `restoration`)
 - Optional visual `style` overrides
+
+**Tooth presence** (missing, unerupted) is modeled separately in `state.teeth`, not as mark types. Omitted tooth ids default to present for rendering only.
 
 Marks are part of odontogram state and can be serialized via `getState()`.
 

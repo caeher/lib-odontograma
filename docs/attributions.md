@@ -15,7 +15,12 @@ This document records the standards, resources, and design inspirations utilized
 - **Palmer Notation Method**:
   - Quadrant grid symbols (`┘`, `└`, `┐`, `┌`) with tooth numbers 1–8 and letters A–E.
 - **Black's Surface Designations**:
-  - Standard five anatomical surfaces: Mesial (`M`), Occlusal/Incisal (`O`), Distal (`D`), Buccal/Vestibular (`B`), and Lingual/Palatal (`L`).
+  - Standard anatomical surfaces: Mesial (`M`), Occlusal (`O`), Incisal (`I`), Distal (`D`), Buccal/Vestibular (`B`), and Lingual/Palatal (`L`).
+  - Applicable surfaces vary by tooth class (anterior vs posterior).
+- **Canonical dental model**:
+  - Tooth records with dentition, arch, quadrant, position, and successor metadata.
+  - Clinical surfaces are separate from graphic faces in the schematic renderer.
+  - Golden fixtures in `packages/dentition/fixtures/`; review gate in [`dental-review.md`](dental-review.md).
 
 ## 2. Architectural Design Patterns
 

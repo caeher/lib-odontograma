@@ -23,7 +23,13 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | FDI numbering             |  —   |    ✅     | ✅  |    —    |    —     | 01    |
 | Universal numbering       |  —   |    ✅     | ✅  |    —    |    —     | 01    |
 | Palmer notation           |  —   |    ✅     | ✅  |    —    |    —     | 01    |
-| Surface codes (M,O,D,B,L) |  ✅  |    ✅     | ✅  |    —    |    —     | 01    |
+| Surface codes (M,O,I,D,B,L) |  ✅  |    ✅     | ✅  |    —    |    —     | 01    |
+| Canonical tooth catalog     |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Applicable surfaces / tooth |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Clinical → graphic mapping  |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Tooth presence overlay      |  ✅  |     —     | ✅  |    —    |    —     | 01    |
+| Mixed dentition coexistence |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Dental review fixtures      |  —   |    ✅     |  —  |    —    |    —     | 01    |
 | Permanent catalog (32)    |  —   |    ✅     | ✅  |    —    |    —     | 01    |
 | Deciduous catalog (20)    |  —   |    ✅     | ✅  |    —    |    —     | 01    |
 | Mixed catalog (52)        |  —   |    ✅     | ✅  |    —    |    —     | 01    |

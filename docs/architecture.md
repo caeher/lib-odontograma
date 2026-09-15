@@ -32,11 +32,13 @@ The library follows a layered, plugin-based architecture inspired by [FullCalend
 
 ### Dental resources (`@odontogram/dentition`)
 
-**Responsibility:** Tooth numbering (FDI, Universal, Palmer), surface code definitions, dentition catalogs (permanent, deciduous, mixed), arch/quadrant metadata.
+**Responsibility:** Canonical dental model (tooth records, identifiers, applicable surfaces), tooth numbering labels (FDI, Universal, Palmer), clinical-to-graphic surface mapping, dentition catalogs (permanent, primary, mixed), arch/quadrant metadata.
 
 **Does not:** Render anything, depend on core or svg.
 
 **Pure data layer** — usable independently for validation, conversion, or server-side logic.
+
+See [`dental-review.md`](dental-review.md) for catalog fixtures and professional review gate.
 
 ### SVG renderer (`@odontogram/svg`)
 

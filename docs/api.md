@@ -99,8 +99,21 @@ interface OdontogramState {
   view: ViewType;
   marks: OdontographicMark[];
   selection: SelectionState;
+  teeth: Record<ToothId, ToothState>;
 }
 ```
+
+### ToothState / ToothPresence
+
+```ts
+type ToothPresence = "present" | "missing" | "unerupted";
+
+interface ToothState {
+  presence: ToothPresence;
+}
+```
+
+The `teeth` overlay is **sparse**. Omitted tooth ids are treated as present for rendering only — not as missing or unerupted. Use `getToothPresence(state.teeth, toothId)` from `@odontogram/core` to resolve presence.
 
 ### OdontographicMark
 
@@ -108,7 +121,7 @@ interface OdontogramState {
 interface OdontographicMark {
   id: string;
   tooth: ToothId; // canonical FDI, e.g. "16"
-  surfaces: SurfaceId[]; // "M" | "O" | "D" | "B" | "L"
+  surfaces: SurfaceId[]; // "M" | "O" | "I" | "D" | "B" | "L"
   type: string; // open string, e.g. "caries"
   style?: MarkStyle;
 }
@@ -168,7 +181,44 @@ Passed to view `render` and `destroy` functions:
 
 ```ts
 type ToothId = string; // FDI canonical, e.g. "16"
-type SurfaceId = "M" | "O" | "D" | "B" | "L";
+type SurfaceId = "M" | "O" | "I" | "D" | "B" | "L";
+type ToothPresence = "present" | "missing" | "unerupted";
 type Notation = "fdi" | "universal" | "palmer";
 type ViewType = "permanent" | "deciduous" | "mixed" | string;
 ```
+
+---
+
+## Dentition model (`@odontogram/dentition`)
+
+### ToothRecord
+
+Canonical catalog entry (identity separate from labels and geometry):
+
+```ts
+interface ToothRecord {
+  id: ToothId;
+  dentition: "permanent" | "primary";
+  arch: "maxillary" | "mandibular";
+  quadrant: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  position: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  toothClass: "incisor" | "canine" | "premolar" | "molar";
+  applicableSurfaces: ClinicalSurface[];
+  successorId?: ToothId;
+  predecessorId?: ToothId;
+}
+```
+
+### Key functions
+
+| Function | Description |
+| --- | --- |
+| `getTooth(id)` | Lookup catalog record |
+| `getApplicableSurfaces(id)` | Clinical surfaces valid for this tooth |
+| `getAnatomicalArch(id)` | `"maxillary"` or `"mandibular"` |
+| `getLayoutArch(id)` | Layout alias `"upper"` or `"lower"` |
+| `mapSurfaceToFace(id, surface)` | Clinical surface → graphic face |
+| `getPermanentTeeth()` / `getPrimaryTeeth()` / `getMixedTeeth()` | Catalog id lists |
+| `toNotation(id, notation)` | Display label (not identity) |
+
+Fixtures: `packages/dentition/fixtures/*.json`. Review process: [`dental-review.md`](dental-review.md).
