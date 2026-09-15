@@ -1,22 +1,31 @@
 {
   "name": "@odontogram/core",
   "version": "0.1.0",
-  "description": "Framework-independent odontogram core",
+  "description": "Framework-independent odontogram core instance API, options, state, plugins, and hooks",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    }
+    },
+    "./style.css": "./dist/style.css"
   },
   "files": [
     "dist"
   ],
+  "sideEffects": [
+    "dist/style.css"
+  ],
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsup src/index.ts --format esm --dts --clean && node --input-type=module -e \"import fs from 'node:fs'; fs.copyFileSync('src/style.css', 'dist/style.css')\"",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

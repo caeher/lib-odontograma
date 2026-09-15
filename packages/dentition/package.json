@@ -1,10 +1,11 @@
 {
   "name": "@odontogram/dentition",
   "version": "0.1.0",
-  "description": "Dental numbering, surfaces, and dentition catalogs",
+  "description": "Dental numbering, surface codes, and dentition catalogs",
   "license": "Apache-2.0",
   "type": "module",
   "main": "./dist/index.js",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
@@ -15,6 +16,11 @@
   "files": [
     "dist"
   ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format esm --dts --clean",
     "typecheck": "tsc -p tsconfig.json --noEmit"

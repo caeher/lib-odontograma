@@ -1,0 +1,22 @@
+/**
+ * @odontogram/core baseline styles
+ * Licensed under Apache-2.0
+ */
+
+.odontogram-host {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.odontogram-host *,
+.odontogram-host *::before,
+.odontogram-host *::after {
+  box-sizing: border-box;
+}
