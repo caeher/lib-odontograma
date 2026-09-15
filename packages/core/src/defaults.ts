@@ -1,7 +1,16 @@
 import type { OdontogramOptions, OdontogramState } from "./types.js";
 
 export const DEFAULT_OPTIONS: Required<
-  Pick<OdontogramOptions, "initialView" | "notation" | "height" | "selectable" | "toothColor" | "surfaceColor" | "selectionColor">
+  Pick<
+    OdontogramOptions,
+    | "initialView"
+    | "notation"
+    | "height"
+    | "selectable"
+    | "toothColor"
+    | "surfaceColor"
+    | "selectionColor"
+  >
 > = {
   initialView: "permanent",
   notation: "fdi",

@@ -123,7 +123,9 @@ describe("Odontogram", () => {
 
     odontogram.batchRendering(() => {
       odontogram.setOption("notation", "palmer");
-      odontogram.setState({ marks: [{ id: "m1", tooth: "11", surfaces: ["M"], type: "restoration" }] });
+      odontogram.setState({
+        marks: [{ id: "m1", tooth: "11", surfaces: ["M"], type: "restoration" }],
+      });
     });
 
     // Initial render + one batched render
@@ -134,9 +136,7 @@ describe("Odontogram", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const odontogram = new Odontogram(container);
     odontogram.render();
-    expect(warn).toHaveBeenCalledWith(
-      expect.stringContaining("No view implementation"),
-    );
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("No view implementation"));
     warn.mockRestore();
   });
 });

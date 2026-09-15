@@ -24,10 +24,12 @@ function getArchTeeth(view: string, arch: "upper" | "lower"): ToothId[] {
   });
 
   if (arch === "upper") {
-    const right = filtered.filter((t) => {
-      const q = parseInt(t.charAt(0), 10);
-      return q === 1 || q === 5;
-    }).reverse();
+    const right = filtered
+      .filter((t) => {
+        const q = parseInt(t.charAt(0), 10);
+        return q === 1 || q === 5;
+      })
+      .reverse();
     const left = filtered.filter((t) => {
       const q = parseInt(t.charAt(0), 10);
       return q === 2 || q === 6;
@@ -39,18 +41,16 @@ function getArchTeeth(view: string, arch: "upper" | "lower"): ToothId[] {
     const q = parseInt(t.charAt(0), 10);
     return q === 4 || q === 8;
   });
-  const left = filtered.filter((t) => {
-    const q = parseInt(t.charAt(0), 10);
-    return q === 3 || q === 7;
-  }).reverse();
+  const left = filtered
+    .filter((t) => {
+      const q = parseInt(t.charAt(0), 10);
+      return q === 3 || q === 7;
+    })
+    .reverse();
   return [...right, ...left];
 }
 
-function layoutArch(
-  teeth: ToothId[],
-  y: number,
-  notation: Notation,
-): ToothLayout[] {
+function layoutArch(teeth: ToothId[], y: number, notation: Notation): ToothLayout[] {
   const totalWidth = teeth.length * (TOOTH_WIDTH + TOOTH_GAP) - TOOTH_GAP;
   const startX = -totalWidth / 2;
 
@@ -62,11 +62,7 @@ function layoutArch(
   }));
 }
 
-function isSurfaceSelected(
-  ctx: ViewRenderContext,
-  tooth: ToothId,
-  surface: SurfaceId,
-): boolean {
+function isSurfaceSelected(ctx: ViewRenderContext, tooth: ToothId, surface: SurfaceId): boolean {
   const { selection } = ctx.state;
   if (selection.teeth.includes(tooth)) return true;
   return selection.surfaces.some((s) => s.tooth === tooth && s.surface === surface);
@@ -77,9 +73,7 @@ function getMarkForSurface(
   tooth: ToothId,
   surface: SurfaceId,
 ): OdontographicMark | undefined {
-  return marks.find(
-    (m) => m.tooth === tooth && m.surfaces.includes(surface),
-  );
+  return marks.find((m) => m.tooth === tooth && m.surfaces.includes(surface));
 }
 
 function normalizeClassNames(input: string | string[] | undefined): string {
@@ -87,11 +81,7 @@ function normalizeClassNames(input: string | string[] | undefined): string {
   return Array.isArray(input) ? input.join(" ") : input;
 }
 
-function createSurfacePath(
-  surface: SurfaceId,
-  x: number,
-  y: number,
-): string {
+function createSurfacePath(surface: SurfaceId, x: number, y: number): string {
   const w = TOOTH_WIDTH;
   const h = TOOTH_HEIGHT;
   const inset = SURFACE_INSET;
@@ -203,11 +193,12 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
       surfaceGroup.appendChild(path);
 
       if (mark) {
-        const markClassNames = normalizeClassNames(
-          options.markClassNames?.({ mark }),
-        );
+        const markClassNames = normalizeClassNames(options.markClassNames?.({ mark }));
         if (markClassNames) {
-          surfaceGroup.setAttribute("class", `odontogram-surface odontogram-surface-${surface} ${markClassNames}`);
+          surfaceGroup.setAttribute(
+            "class",
+            `odontogram-surface odontogram-surface-${surface} ${markClassNames}`,
+          );
         }
         options.markDidMount?.({ mark, el: surfaceGroup });
       }

@@ -1,19 +1,32 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Odontogram — Vanilla Example</title>
     <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
       body {
-        font-family: system-ui, -apple-system, sans-serif;
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
         background: #fafafa;
         color: #333;
         padding: 2rem;
       }
-      h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
-      p.subtitle { color: #666; margin-bottom: 1.5rem; }
+      h1 {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      p.subtitle {
+        color: #666;
+        margin-bottom: 1.5rem;
+      }
       .toolbar {
         display: flex;
         flex-wrap: wrap;
@@ -28,8 +41,14 @@
         cursor: pointer;
         font-size: 0.875rem;
       }
-      button:hover { background: #f0f0f0; }
-      button.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+      button:hover {
+        background: #f0f0f0;
+      }
+      button.active {
+        background: #1976d2;
+        color: #fff;
+        border-color: #1976d2;
+      }
       #odontogram-container {
         background: #fff;
         border: 1px solid #e0e0e0;

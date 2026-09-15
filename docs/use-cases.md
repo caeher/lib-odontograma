@@ -46,14 +46,14 @@ The core API is renderer-agnostic; the SVG plugin provides a schematic default t
 
 The following are **out of scope** for this library and should be handled by the host application or separate packages:
 
-| Domain | Reason |
-|--------|--------|
-| Scheduling / appointments | Not odontogram visualization |
-| Patient management | Host app responsibility |
+| Domain                         | Reason                        |
+| ------------------------------ | ----------------------------- |
+| Scheduling / appointments      | Not odontogram visualization  |
+| Patient management             | Host app responsibility       |
 | General clinical records (EHR) | Broader than odontogram marks |
-| Billing / invoicing | Financial domain |
-| Prescriptions | Pharmaceutical domain |
-| Automated diagnosis | Clinical decision support |
-| Built-in backend / persistence | Library is client-side only |
+| Billing / invoicing            | Financial domain              |
+| Prescriptions                  | Pharmaceutical domain         |
+| Automated diagnosis            | Clinical decision support     |
+| Built-in backend / persistence | Library is client-side only   |
 
 The library provides `getState()` / `setState()` so host applications can persist odontogram data in their own storage layer.
