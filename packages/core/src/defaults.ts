@@ -1,4 +1,4 @@
-import type { OdontogramOptions, OdontogramState } from "./types.js";
+import type { OdontogramOptions, OdontogramState, ToothId, ToothPresence } from "./types.js";
 
 export const DEFAULT_OPTIONS: Required<
   Pick<
@@ -26,5 +26,17 @@ export function createDefaultState(initialView: string): OdontogramState {
     view: initialView,
     marks: [],
     selection: { teeth: [], surfaces: [] },
+    teeth: {},
   };
+}
+
+/**
+ * Resolve tooth presence from state overlay.
+ * Omitted ids are treated as present for rendering only — not as missing or unerupted.
+ */
+export function getToothPresence(
+  teeth: Record<ToothId, { presence: ToothPresence }>,
+  toothId: ToothId,
+): ToothPresence {
+  return teeth[toothId]?.presence ?? "present";
 }

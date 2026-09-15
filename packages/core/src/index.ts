@@ -1,3 +1,4 @@
+export { createDefaultState, getToothPresence } from "./defaults.js";
 export { Odontogram } from "./odontogram.js";
 export { createPlugin } from "./plugin.js";
 export type {
@@ -19,6 +20,8 @@ export type {
   ToothClickArg,
   ToothId,
   ToothMountArg,
+  ToothPresence,
+  ToothState,
   ViewDefinition,
   ViewMountArg,
   ViewRenderContext,

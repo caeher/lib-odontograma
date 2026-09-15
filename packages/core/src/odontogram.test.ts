@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Odontogram } from "./odontogram.js";
 import { createPlugin } from "./plugin.js";
+import { createDefaultState, getToothPresence } from "./defaults.js";
 import type { ViewRenderContext } from "./types.js";
 
 function createMockView(type: string) {
@@ -108,6 +109,29 @@ describe("Odontogram", () => {
     expect(state.marks).toHaveLength(1);
     expect(state.marks[0].type).toBe("caries");
     expect(state.selection.teeth).toContain("16");
+    expect(state.teeth).toEqual({});
+  });
+
+  it("teeth overlay stores explicit missing and unerupted states", () => {
+    const odontogram = new Odontogram(container, { initialView: "permanent" });
+
+    odontogram.setState({
+      teeth: {
+        "16": { presence: "missing" },
+        "26": { presence: "unerupted" },
+      },
+    });
+
+    const state = odontogram.getState();
+    expect(state.teeth["16"]?.presence).toBe("missing");
+    expect(state.teeth["26"]?.presence).toBe("unerupted");
+    expect(state.teeth["11"]).toBeUndefined();
+  });
+
+  it("omitted tooth ids are not treated as missing", () => {
+    const state = createDefaultState("permanent");
+    expect(getToothPresence(state.teeth, "16")).toBe("present");
+    expect(state.teeth["16"]).toBeUndefined();
   });
 
   it("batchRendering coalesces multiple updates into one render", () => {

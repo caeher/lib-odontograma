@@ -1,8 +1,16 @@
 /** Canonical tooth identifier (FDI notation string, e.g. "16"). */
 export type ToothId = string;
 
-/** Standard surface codes. */
-export type SurfaceId = "M" | "O" | "D" | "B" | "L";
+/** Standard clinical surface codes. */
+export type SurfaceId = "M" | "O" | "I" | "D" | "B" | "L";
+
+/** Explicit tooth presence in the chart (omitted ids are not missing or unerupted). */
+export type ToothPresence = "present" | "missing" | "unerupted";
+
+/** Per-tooth chart overlay (sparse; only explicit entries are stored). */
+export interface ToothState {
+  presence: ToothPresence;
+}
 
 /** Supported tooth numbering notations. */
 export type Notation = "fdi" | "universal" | "palmer";
@@ -38,6 +46,8 @@ export interface OdontogramState {
   view: ViewType;
   marks: OdontographicMark[];
   selection: SelectionState;
+  /** Sparse overlay; omitted tooth ids default to present for rendering only. */
+  teeth: Record<ToothId, ToothState>;
 }
 
 /** Callback argument for tooth click events. */

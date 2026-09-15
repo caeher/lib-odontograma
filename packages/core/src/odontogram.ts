@@ -98,6 +98,7 @@ export class Odontogram {
         teeth: [...this.state.selection.teeth],
         surfaces: [...this.state.selection.surfaces],
       },
+      teeth: { ...this.state.teeth },
     };
   }
 
@@ -105,6 +106,7 @@ export class Odontogram {
     const nextView = state.view ?? this.state.view;
     const nextMarks = state.marks ?? this.state.marks;
     const nextSelection = state.selection ?? this.state.selection;
+    const nextTeeth = state.teeth ?? this.state.teeth;
 
     const viewChanged = nextView !== this.state.view;
     this.state = {
@@ -114,6 +116,7 @@ export class Odontogram {
         teeth: [...nextSelection.teeth],
         surfaces: [...nextSelection.surfaces],
       },
+      teeth: { ...nextTeeth },
     };
 
     this.getOption("marksSet")?.({ marks: this.state.marks });
