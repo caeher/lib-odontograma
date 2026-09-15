@@ -1,0 +1,20 @@
+{
+  "name": "odontogram-vanilla-example",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@odontogram/core": "0.1.0",
+    "@odontogram/dentition": "0.1.0",
+    "@odontogram/svg": "0.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  }
+}

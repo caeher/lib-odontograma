@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odontogram — Vanilla Example</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #fafafa;
+        color: #333;
+        padding: 2rem;
+      }
+      h1 { font-size: 1.5rem; margin-bottom: 0.5rem; }
+      p.subtitle { color: #666; margin-bottom: 1.5rem; }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      button {
+        padding: 0.4rem 0.8rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        background: #fff;
+        cursor: pointer;
+        font-size: 0.875rem;
+      }
+      button:hover { background: #f0f0f0; }
+      button.active { background: #1976d2; color: #fff; border-color: #1976d2; }
+      #odontogram-container {
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 1rem;
+        min-height: 420px;
+      }
+      .info {
+        margin-top: 1rem;
+        padding: 1rem;
+        background: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Odontogram Library</h1>
+    <p class="subtitle">Stage 01 · Foundations — schematic SVG renderer demo</p>
+
+    <div class="toolbar">
+      <button id="btn-permanent" class="active">Permanent</button>
+      <button id="btn-deciduous">Deciduous</button>
+      <button id="btn-mixed">Mixed</button>
+      <button id="btn-notation">Notation: FDI</button>
+      <button id="btn-add-mark">Add mark on selection</button>
+      <button id="btn-clear-marks">Clear marks</button>
+      <button id="btn-batch">Batch demo</button>
+    </div>
+
+    <div id="odontogram-container"></div>
+    <div class="info" id="log">Ready.</div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
