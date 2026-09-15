@@ -1,0 +1,26 @@
+export { Odontogram } from "./odontogram.js";
+export { createPlugin } from "./plugin.js";
+export type {
+  MarkClassNamesArg,
+  MarkMountArg,
+  MarkStyle,
+  MarksSetArg,
+  Notation,
+  OdontographicMark,
+  OdontogramOptions,
+  OdontogramPlugin,
+  OdontogramPluginDef,
+  OdontogramState,
+  SelectionChangeArg,
+  SelectionState,
+  SurfaceClickArg,
+  SurfaceId,
+  ToothClassNamesArg,
+  ToothClickArg,
+  ToothId,
+  ToothMountArg,
+  ViewDefinition,
+  ViewMountArg,
+  ViewRenderContext,
+  ViewType,
+} from "./types.js";
