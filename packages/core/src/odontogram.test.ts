@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Odontogram } from "./odontogram.js";
 import { createPlugin } from "./plugin.js";
 import { createDefaultState, getToothPresence } from "./defaults.js";
-import type { ViewRenderContext } from "./types.js";
+import type { SelectionState, ViewRenderContext } from "./types.js";
 
 function createMockView(type: string) {
   let renderCount = 0;
@@ -162,5 +162,101 @@ describe("Odontogram", () => {
     odontogram.render();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("No view implementation"));
     warn.mockRestore();
+  });
+
+  it("preserves selection, marks, and presence when notation changes at runtime", () => {
+    const { view } = createMockView("permanent");
+    const plugin = createPlugin({ name: "test", views: [view] });
+    const odontogram = new Odontogram(container, {
+      plugins: [plugin],
+      initialView: "permanent",
+      notation: "fdi",
+    });
+
+    odontogram.render();
+
+    // Set initial state with canonical FDI identifiers
+    odontogram.setState({
+      marks: [
+        { id: "m1", tooth: "16", surfaces: ["O"], type: "caries" },
+        { id: "m2", tooth: "21", surfaces: ["M", "D"], type: "restoration" },
+      ],
+      selection: {
+        teeth: ["16"],
+        surfaces: [{ tooth: "21", surface: "M" }],
+      },
+      teeth: {
+        "48": { presence: "missing" },
+        "26": { presence: "unerupted" },
+      },
+    });
+
+    const stateBefore = odontogram.getState();
+
+    // Switch notation to Universal
+    odontogram.setOption("notation", "universal");
+    const stateInUniversal = odontogram.getState();
+    expect(stateInUniversal.marks).toEqual(stateBefore.marks);
+    expect(stateInUniversal.selection).toEqual(stateBefore.selection);
+    expect(stateInUniversal.teeth).toEqual(stateBefore.teeth);
+    expect(stateInUniversal.marks[0].tooth).toBe("16");
+    expect(stateInUniversal.selection.teeth).toContain("16");
+
+    // Switch notation to Palmer
+    odontogram.setOption("notation", "palmer");
+    const stateInPalmer = odontogram.getState();
+    expect(stateInPalmer.marks).toEqual(stateBefore.marks);
+    expect(stateInPalmer.selection).toEqual(stateBefore.selection);
+    expect(stateInPalmer.teeth).toEqual(stateBefore.teeth);
+
+    // Switch back to FDI
+    odontogram.setOption("notation", "fdi");
+    const stateInFdi = odontogram.getState();
+    expect(stateInFdi).toEqual(stateBefore);
+  });
+
+  it("emits canonical tooth IDs in click and selection callbacks regardless of active notation", () => {
+    let clickedTooth: string | null = null;
+    let clickedSurface: { tooth: string; surface: string } | null = null;
+    let selectedState: SelectionState | null = null;
+
+    let capturedCtx: ViewRenderContext | null = null;
+    const view = {
+      type: "permanent",
+      render: (ctx: ViewRenderContext) => {
+        capturedCtx = ctx;
+      },
+      destroy: vi.fn(),
+    };
+    const plugin = createPlugin({ name: "test", views: [view] });
+
+    const odontogram = new Odontogram(container, {
+      plugins: [plugin],
+      initialView: "permanent",
+      notation: "universal",
+      toothClick: (arg) => {
+        clickedTooth = arg.tooth;
+      },
+      surfaceClick: (arg) => {
+        clickedSurface = { tooth: arg.tooth, surface: arg.surface };
+      },
+      selectionDidChange: (arg) => {
+        selectedState = arg.selection;
+      },
+    });
+
+    odontogram.render();
+    expect(capturedCtx).toBeTruthy();
+
+    // Emit interaction from view using canonical tooth id "16" (which is Universal "3")
+    const dummyEvent = new MouseEvent("click");
+    capturedCtx!.emitToothClick("16", dummyEvent);
+    expect(clickedTooth).toBe("16");
+
+    capturedCtx!.emitSurfaceClick("16", "O", dummyEvent);
+    expect(clickedSurface).toEqual({ tooth: "16", surface: "O" });
+
+    capturedCtx!.selectTooth("16");
+    expect((selectedState as SelectionState | null)?.teeth).toContain("16");
   });
 });
