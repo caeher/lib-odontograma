@@ -239,24 +239,32 @@ import {
 import { svgPlugin } from "@odontogram/svg";
 
 import {
+  fdiAdapter,
   fromNotation,
   getAnatomicalArch,
   getApplicableSurfaces,
   getDeciduousTeeth,
   getLayoutArch,
   getMixedTeeth,
+  getNotationAdapter,
   getPermanentTeeth,
   getQuadrant,
   getTeethForView,
   isDeciduousTooth,
   isPermanentTooth,
+  isValidNotation,
   isValidSurface,
+  listSupportedNotations,
   mapSurfaceToFace,
+  palmerAdapter,
   SURFACE_CODES,
   SURFACE_LABELS,
+  toAccessibleNotation,
   toNotation,
+  universalAdapter,
   type ClinicalSurface,
   type Notation,
+  type NotationAdapter,
   type SurfaceCode,
 } from "@odontogram/dentition";
 
@@ -343,6 +351,11 @@ const isPerm = isPermanentTooth("16");
 const isDec = isDeciduousTooth("55");
 const converted = toNotation("11", "universal");
 const roundtrip = fromNotation(converted, "universal");
+const accessiblePalmer = toAccessibleNotation("11", "palmer");
+const adapter: NotationAdapter = getNotationAdapter("palmer");
+const parsedPalmer = palmerAdapter.parse("UR1");
+const notationsList = listSupportedNotations();
+const isFdiValid = isValidNotation("fdi");
 const validSurface = isValidSurface("O");
 const surfaces = getApplicableSurfaces("11");
 const face = mapSurfaceToFace("16", "M" as ClinicalSurface);
