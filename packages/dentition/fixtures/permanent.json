@@ -6,13 +6,7 @@
     "quadrant": 1,
     "position": 8,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "17",
@@ -21,13 +15,7 @@
     "quadrant": 1,
     "position": 7,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "16",
@@ -36,13 +24,7 @@
     "quadrant": 1,
     "position": 6,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "15",
@@ -51,13 +33,7 @@
     "quadrant": 1,
     "position": 5,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "55"
   },
   {
@@ -67,13 +43,7 @@
     "quadrant": 1,
     "position": 4,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "54"
   },
   {
@@ -83,13 +53,7 @@
     "quadrant": 1,
     "position": 3,
     "toothClass": "canine",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "53"
   },
   {
@@ -99,13 +63,7 @@
     "quadrant": 1,
     "position": 2,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "52"
   },
   {
@@ -115,13 +73,7 @@
     "quadrant": 1,
     "position": 1,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "51"
   },
   {
@@ -131,13 +83,7 @@
     "quadrant": 2,
     "position": 1,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "61"
   },
   {
@@ -147,13 +93,7 @@
     "quadrant": 2,
     "position": 2,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "62"
   },
   {
@@ -163,13 +103,7 @@
     "quadrant": 2,
     "position": 3,
     "toothClass": "canine",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "63"
   },
   {
@@ -179,13 +113,7 @@
     "quadrant": 2,
     "position": 4,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "64"
   },
   {
@@ -195,13 +123,7 @@
     "quadrant": 2,
     "position": 5,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "65"
   },
   {
@@ -211,13 +133,7 @@
     "quadrant": 2,
     "position": 6,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "27",
@@ -226,13 +142,7 @@
     "quadrant": 2,
     "position": 7,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "28",
@@ -241,13 +151,7 @@
     "quadrant": 2,
     "position": 8,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "31",
@@ -256,13 +160,7 @@
     "quadrant": 3,
     "position": 1,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "71"
   },
   {
@@ -272,13 +170,7 @@
     "quadrant": 3,
     "position": 2,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "72"
   },
   {
@@ -288,13 +180,7 @@
     "quadrant": 3,
     "position": 3,
     "toothClass": "canine",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "73"
   },
   {
@@ -304,13 +190,7 @@
     "quadrant": 3,
     "position": 4,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "74"
   },
   {
@@ -320,13 +200,7 @@
     "quadrant": 3,
     "position": 5,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "75"
   },
   {
@@ -336,13 +210,7 @@
     "quadrant": 3,
     "position": 6,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "37",
@@ -351,13 +219,7 @@
     "quadrant": 3,
     "position": 7,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "38",
@@ -366,13 +228,7 @@
     "quadrant": 3,
     "position": 8,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "48",
@@ -381,13 +237,7 @@
     "quadrant": 4,
     "position": 8,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "47",
@@ -396,13 +246,7 @@
     "quadrant": 4,
     "position": 7,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "46",
@@ -411,13 +255,7 @@
     "quadrant": 4,
     "position": 6,
     "toothClass": "molar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ]
+    "applicableSurfaces": ["M", "O", "D", "B", "L"]
   },
   {
     "id": "45",
@@ -426,13 +264,7 @@
     "quadrant": 4,
     "position": 5,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "85"
   },
   {
@@ -442,13 +274,7 @@
     "quadrant": 4,
     "position": 4,
     "toothClass": "premolar",
-    "applicableSurfaces": [
-      "M",
-      "O",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "O", "D", "B", "L"],
     "predecessorId": "84"
   },
   {
@@ -458,13 +284,7 @@
     "quadrant": 4,
     "position": 3,
     "toothClass": "canine",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "83"
   },
   {
@@ -474,13 +294,7 @@
     "quadrant": 4,
     "position": 2,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "82"
   },
   {
@@ -490,13 +304,7 @@
     "quadrant": 4,
     "position": 1,
     "toothClass": "incisor",
-    "applicableSurfaces": [
-      "M",
-      "I",
-      "D",
-      "B",
-      "L"
-    ],
+    "applicableSurfaces": ["M", "I", "D", "B", "L"],
     "predecessorId": "81"
   }
 ]

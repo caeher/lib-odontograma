@@ -1,8 +1,9 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getMixedTeeth, listTeeth } from "../src/catalog.js";
+import { getMixedTeeth, getTooth, listTeeth } from "../src/catalog.js";
 import { mapSurfaceToFace } from "../src/orientation.js";
+import { TOOTH_NOTATION_TABLE } from "../src/notation.js";
 import type { ClinicalSurface } from "../src/surfaces.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -30,6 +31,20 @@ const primary = listTeeth({ dentition: "primary" }).map((r) => ({
   applicableSurfaces: r.applicableSurfaces,
   ...(r.successorId ? { successorId: r.successorId } : {}),
 }));
+
+const notationRecords = TOOTH_NOTATION_TABLE.map((rec) => {
+  const tooth = getTooth(rec.fdi);
+  return {
+    fdi: rec.fdi,
+    universal: rec.universal,
+    palmerSymbol: rec.palmerSymbol,
+    palmerAccessible: rec.palmerAccessible,
+    dentition: tooth?.dentition,
+    arch: tooth?.arch,
+    quadrant: tooth?.quadrant,
+    position: tooth?.position,
+  };
+});
 
 const orientationSamples = (
   [
@@ -68,6 +83,7 @@ const mixedCoexistence = {
 
 writeFileSync(join(fixturesDir, "permanent.json"), JSON.stringify(permanent, null, 2));
 writeFileSync(join(fixturesDir, "primary.json"), JSON.stringify(primary, null, 2));
+writeFileSync(join(fixturesDir, "notations.json"), JSON.stringify(notationRecords, null, 2));
 writeFileSync(
   join(fixturesDir, "orientation.json"),
   JSON.stringify({ samples: orientationSamples }, null, 2),
@@ -77,4 +93,6 @@ writeFileSync(
   JSON.stringify(mixedCoexistence, null, 2),
 );
 
-console.log(`Wrote ${permanent.length} permanent and ${primary.length} primary fixture records`);
+console.log(
+  `Wrote ${permanent.length} permanent, ${primary.length} primary, and ${notationRecords.length} notation fixture records`,
+);

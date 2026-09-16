@@ -8,10 +8,7 @@ import {
   type ToothClass,
   type ToothId,
 } from "./ids.js";
-import {
-  getApplicableSurfacesForClass,
-  type ClinicalSurface,
-} from "./surfaces.js";
+import { getApplicableSurfacesForClass, type ClinicalSurface } from "./surfaces.js";
 
 /** Canonical catalog entry for a tooth (identity, not chart state). */
 export interface ToothRecord {

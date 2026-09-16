@@ -39,12 +39,23 @@ export {
   type ToothId,
 } from "./ids.js";
 export {
+  fdiAdapter,
   fromNotation,
   getArch,
   getLayoutArch,
+  getNotationAdapter,
   getQuadrant,
+  isValidNotation,
+  listSupportedNotations,
+  palmerAdapter,
+  SUPPORTED_NOTATIONS,
+  toAccessibleNotation,
   toNotation,
+  TOOTH_NOTATION_TABLE,
+  universalAdapter,
   type Notation,
+  type NotationAdapter,
+  type ToothNotationRecord,
 } from "./notation.js";
 export {
   mapFaceToSurface,

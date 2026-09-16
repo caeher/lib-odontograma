@@ -1,0 +1,522 @@
+[
+  {
+    "fdi": "18",
+    "universal": "1",
+    "palmerSymbol": "8┘",
+    "palmerAccessible": "UR8",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 8
+  },
+  {
+    "fdi": "17",
+    "universal": "2",
+    "palmerSymbol": "7┘",
+    "palmerAccessible": "UR7",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 7
+  },
+  {
+    "fdi": "16",
+    "universal": "3",
+    "palmerSymbol": "6┘",
+    "palmerAccessible": "UR6",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 6
+  },
+  {
+    "fdi": "15",
+    "universal": "4",
+    "palmerSymbol": "5┘",
+    "palmerAccessible": "UR5",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 5
+  },
+  {
+    "fdi": "14",
+    "universal": "5",
+    "palmerSymbol": "4┘",
+    "palmerAccessible": "UR4",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 4
+  },
+  {
+    "fdi": "13",
+    "universal": "6",
+    "palmerSymbol": "3┘",
+    "palmerAccessible": "UR3",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 3
+  },
+  {
+    "fdi": "12",
+    "universal": "7",
+    "palmerSymbol": "2┘",
+    "palmerAccessible": "UR2",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 2
+  },
+  {
+    "fdi": "11",
+    "universal": "8",
+    "palmerSymbol": "1┘",
+    "palmerAccessible": "UR1",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 1,
+    "position": 1
+  },
+  {
+    "fdi": "21",
+    "universal": "9",
+    "palmerSymbol": "└1",
+    "palmerAccessible": "UL1",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 1
+  },
+  {
+    "fdi": "22",
+    "universal": "10",
+    "palmerSymbol": "└2",
+    "palmerAccessible": "UL2",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 2
+  },
+  {
+    "fdi": "23",
+    "universal": "11",
+    "palmerSymbol": "└3",
+    "palmerAccessible": "UL3",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 3
+  },
+  {
+    "fdi": "24",
+    "universal": "12",
+    "palmerSymbol": "└4",
+    "palmerAccessible": "UL4",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 4
+  },
+  {
+    "fdi": "25",
+    "universal": "13",
+    "palmerSymbol": "└5",
+    "palmerAccessible": "UL5",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 5
+  },
+  {
+    "fdi": "26",
+    "universal": "14",
+    "palmerSymbol": "└6",
+    "palmerAccessible": "UL6",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 6
+  },
+  {
+    "fdi": "27",
+    "universal": "15",
+    "palmerSymbol": "└7",
+    "palmerAccessible": "UL7",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 7
+  },
+  {
+    "fdi": "28",
+    "universal": "16",
+    "palmerSymbol": "└8",
+    "palmerAccessible": "UL8",
+    "dentition": "permanent",
+    "arch": "maxillary",
+    "quadrant": 2,
+    "position": 8
+  },
+  {
+    "fdi": "31",
+    "universal": "24",
+    "palmerSymbol": "┌1",
+    "palmerAccessible": "LL1",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 1
+  },
+  {
+    "fdi": "32",
+    "universal": "23",
+    "palmerSymbol": "┌2",
+    "palmerAccessible": "LL2",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 2
+  },
+  {
+    "fdi": "33",
+    "universal": "22",
+    "palmerSymbol": "┌3",
+    "palmerAccessible": "LL3",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 3
+  },
+  {
+    "fdi": "34",
+    "universal": "21",
+    "palmerSymbol": "┌4",
+    "palmerAccessible": "LL4",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 4
+  },
+  {
+    "fdi": "35",
+    "universal": "20",
+    "palmerSymbol": "┌5",
+    "palmerAccessible": "LL5",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 5
+  },
+  {
+    "fdi": "36",
+    "universal": "19",
+    "palmerSymbol": "┌6",
+    "palmerAccessible": "LL6",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 6
+  },
+  {
+    "fdi": "37",
+    "universal": "18",
+    "palmerSymbol": "┌7",
+    "palmerAccessible": "LL7",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 7
+  },
+  {
+    "fdi": "38",
+    "universal": "17",
+    "palmerSymbol": "┌8",
+    "palmerAccessible": "LL8",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 3,
+    "position": 8
+  },
+  {
+    "fdi": "41",
+    "universal": "25",
+    "palmerSymbol": "1┐",
+    "palmerAccessible": "LR1",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 1
+  },
+  {
+    "fdi": "42",
+    "universal": "26",
+    "palmerSymbol": "2┐",
+    "palmerAccessible": "LR2",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 2
+  },
+  {
+    "fdi": "43",
+    "universal": "27",
+    "palmerSymbol": "3┐",
+    "palmerAccessible": "LR3",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 3
+  },
+  {
+    "fdi": "44",
+    "universal": "28",
+    "palmerSymbol": "4┐",
+    "palmerAccessible": "LR4",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 4
+  },
+  {
+    "fdi": "45",
+    "universal": "29",
+    "palmerSymbol": "5┐",
+    "palmerAccessible": "LR5",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 5
+  },
+  {
+    "fdi": "46",
+    "universal": "30",
+    "palmerSymbol": "6┐",
+    "palmerAccessible": "LR6",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 6
+  },
+  {
+    "fdi": "47",
+    "universal": "31",
+    "palmerSymbol": "7┐",
+    "palmerAccessible": "LR7",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 7
+  },
+  {
+    "fdi": "48",
+    "universal": "32",
+    "palmerSymbol": "8┐",
+    "palmerAccessible": "LR8",
+    "dentition": "permanent",
+    "arch": "mandibular",
+    "quadrant": 4,
+    "position": 8
+  },
+  {
+    "fdi": "55",
+    "universal": "A",
+    "palmerSymbol": "E┘",
+    "palmerAccessible": "URE",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 5,
+    "position": 5
+  },
+  {
+    "fdi": "54",
+    "universal": "B",
+    "palmerSymbol": "D┘",
+    "palmerAccessible": "URD",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 5,
+    "position": 4
+  },
+  {
+    "fdi": "53",
+    "universal": "C",
+    "palmerSymbol": "C┘",
+    "palmerAccessible": "URC",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 5,
+    "position": 3
+  },
+  {
+    "fdi": "52",
+    "universal": "D",
+    "palmerSymbol": "B┘",
+    "palmerAccessible": "URB",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 5,
+    "position": 2
+  },
+  {
+    "fdi": "51",
+    "universal": "E",
+    "palmerSymbol": "A┘",
+    "palmerAccessible": "URA",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 5,
+    "position": 1
+  },
+  {
+    "fdi": "61",
+    "universal": "F",
+    "palmerSymbol": "└A",
+    "palmerAccessible": "ULA",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 6,
+    "position": 1
+  },
+  {
+    "fdi": "62",
+    "universal": "G",
+    "palmerSymbol": "└B",
+    "palmerAccessible": "ULB",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 6,
+    "position": 2
+  },
+  {
+    "fdi": "63",
+    "universal": "H",
+    "palmerSymbol": "└C",
+    "palmerAccessible": "ULC",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 6,
+    "position": 3
+  },
+  {
+    "fdi": "64",
+    "universal": "I",
+    "palmerSymbol": "└D",
+    "palmerAccessible": "ULD",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 6,
+    "position": 4
+  },
+  {
+    "fdi": "65",
+    "universal": "J",
+    "palmerSymbol": "└E",
+    "palmerAccessible": "ULE",
+    "dentition": "primary",
+    "arch": "maxillary",
+    "quadrant": 6,
+    "position": 5
+  },
+  {
+    "fdi": "71",
+    "universal": "O",
+    "palmerSymbol": "┌A",
+    "palmerAccessible": "LLA",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 7,
+    "position": 1
+  },
+  {
+    "fdi": "72",
+    "universal": "N",
+    "palmerSymbol": "┌B",
+    "palmerAccessible": "LLB",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 7,
+    "position": 2
+  },
+  {
+    "fdi": "73",
+    "universal": "M",
+    "palmerSymbol": "┌C",
+    "palmerAccessible": "LLC",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 7,
+    "position": 3
+  },
+  {
+    "fdi": "74",
+    "universal": "L",
+    "palmerSymbol": "┌D",
+    "palmerAccessible": "LLD",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 7,
+    "position": 4
+  },
+  {
+    "fdi": "75",
+    "universal": "K",
+    "palmerSymbol": "┌E",
+    "palmerAccessible": "LLE",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 7,
+    "position": 5
+  },
+  {
+    "fdi": "81",
+    "universal": "P",
+    "palmerSymbol": "A┐",
+    "palmerAccessible": "LRA",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 8,
+    "position": 1
+  },
+  {
+    "fdi": "82",
+    "universal": "Q",
+    "palmerSymbol": "B┐",
+    "palmerAccessible": "LRB",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 8,
+    "position": 2
+  },
+  {
+    "fdi": "83",
+    "universal": "R",
+    "palmerSymbol": "C┐",
+    "palmerAccessible": "LRC",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 8,
+    "position": 3
+  },
+  {
+    "fdi": "84",
+    "universal": "S",
+    "palmerSymbol": "D┐",
+    "palmerAccessible": "LRD",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 8,
+    "position": 4
+  },
+  {
+    "fdi": "85",
+    "universal": "T",
+    "palmerSymbol": "E┐",
+    "palmerAccessible": "LRE",
+    "dentition": "primary",
+    "arch": "mandibular",
+    "quadrant": 8,
+    "position": 5
+  }
+]
