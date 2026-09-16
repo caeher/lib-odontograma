@@ -7,14 +7,32 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Feature                 | Core | Dentition | SVG | Plugins | Adapters | Stage |
 | ----------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
 | Odontogram instance API |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| Headless execution      |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | render / destroy        |  ✅  |     —     |  —  |    —    |    —     | 01    |
 | getOption / setOption   |  ✅  |     —     |  —  |    —    |    —     | 01    |
 | changeView              |  ✅  |     —     |  —  |    —    |    —     | 01    |
 | getState / setState     |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| batchRendering          |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| batch / batchRendering  |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | createPlugin            |  ✅  |     —     |  —  |    —    |    —     | 01    |
 | Lifecycle hooks         |  ✅  |     —     | ✅  |    —    |    —     | 01    |
 | Click callbacks         |  ✅  |     —     | ✅  |    —    |    —     | 01    |
+| State & presence events |  ✅  |     —     |  —  |    —    |    —     | 02    |
+
+## Model & Data Operations
+
+| Feature                          | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| -------------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Typed marks CRUD operations      |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Immutable mark IDs               |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Tooth state & presence CRUD      |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| DOM-independent selection        |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Atomic batch transaction rollback|  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Controlled & internal modes      |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Monotonic revision tracking      |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Reset operations                 |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Orphaned mark pruning            |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Multi-instance isolation         |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Defensive cloning / immutability |  ✅  |     —     |  —  |    —    |    —     | 02    |
 
 ## Dentition
 

@@ -5,29 +5,31 @@
 ### Constructor
 
 ```ts
-new Odontogram(el: HTMLElement, options?: OdontogramOptions)
+new Odontogram(el?: HTMLElement | null, options?: OdontogramOptions)
 ```
 
-| Parameter | Type                | Description               |
-| --------- | ------------------- | ------------------------- |
-| `el`      | `HTMLElement`       | Container element         |
-| `options` | `OdontogramOptions` | Configuration (see below) |
+| Parameter | Type                | Description                                                                 |
+| --------- | ------------------- | --------------------------------------------------------------------------- |
+| `el`      | `HTMLElement \| null \| undefined` | Container element (optional for headless / non-DOM usage) |
+| `options` | `OdontogramOptions` | Configuration (see below)                                                   |
 
 ### Methods
 
-#### `render(): void`
+#### Lifecycle & View
 
-Mount the odontogram into the container. Creates a host element and renders the active view. Safe to call once; subsequent calls trigger a re-render.
+##### `render(container?: HTMLElement): void`
 
-#### `destroy(): void`
+Mount the odontogram into the container. Creates a host element and renders the active view. Safe to call once; subsequent calls trigger a re-render. If constructed headlessly without a container, passing `container` mounts the instance.
 
-Unmount the odontogram, call view destroy hooks, and remove the host element.
+##### `destroy(): void`
 
-#### `getOption<K>(name: K): OdontogramOptions[K]`
+Unmount the odontogram, call view destroy hooks, remove DOM event listeners, and remove the host element.
+
+##### `getOption<K>(name: K): OdontogramOptions[K]`
 
 Get the current value of an option. Returns the default if not explicitly set.
 
-#### `setOption<K>(name: K, value: OdontogramOptions[K]): void`
+##### `setOption<K>(name: K, value: OdontogramOptions[K]): void`
 
 Set an option dynamically. Triggers a re-render.
 
@@ -35,26 +37,176 @@ Set an option dynamically. Triggers a re-render.
 
 - `plugins` — register at construction time
 - `initialView` — use `changeView()` instead
+- `mode` — specified at construction time
 
-#### `changeView(view: ViewType): void`
+##### `changeView(view: ViewType): void`
 
-Switch to a different view. Unmounts the current view and mounts the new one.
+Switch to a different view (`"permanent"`, `"deciduous"`, `"mixed"`, or custom view). Unmounts the current view and mounts the new one.
 
-#### `getState(): OdontogramState`
+#### State, Mode & Revisions
 
-Return a snapshot of current state (view, marks, selection, teeth overlay). Marks are normalized to canonical `target` structures.
+##### `getState(): OdontogramState`
 
-#### `setState(state: OdontogramState | Partial<OdontogramState>): void`
+Return a defensive deep clone of the current state (`view`, `marks`, `selection`, `teeth` overlay). Mutations on the returned object have no effect on internal state.
 
-Update state. Partial updates merge with current state. Normalizes mark inputs, triggers `marksSet` callback, executes validation if configured (triggering `validationDidChange`), and requests a re-render.
+##### `setState(state: OdontogramState | Partial<OdontogramState>, options?: SetStateOptions): void`
 
-#### `validate(config?: ValidatorConfig): ValidationResult`
+Update state atomically. Partial updates merge with current state. Normalizes mark inputs, increments revision, triggers `marksSet` and `stateDidChange` callbacks, executes validation if configured (triggering `validationDidChange`), and requests a re-render.
+
+##### `getMode(): OdontogramMode`
+
+Returns the operational mode: `"internal"` (default: instance manages its own state) or `"controlled"` (host application drives state).
+
+##### `getRevision(): number`
+
+Returns the monotonic integer revision number representing the count of successful state mutations since initialization.
+
+#### Marks CRUD Operations
+
+##### `getMarks(filter?: MarkFilter): OdontographicMark[]`
+
+Return an array of marks matching the optional filter (`type`, `status`, `tooth`, `surface`). Returns defensive clones.
+
+##### `getMark(id: string): OdontographicMark | undefined`
+
+Return a defensive clone of the mark with the specified ID, or `undefined` if not found.
+
+##### `hasMark(id: string): boolean`
+
+Returns `true` if a mark with the given ID exists in the state.
+
+##### `getMarksForTooth(toothId: ToothId): OdontographicMark[]`
+
+Return all marks that target the given tooth (surface, whole tooth, or multi-tooth group).
+
+##### `getMarksForSurface(toothId: ToothId, surface: SurfaceId): OdontographicMark[]`
+
+Return all marks targeting the given tooth surface.
+
+##### `addMark<TMeta>(mark: MarkInput<TMeta>): OdontographicMark<TMeta>`
+
+Add a single mark. Automatically assigns a unique ID if omitted. Validates the candidate mark atomically before committing.
+
+##### `addMarks<TMeta>(marks: MarkInput<TMeta>[]): OdontographicMark<TMeta>[]`
+
+Add multiple marks in one operation. Validates all marks atomically before committing.
+
+##### `updateMark<TMeta>(id: string, patch: Partial<MarkInput<TMeta>>): OdontographicMark<TMeta>`
+
+Update an existing mark by ID with partial properties. **Mark ID is strictly immutable** and cannot be modified. Throws `ERR_MARK_NOT_FOUND` if ID does not exist.
+
+##### `removeMark(id: string): boolean`
+
+Remove a mark by ID. Returns `true` if removed, `false` if not found.
+
+##### `removeMarks(ids: string[]): string[]`
+
+Remove multiple marks by their IDs. Returns array of successfully removed mark IDs.
+
+##### `removeMarksForTooth(toothId: ToothId): OdontographicMark[]`
+
+Remove all marks referencing a specific tooth. Returns the array of removed marks.
+
+##### `clearMarks(): void`
+
+Remove all marks from the state.
+
+#### Tooth State & Biological Presence
+
+##### `getToothState(toothId: ToothId): ToothState | undefined`
+
+Return the overlay state for the specified tooth (e.g. `{ presence: "missing" }`), or `undefined` if default present.
+
+##### `getToothPresence(toothId: ToothId): ToothPresence`
+
+Resolve the effective biological presence (`"present"`, `"missing"`, or `"unerupted"`). Defaults to `"present"` for omitted teeth.
+
+##### `getTeethState(): Record<ToothId, ToothState>`
+
+Return a defensive clone of the sparse tooth overlay state dictionary.
+
+##### `hasToothOverlay(toothId: ToothId): boolean`
+
+Returns `true` if an explicit overlay record exists for the given tooth.
+
+##### `setToothState(toothId: ToothId, presence: ToothPresence | ToothState, options?: SetToothStateOptions): void`
+
+Set or update the state of an individual tooth. If `options.pruneMarks` is `true` (or when setting `"missing"`/`"unerupted"`), surface marks on that tooth are automatically pruned.
+
+##### `setTeethState(teeth: Record<ToothId, ToothPresence | ToothState>, options?: SetToothStateOptions): void`
+
+Set or update multiple tooth records at once with optional mark pruning.
+
+##### `resetToothState(toothId: ToothId): void`
+
+Remove the explicit overlay for a single tooth, resetting it to default present.
+
+##### `resetTeethState(): void`
+
+Clear all tooth presence overlays, resetting all teeth to default present.
+
+#### DOM-Independent Selection
+
+##### `getSelection(): SelectionState`
+
+Return a defensive clone of current selection (`{ teeth: ToothId[]; surfaces: ToothSurfaceRef[] }`).
+
+##### `setSelection(selection: SelectionState): void`
+
+Set selection directly. Validates selection and triggers `selectionDidChange`.
+
+##### `selectTooth(toothId: ToothId, mode?: "replace" | "add" | "toggle"): void`
+
+Select, append, or toggle tooth selection programmatically.
+
+##### `selectSurface(toothId: ToothId, surface: SurfaceId, mode?: "replace" | "add" | "toggle"): void`
+
+Select, append, or toggle surface selection programmatically.
+
+##### `clearSelection(): void`
+
+Clear all selected teeth and surfaces.
+
+##### `isToothSelected(toothId: ToothId): boolean`
+
+Returns `true` if the specified tooth is selected.
+
+##### `isSurfaceSelected(toothId: ToothId, surface: SurfaceId): boolean`
+
+Returns `true` if the specified surface is selected.
+
+#### Atomic Batch Transactions & Maintenance
+
+##### `batch<T>(fn: () => T, options?: BatchOptions): T`
+
+Execute compound operations inside an atomic transaction:
+- Changes are buffered until `fn` finishes.
+- If an error or validation failure occurs inside `fn`, **all changes are rolled back** to the pre-batch snapshot.
+- On success, triggers a single revision increment, single `stateDidChange` callback, and single DOM re-render.
+
+##### `batchRendering(fn: () => void): void`
+
+Legacy alias: execute `fn` with rendering deferred until completion.
+
+##### `reset(options?: ResetOptions): void`
+
+Reset marks, tooth overlays, and selection to empty state. Supports `options.keepView` and `options.keepOptions`.
+
+##### `resetMarks(): void`
+
+Remove all marks and increment revision.
+
+##### `resetTeeth(): void`
+
+Reset all tooth presence overlays to default present.
+
+##### `pruneOrphanedMarks(): OdontographicMark[]`
+
+Remove surface marks targeting teeth that are currently `"missing"` or `"unerupted"`. Returns array of pruned marks.
+
+##### `validate(config?: ValidatorConfig): ValidationResult`
 
 Run structural and coexistence validation against the current odontogram state snapshot. Returns a `ValidationResult` with `valid` boolean, `errors`, `warnings`, and `issues`.
-
-#### `batchRendering(fn: () => void): void`
-
-Execute `fn` with rendering deferred. Multiple `setOption` / `setState` / `changeView` calls inside a batch result in a single re-render when the batch completes. Nesting is supported.
 
 ---
 
@@ -62,6 +214,7 @@ Execute `fn` with rendering deferred. Multiple `setOption` / `setState` / `chang
 
 | Option           | Type                                                                           | Default       | Description                                  |
 | ---------------- | ------------------------------------------------------------------------------ | ------------- | -------------------------------------------- |
+| `mode`           | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode            |
 | `plugins`        | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                          |
 | `initialView`    | `ViewType`                                                                     | `"permanent"` | Starting view                                |
 | `notation`       | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                         |
@@ -76,13 +229,15 @@ Execute `fn` with rendering deferred. Multiple `setOption` / `setState` / `chang
 
 ### Callbacks
 
-| Callback              | Argument                      | When                                     |
-| --------------------- | ----------------------------- | ---------------------------------------- |
-| `toothClick`          | `{ tooth, jsEvent }`          | User clicks a tooth                      |
-| `surfaceClick`        | `{ tooth, surface, jsEvent }` | User clicks a surface                    |
-| `selectionDidChange`  | `{ selection }`               | Selection state changes                  |
-| `marksSet`            | `{ marks }`                   | Marks array changes                      |
-| `validationDidChange` | `{ result }`                  | Validation issues change on state update |
+| Callback              | Argument                                                                     | When                                     |
+| --------------------- | ---------------------------------------------------------------------------- | ---------------------------------------- |
+| `toothClick`          | `{ tooth, jsEvent }`                                                         | User clicks a tooth                      |
+| `surfaceClick`        | `{ tooth, surface, jsEvent }`                                                | User clicks a surface                    |
+| `selectionDidChange`  | `{ selection }`                                                              | Selection state changes                  |
+| `marksSet`            | `{ marks }`                                                                  | Marks array changes                      |
+| `stateDidChange`      | `{ state, revision, source }`                                                | Any state change occurs                  |
+| `toothStateDidChange` | `{ toothId, presence, previousPresence }`                                    | Tooth presence overlay changes           |
+| `validationDidChange` | `{ result }`                                                                 | Validation issues change on state update |
 
 ### Hooks
 

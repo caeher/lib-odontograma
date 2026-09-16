@@ -141,6 +141,66 @@ dentition → (no internal deps)
 
 The goal is API familiarity for developers who know FullCalendar, without any runtime coupling.
 
+## State Management & Programmatic Operations
+
+### Separation of State and DOM
+
+`@odontogram/core` is strictly decoupled from the DOM. An `Odontogram` instance can be instantiated, queried, and updated headlessly:
+
+- `new Odontogram(null, options)` or `new Odontogram(undefined, options)` runs entirely in memory without requiring a DOM container or window environment.
+- All query and mutation operations (`getState()`, `getMarks()`, `addMark()`, `updateMark()`, `removeMark()`, `setToothState()`, `getToothPresence()`, `selectTooth()`, `batch()`, `reset()`, `validate()`) operate directly on the internal state store.
+- When an instance is mounted with `.render(container)`, rendering hooks and view plugins subscribe to state changes. When running headlessly, mutations update state and fire data callbacks without DOM rendering errors.
+
+### Defensive Immutability & Stable IDs
+
+To protect internal state integrity across arbitrary consumer access:
+- **Defensive Clones**: All state query methods (`getState()`, `getMarks()`, `getMark()`, `getToothState()`, `getSelection()`, `getTeethState()`) return deep-cloned copies. External mutations to returned objects cannot compromise instance state.
+- **Input Isolation**: Candidate mark and state payloads passed to `addMark()`, `updateMark()`, `setState()`, or `setToothState()` are cloned before insertion.
+- **ID Immutability**: Mark identifiers (`id`) are stable and immutable. Attempting to modify `id` during `updateMark()` or `patch` is ignored or rejected; IDs remain permanent for life of the mark.
+
+### Transactional State Machine & Batch Rollback
+
+Compound dental operations (e.g. placing a multi-unit bridge while extracting an abutment or marking adjacent caries) often require modifying multiple marks and tooth records concurrently:
+
+```ts
+odontogram.batch(() => {
+  odontogram.addMark({ tooth: "14", type: "restoration", surfaces: ["M", "O"] });
+  odontogram.setToothState("15", "missing", { pruneMarks: true });
+  odontogram.addMark({ type: "bridge", target: { teeth: ["14", "15", "16"] } });
+});
+```
+
+The transactional execution engine guarantees:
+1. **Atomic Snapshot**: A deep clone of state, options, and revision is captured prior to entering `batch(fn)`.
+2. **Transactional Rollback**: If any operation or callback throws an exception or fails validation within `fn`, the entire transaction aborts and state rolls back to the initial snapshot immediately.
+3. **Single Revision Increment**: Successful batch transactions increment `revision` exactly once for the whole transaction.
+4. **Single Render & Notification**: Subscribed views receive a single consolidated re-render, and `stateDidChange` fires once with the complete compound change.
+
+### Operating Modes: Internal vs. Controlled
+
+`Odontogram` supports two operational paradigms via `mode: "internal" | "controlled"`:
+
+```
+┌────────────────────────────────────────────────────────┐
+│                   Internal Mode (Default)              │
+│  - Odontogram owns authoritative state store           │
+│  - Direct UI interactions mutate internal state        │
+│  - Helper methods (addMark, setToothState) apply live  │
+│  - Increments revision monotonically                   │
+└────────────────────────────────────────────────────────┘
+
+┌────────────────────────────────────────────────────────┐
+│                   Controlled Mode                      │
+│  - Host application owns single source of truth        │
+│  - UI interactions fire events/callbacks only          │
+│  - State updates arrive via explicit setState()        │
+│  - Prevents uncontrolled internal state divergence     │
+└────────────────────────────────────────────────────────┘
+```
+
+- **`mode: "internal"`**: The instance manages its own state lifecycle. User interactions (e.g. clicking surfaces) directly update internal state, and consumer calls to CRUD methods apply immediately.
+- **`mode: "controlled"`**: Used for declarative integrations (such as React or Vue state stores). In controlled mode, internal mutation operations that would cause state drift without host awareness are intercepted, ensuring the host application maintains absolute control over the single source of truth.
+
 ## Data flow
 
 ```
@@ -149,14 +209,17 @@ User click on surface
   → ctx.toggleSurfaceSelection()
   → core updates state.selection
   → core calls selectionDidChange callback
+  → core calls stateDidChange callback (source: "interaction")
   → core calls requestRender()
   → svg view re-renders with updated selection highlight
 ```
 
 ```
-Host app calls setState({ marks: [...] })
-  → core updates state.marks
-  → core calls marksSet callback
-  → core calls requestRender() (or defers if inside batchRendering)
+Host app calls addMark(...) or batch(...)
+  → core validates candidate update
+  → core updates internal state & increments revision
+  → core calls marksSet & stateDidChange callbacks (source: "api")
+  → core calls requestRender() (or defers until batch end)
   → svg view re-renders with mark colors
 ```
+
