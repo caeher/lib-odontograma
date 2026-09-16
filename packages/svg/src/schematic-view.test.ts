@@ -161,10 +161,18 @@ describe("schematic SVG view", () => {
       ],
     });
 
-    const mesial = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="M"] path');
-    const occlusal = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="O"] path');
-    const distal = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="D"] path');
-    const buccal = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="B"] path');
+    const mesial = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="M"] path',
+    );
+    const occlusal = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="O"] path',
+    );
+    const distal = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="D"] path',
+    );
+    const buccal = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="B"] path',
+    );
 
     expect(mesial?.getAttribute("fill")).toBe("#1976d2");
     expect(occlusal?.getAttribute("fill")).toBe("#1976d2");
@@ -197,11 +205,15 @@ describe("schematic SVG view", () => {
     const tooth16 = document.querySelector('.odontogram-tooth[data-tooth="16"]');
     expect(tooth16?.getAttribute("data-tooth-marks")).toBe("m-1 m-2");
 
-    const occSurface = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="O"]');
+    const occSurface = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="O"]',
+    );
     expect(occSurface?.getAttribute("data-mark-ids")).toBe("m-1");
     expect(occSurface?.getAttribute("data-status")).toBe("completed");
 
-    const buccalSurface = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="B"]');
+    const buccalSurface = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="B"]',
+    );
     expect(buccalSurface?.getAttribute("data-mark-ids")).toBe("m-2");
     expect(buccalSurface?.getAttribute("data-status")).toBe("existing");
   });
@@ -225,8 +237,9 @@ describe("schematic SVG view", () => {
     document.body.appendChild(ctx.el);
     renderSchematicView(ctx);
 
-    const path = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="O"] path');
+    const path = document.querySelector(
+      '.odontogram-surface[data-tooth="16"][data-surface="O"] path',
+    );
     expect(path?.getAttribute("fill")).toBe("#ff9800");
   });
 });
-

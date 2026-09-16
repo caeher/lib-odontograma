@@ -201,10 +201,7 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
     const wholeToothMarks = toothMarks.filter((m) => isWholeToothMark(m));
 
     if (toothMarks.length > 0) {
-      toothGroup.setAttribute(
-        "data-tooth-marks",
-        toothMarks.map((m) => m.id).join(" "),
-      );
+      toothGroup.setAttribute("data-tooth-marks", toothMarks.map((m) => m.id).join(" "));
     }
 
     const isToothSelected = state.selection.teeth.includes(tooth);
@@ -288,14 +285,8 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
         surfaceGroup.appendChild(path);
 
         if (surfaceMarks.length > 0) {
-          surfaceGroup.setAttribute(
-            "data-mark-ids",
-            surfaceMarks.map((m) => m.id).join(" "),
-          );
-          surfaceGroup.setAttribute(
-            "data-mark-types",
-            surfaceMarks.map((m) => m.type).join(" "),
-          );
+          surfaceGroup.setAttribute("data-mark-ids", surfaceMarks.map((m) => m.id).join(" "));
+          surfaceGroup.setAttribute("data-mark-types", surfaceMarks.map((m) => m.type).join(" "));
           const statuses = surfaceMarks.map((m) => m.status).filter(Boolean);
           if (statuses.length > 0) {
             surfaceGroup.setAttribute("data-status", statuses.join(" "));
@@ -358,9 +349,7 @@ export function destroySchematicView(ctx: ViewRenderContext): void {
       const targetedSurfaces = getMarkTargetSurfaces(mark, tooth);
       if (targetedSurfaces.length > 0) {
         for (const surface of targetedSurfaces) {
-          const markEl = ctx.el.querySelector(
-            `[data-tooth="${tooth}"][data-surface="${surface}"]`,
-          );
+          const markEl = ctx.el.querySelector(`[data-tooth="${tooth}"][data-surface="${surface}"]`);
           if (markEl) {
             options.markWillUnmount?.({ mark, el: markEl });
           }
@@ -374,4 +363,3 @@ export function destroySchematicView(ctx: ViewRenderContext): void {
     }
   }
 }
-

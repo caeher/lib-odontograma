@@ -15,9 +15,7 @@ import type { OdontogramState } from "./types.js";
 describe("Odontogram Validation", () => {
   describe("RULE_MARK_ID_UNIQUE", () => {
     it("detects empty mark IDs", () => {
-      const marks = normalizeMarks([
-        { id: "", tooth: "16", surfaces: ["O"], type: "caries" },
-      ]);
+      const marks = normalizeMarks([{ id: "", tooth: "16", surfaces: ["O"], type: "caries" }]);
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.ruleId === RULE_MARK_ID_UNIQUE)).toBe(true);
@@ -70,7 +68,7 @@ describe("Odontogram Validation", () => {
           {
             id: "m-invalid-surf",
             type: "restoration",
-            target: { kind: "surface", tooth: "16", surfaces: ["X" as any] },
+            target: { kind: "surface", tooth: "16", surfaces: ["X" as unknown as SurfaceId] },
           },
         ],
         selection: { teeth: [], surfaces: [] },
@@ -128,7 +126,9 @@ describe("Odontogram Validation", () => {
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.ruleId === RULE_SURFACE_APPLICABILITY)).toBe(true);
-      expect(result.errors[0].message).toContain('Surface "O" is clinically inapplicable for tooth "11"');
+      expect(result.errors[0].message).toContain(
+        'Surface "O" is clinically inapplicable for tooth "11"',
+      );
     });
 
     it("flags incisal surface on posterior teeth as invalid", () => {
@@ -138,7 +138,9 @@ describe("Odontogram Validation", () => {
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.ruleId === RULE_SURFACE_APPLICABILITY)).toBe(true);
-      expect(result.errors[0].message).toContain('Surface "I" is clinically inapplicable for tooth "16"');
+      expect(result.errors[0].message).toContain(
+        'Surface "I" is clinically inapplicable for tooth "16"',
+      );
     });
 
     it("allows incisal on anterior teeth and occlusal on posterior teeth", () => {
@@ -166,9 +168,7 @@ describe("Odontogram Validation", () => {
 
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(
-        result.errors.some((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE),
-      ).toBe(true);
+      expect(result.errors.some((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE)).toBe(true);
       expect(result.errors[0].message).toContain(
         'Tooth "16" is marked as missing; recording surface mark "m-missing-caries"',
       );
@@ -206,9 +206,7 @@ describe("Odontogram Validation", () => {
 
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(
-        result.errors.some((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE),
-      ).toBe(true);
+      expect(result.errors.some((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE)).toBe(true);
     });
   });
 
@@ -286,14 +284,16 @@ describe("Odontogram Validation", () => {
     });
 
     it("allows disabling specific rules by ID", () => {
-      const marks = normalizeMarks([
-        { id: "m-1", tooth: "11", surfaces: ["O"], type: "caries" },
-      ]);
-      const result = validateMarks(marks, {}, {
-        rules: {
-          [RULE_SURFACE_APPLICABILITY]: false,
+      const marks = normalizeMarks([{ id: "m-1", tooth: "11", surfaces: ["O"], type: "caries" }]);
+      const result = validateMarks(
+        marks,
+        {},
+        {
+          rules: {
+            [RULE_SURFACE_APPLICABILITY]: false,
+          },
         },
-      });
+      );
       expect(result.valid).toBe(true);
     });
 
@@ -304,9 +304,7 @@ describe("Odontogram Validation", () => {
 
       const state: OdontogramState = {
         view: "permanent",
-        marks: normalizeMarks([
-          { id: "m-1", tooth: "16", surfaces: ["O"], type: "caries" },
-        ]),
+        marks: normalizeMarks([{ id: "m-1", tooth: "16", surfaces: ["O"], type: "caries" }]),
         selection: { teeth: [], surfaces: [] },
         teeth: { "16": { presence: "missing" } },
       };

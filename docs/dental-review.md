@@ -163,4 +163,3 @@ cd packages/dentition
 npx tsx scripts/generate-fixtures.mts
 npm test
 ```
-

@@ -7,7 +7,6 @@ import {
   WHOLE_TOOTH_MARKS_EXAMPLE,
 } from "./examples.js";
 import { validateOdontogramState } from "./validation.js";
-import { normalizeMarks } from "./marks.js";
 import type { OdontogramState } from "./types.js";
 
 describe("Serialization Examples & Data Round-trip", () => {
@@ -112,11 +111,7 @@ describe("Serialization Examples & Data Round-trip", () => {
 
     expect(tooth16Marks).toHaveLength(3);
     const markIds = tooth16Marks.map((m) => m.id);
-    expect(markIds).toEqual([
-      "mark-16-endo",
-      "mark-16-post-core",
-      "mark-16-crown",
-    ]);
+    expect(markIds).toEqual(["mark-16-endo", "mark-16-post-core", "mark-16-crown"]);
 
     const validation = validateOdontogramState(parsed);
     expect(validation.valid).toBe(true);

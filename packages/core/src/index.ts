@@ -77,4 +77,3 @@ export type {
   ViewType,
   WholeToothTarget,
 } from "./types.js";
-

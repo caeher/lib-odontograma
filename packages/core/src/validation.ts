@@ -74,9 +74,7 @@ function getRuleConfig(
 
   return {
     enabled: setting?.enabled ?? true,
-    severity: config?.strict
-      ? "error"
-      : (setting?.severity ?? defaultSeverity),
+    severity: config?.strict ? "error" : (setting?.severity ?? defaultSeverity),
   };
 }
 
@@ -119,13 +117,8 @@ export function validateOdontogramState(
 
   // 2. Target Integrity & Surface Validity
   const targetRule = getRuleConfig(config, RULE_TARGET_INTEGRITY, "error");
-  const isSurfaceApplicableFn =
-    config.isSurfaceApplicable ?? defaultIsSurfaceApplicable;
-  const surfaceApplicabilityRule = getRuleConfig(
-    config,
-    RULE_SURFACE_APPLICABILITY,
-    "error",
-  );
+  const isSurfaceApplicableFn = config.isSurfaceApplicable ?? defaultIsSurfaceApplicable;
+  const surfaceApplicabilityRule = getRuleConfig(config, RULE_SURFACE_APPLICABILITY, "error");
 
   for (const mark of marks) {
     const { target } = mark;
@@ -272,11 +265,7 @@ export function validateOdontogramState(
   }
 
   // 3. Tooth Presence Coexistence
-  const presenceRule = getRuleConfig(
-    config,
-    RULE_TOOTH_PRESENCE_COEXISTENCE,
-    "error",
-  );
+  const presenceRule = getRuleConfig(config, RULE_TOOTH_PRESENCE_COEXISTENCE, "error");
   if (presenceRule.enabled) {
     for (const [toothId, toothState] of Object.entries(teethOverlay)) {
       if (toothState.presence === "missing" && !config.allowMissingToothMarks) {
@@ -294,17 +283,11 @@ export function validateOdontogramState(
             });
           }
         }
-      } else if (
-        toothState.presence === "unerupted" &&
-        !config.allowUneruptedToothMarks
-      ) {
+      } else if (toothState.presence === "unerupted" && !config.allowUneruptedToothMarks) {
         const toothMarks = getMarksForTooth(marks, toothId);
         for (const mark of toothMarks) {
           const surfaces = getMarkTargetSurfaces(mark, toothId);
-          if (
-            surfaces.length > 0 &&
-            (mark.type === "caries" || mark.type === "restoration")
-          ) {
+          if (surfaces.length > 0 && (mark.type === "caries" || mark.type === "restoration")) {
             issues.push({
               ruleId: RULE_TOOTH_PRESENCE_COEXISTENCE,
               severity: presenceRule.severity,
