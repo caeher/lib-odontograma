@@ -18,11 +18,11 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 
 ## Dentition
 
-| Feature                   | Core | Dentition | SVG | Plugins | Adapters | Stage |
-| ------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
-| FDI numbering             |  —   |    ✅     | ✅  |    —    |    —     | 01    |
-| Universal numbering       |  —   |    ✅     | ✅  |    —    |    —     | 01    |
-| Palmer notation           |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Feature                     | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| --------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| FDI numbering               |  —   |    ✅     | ✅  |    —    |    —     | 02    |
+| Universal numbering         |  —   |    ✅     | ✅  |    —    |    —     | 02    |
+| Palmer notation             |  —   |    ✅     | ✅  |    —    |    —     | 02    |
 | Surface codes (M,O,I,D,B,L) |  ✅  |    ✅     | ✅  |    —    |    —     | 01    |
 | Canonical tooth catalog     |  —   |    ✅     | ✅  |    —    |    —     | 01    |
 | Applicable surfaces / tooth |  —   |    ✅     | ✅  |    —    |    —     | 01    |
@@ -30,10 +30,10 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Tooth presence overlay      |  ✅  |     —     | ✅  |    —    |    —     | 01    |
 | Mixed dentition coexistence |  —   |    ✅     | ✅  |    —    |    —     | 01    |
 | Dental review fixtures      |  —   |    ✅     |  —  |    —    |    —     | 01    |
-| Permanent catalog (32)    |  —   |    ✅     | ✅  |    —    |    —     | 01    |
-| Deciduous catalog (20)    |  —   |    ✅     | ✅  |    —    |    —     | 01    |
-| Mixed catalog (52)        |  —   |    ✅     | ✅  |    —    |    —     | 01    |
-| Arch / quadrant metadata  |  —   |    ✅     |  —  |    —    |    —     | 01    |
+| Permanent catalog (32)      |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Deciduous catalog (20)      |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Mixed catalog (52)          |  —   |    ✅     | ✅  |    —    |    —     | 01    |
+| Arch / quadrant metadata    |  —   |    ✅     |  —  |    —    |    —     | 01    |
 
 ## Rendering
 

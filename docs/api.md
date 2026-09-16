@@ -211,14 +211,39 @@ interface ToothRecord {
 
 ### Key functions
 
-| Function | Description |
-| --- | --- |
-| `getTooth(id)` | Lookup catalog record |
-| `getApplicableSurfaces(id)` | Clinical surfaces valid for this tooth |
-| `getAnatomicalArch(id)` | `"maxillary"` or `"mandibular"` |
-| `getLayoutArch(id)` | Layout alias `"upper"` or `"lower"` |
-| `mapSurfaceToFace(id, surface)` | Clinical surface → graphic face |
-| `getPermanentTeeth()` / `getPrimaryTeeth()` / `getMixedTeeth()` | Catalog id lists |
-| `toNotation(id, notation)` | Display label (not identity) |
+| Function                                                        | Description                                                               |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `getTooth(id)`                                                  | Lookup catalog record                                                     |
+| `getApplicableSurfaces(id)`                                     | Clinical surfaces valid for this tooth                                    |
+| `getAnatomicalArch(id)`                                         | `"maxillary"` or `"mandibular"`                                           |
+| `getLayoutArch(id)`                                             | Layout alias `"upper"` or `"lower"`                                       |
+| `mapSurfaceToFace(id, surface)`                                 | Clinical surface → graphic face                                           |
+| `getPermanentTeeth()` / `getPrimaryTeeth()` / `getMixedTeeth()` | Catalog id lists                                                          |
+| `toNotation(id, notation)`                                      | Display label in specified numbering system                               |
+| `toAccessibleNotation(id, notation)`                            | Accessible / screen-reader text label                                     |
+| `fromNotation(label, notation)`                                 | Parse label to canonical FDI `ToothId` (`null` if invalid/out-of-catalog) |
+| `getNotationAdapter(notation)`                                  | Get notation adapter instance                                             |
+| `listSupportedNotations()`                                      | List supported notation identifiers (`["fdi", "universal", "palmer"]`)    |
+| `isValidNotation(notation)`                                     | Type guard for valid `Notation`                                           |
 
-Fixtures: `packages/dentition/fixtures/*.json`. Review process: [`dental-review.md`](dental-review.md).
+### Notation adapters
+
+`@odontogram/dentition` provides modular adapters for standard numbering systems:
+
+```ts
+interface NotationAdapter {
+  readonly id: Notation;
+  readonly name: string;
+  readonly description: string;
+  format(toothId: ToothId): string;
+  formatAccessible(toothId: ToothId): string;
+  parse(label: string): ToothId | null;
+  isValid(label: string): boolean;
+}
+```
+
+- **`fdiAdapter`** (`"fdi"`): FDI World Dental Federation / ISO 3950 two-digit designation. Canonical identity.
+- **`universalAdapter`** (`"universal"`): Universal Numbering System (ADA). 1–32 for permanent teeth, A–T for primary teeth. Case-insensitive parsing.
+- **`palmerAdapter`** (`"palmer"`): Palmer Notation Method. Quadrant grid symbols (`8┘`, `└1`, `┌1`, `1┐` for permanent; `E┘`, `└A`, `┌A`, `A┐` for primary) and accessible quadrant codes (`UR8`, `UL1`, `LL1`, `LR1` / `URA`, `ULA`, `LLA`, `LRA`). Ambiguous inputs without quadrant context (e.g. `"1"`, `"A"`) or out-of-catalog values are rejected (`null`).
+
+Fixtures: `packages/dentition/fixtures/*.json` (including `notations.json`). Review process: [`dental-review.md`](dental-review.md).

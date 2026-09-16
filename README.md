@@ -53,11 +53,11 @@ odontogram.setState({
 
 ## Packages
 
-| Package                 | Version | Description                                                            |
-| ----------------------- | ------- | ---------------------------------------------------------------------- |
-| `@odontogram/core`      | `0.1.0` | Instance API, options, state, plugins, hooks, host styles              |
+| Package                 | Version | Description                                                                      |
+| ----------------------- | ------- | -------------------------------------------------------------------------------- |
+| `@odontogram/core`      | `0.1.0` | Instance API, options, state, plugins, hooks, host styles                        |
 | `@odontogram/dentition` | `0.1.0` | Canonical tooth catalog, clinical surfaces, notation labels, orientation mapping |
-| `@odontogram/svg`       | `0.1.0` | Schematic SVG view plugin (permanent, deciduous, mixed) and SVG styles |
+| `@odontogram/svg`       | `0.1.0` | Schematic SVG view plugin (permanent, deciduous, mixed) and SVG styles           |
 
 ## Documentation
 
