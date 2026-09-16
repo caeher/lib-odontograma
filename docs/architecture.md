@@ -24,21 +24,46 @@ The library follows a layered, plugin-based architecture inspired by [FullCalend
 
 ### Core (`@odontogram/core`)
 
-**Responsibility:** Instance lifecycle, configuration, state management, plugin registry, hooks/callbacks, `batchRendering`.
+**Responsibility:** Instance lifecycle, configuration, state management, mark and target normalization, validation engine, structural coexistence enforcement, plugin registry, hooks/callbacks, `batchRendering`.
 
 **Does not:** Draw SVG/DOM, define tooth geometry, import FullCalendar or any renderer.
 
-**Exports:** `Odontogram`, `createPlugin`, all option/state/hook types.
+**Exports:** `Odontogram`, `createPlugin`, `validateOdontogramState`, `createValidator`, mark query helpers, serialization examples, all option/state/hook types.
 
 ### Dental resources (`@odontogram/dentition`)
 
-**Responsibility:** Canonical dental model (tooth records, identifiers, applicable surfaces), tooth numbering labels (FDI, Universal, Palmer), clinical-to-graphic surface mapping, dentition catalogs (permanent, primary, mixed), arch/quadrant metadata.
+**Responsibility:** Canonical dental model (tooth records, identifiers, applicable surfaces), tooth numbering labels (FDI, Universal, Palmer), clinical-to-graphic surface mapping, dentition catalogs (permanent, primary, mixed), arch/quadrant metadata, tooth and surface validation predicates.
 
 **Does not:** Render anything, depend on core or svg.
 
 **Pure data layer** — usable independently for validation, conversion, or server-side logic.
 
 See [`dental-review.md`](dental-review.md) for catalog fixtures and professional review gate.
+
+## Separation of Concerns: Model, Data, and Presentation
+
+The library strictly enforces a three-tier separation of concerns:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  1. Tooth Chart State (OdontogramState.teeth)                          │
+│  - Biological presence overlay (present / missing / unerupted)         │
+│  - Sparse map; omitted teeth are default present                       │
+├────────────────────────────────────────────────────────────────────────┤
+│  2. Recorded Findings & Annotations (OdontogramState.marks)            │
+│  - Persistent ID, extensible type, targets, lifecycle status, text     │
+│  - Consumer metadata (materials, provider, lab notes, timestamps)      │
+│  - Domain recording only — NOT an automated clinical recommendation    │
+├────────────────────────────────────────────────────────────────────────┤
+│  3. Visual Representation & Styling (Renderer / Options / Plugins)     │
+│  - Render plugins (@odontogram/svg), CSS class hooks, style overrides  │
+│  - markColors, statusColors, fill/stroke presentation hints            │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Clinical Recommendation Boundary
+
+A recorded mark is a record of clinical observation, historical finding, or planned procedure. The library **never** transforms recorded marks into automated diagnostic decisions or treatment recommendations. Clinical decision support remains exclusively within the domain of the host application or clinician.
 
 ### SVG renderer (`@odontogram/svg`)
 

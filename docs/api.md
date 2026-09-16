@@ -42,11 +42,15 @@ Switch to a different view. Unmounts the current view and mounts the new one.
 
 #### `getState(): OdontogramState`
 
-Return a snapshot of current state (view, marks, selection).
+Return a snapshot of current state (view, marks, selection, teeth overlay). Marks are normalized to canonical `target` structures.
 
 #### `setState(state: OdontogramState | Partial<OdontogramState>): void`
 
-Update state. Partial updates merge with current state. Triggers `marksSet` callback and re-render.
+Update state. Partial updates merge with current state. Normalizes mark inputs, triggers `marksSet` callback, executes validation if configured (triggering `validationDidChange`), and requests a re-render.
+
+#### `validate(config?: ValidatorConfig): ValidationResult`
+
+Run structural and coexistence validation against the current odontogram state snapshot. Returns a `ValidationResult` with `valid` boolean, `errors`, `warnings`, and `issues`.
 
 #### `batchRendering(fn: () => void): void`
 
@@ -56,26 +60,29 @@ Execute `fn` with rendering deferred. Multiple `setOption` / `setState` / `chang
 
 ## OdontogramOptions
 
-| Option           | Type                               | Default       | Description          |
-| ---------------- | ---------------------------------- | ------------- | -------------------- |
-| `plugins`        | `OdontogramPlugin[]`               | `[]`          | Plugins to register  |
-| `initialView`    | `ViewType`                         | `"permanent"` | Starting view        |
-| `notation`       | `"fdi" \| "universal" \| "palmer"` | `"fdi"`       | Tooth label notation |
-| `height`         | `number \| string`                 | `400`         | Container height     |
-| `selectable`     | `boolean`                          | `true`        | Enable selection     |
-| `toothColor`     | `string`                           | `"#f5f5f5"`   | Default tooth fill   |
-| `surfaceColor`   | `string`                           | `"#e0e0e0"`   | Default surface fill |
-| `selectionColor` | `string`                           | `"#90caf9"`   | Selection highlight  |
-| `markColors`     | `Record<string, string>`           | `{}`          | Type-to-color map    |
+| Option                | Type                                                                       | Default       | Description                                  |
+| --------------------- | -------------------------------------------------------------------------- | ------------- | -------------------------------------------- |
+| `plugins`             | `OdontogramPlugin[]`                                                       | `[]`          | Plugins to register                          |
+| `initialView`         | `ViewType`                                                                 | `"permanent"` | Starting view                                |
+| `notation`            | `"fdi" \| "universal" \| "palmer"`                                         | `"fdi"`       | Tooth label notation                         |
+| `height`              | `number \| string`                                                         | `400`         | Container height                             |
+| `selectable`          | `boolean`                                                                  | `true`        | Enable selection                             |
+| `toothColor`          | `string`                                                                   | `"#f5f5f5"`   | Default tooth fill                           |
+| `surfaceColor`        | `string`                                                                   | `"#e0e0e0"`   | Default surface fill                         |
+| `selectionColor`      | `string`                                                                   | `"#90caf9"`   | Selection highlight                          |
+| `markColors`          | `Record<string, string>`                                                   | `{}`          | Type-to-color map                            |
+| `statusColors`        | `Record<string, string>`                                                   | `{}`          | Status-to-color map (e.g. planned/completed) |
+| `validator`           | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates               |
 
 ### Callbacks
 
-| Callback             | Argument                      | When                    |
-| -------------------- | ----------------------------- | ----------------------- |
-| `toothClick`         | `{ tooth, jsEvent }`          | User clicks a tooth     |
-| `surfaceClick`       | `{ tooth, surface, jsEvent }` | User clicks a surface   |
-| `selectionDidChange` | `{ selection }`               | Selection state changes |
-| `marksSet`           | `{ marks }`                   | Marks array changes     |
+| Callback              | Argument                       | When                                         |
+| --------------------- | ------------------------------ | -------------------------------------------- |
+| `toothClick`          | `{ tooth, jsEvent }`           | User clicks a tooth                          |
+| `surfaceClick`        | `{ tooth, surface, jsEvent }`  | User clicks a surface                        |
+| `selectionDidChange`  | `{ selection }`                | Selection state changes                      |
+| `marksSet`            | `{ marks }`                    | Marks array changes                          |
+| `validationDidChange` | `{ result }`                   | Validation issues change on state update     |
 
 ### Hooks
 
@@ -115,19 +122,102 @@ interface ToothState {
 
 The `teeth` overlay is **sparse**. Omitted tooth ids are treated as present for rendering only — not as missing or unerupted. Use `getToothPresence(state.teeth, toothId)` from `@odontogram/core` to resolve presence.
 
-### OdontographicMark
+### MarkTarget & OdontographicMark
 
 ```ts
-interface OdontographicMark {
+export type MarkStatus =
+  | "existing"
+  | "planned"
+  | "completed"
+  | "proposed"
+  | "referred"
+  | string;
+
+export type MarkTarget =
+  | { kind?: "surface" | "surfaces"; tooth: ToothId; surfaces: SurfaceId[] } // Single tooth surfaces
+  | { kind?: "tooth"; tooth: ToothId }                                       // Whole single tooth
+  | { kind?: "teeth" | "group"; teeth: ToothId[] }                           // Multi-tooth annotation (e.g. bridge)
+  | { kind?: "complex"; elements: Array<{ tooth: ToothId; surfaces?: SurfaceId[] }> };
+
+export interface OdontographicMark<TMetadata = Record<string, unknown>> {
   id: string;
-  tooth: ToothId; // canonical FDI, e.g. "16"
-  surfaces: SurfaceId[]; // "M" | "O" | "I" | "D" | "B" | "L"
-  type: string; // open string, e.g. "caries"
+  type: string;
+  status?: MarkStatus;
+  target: MarkTarget;
+  text?: string;
+  metadata?: TMetadata;
   style?: MarkStyle;
+
+  // Backwards compatibility accessors:
+  tooth?: ToothId;
+  surfaces?: SurfaceId[];
 }
 ```
 
-### SelectionState
+### Mark Utilities
+
+`@odontogram/core` provides helper functions for querying and working with marks:
+
+- `normalizeMark(markInput)`: Normalizes shorthand or legacy input into a canonical `OdontographicMark`.
+- `createMark(markInput)`: Type-safe mark factory.
+- `getMarksForTooth(marks, toothId)`: Returns all marks involving a given tooth (whole tooth, surface, or multi-tooth).
+- `getMarksForSurface(marks, toothId, surfaceId)`: Returns marks targeting a specific surface on a tooth.
+- `getMarkTargetTeeth(mark)`: Returns array of all teeth targeted by the mark.
+- `getMarkTargetSurfaces(mark, toothId?)`: Returns array of surfaces targeted on the given tooth.
+- `isSurfaceMark(mark)` / `isWholeToothMark(mark)` / `isMultiToothMark(mark)`: Type guards.
+
+---
+
+## Validation API
+
+The library includes a configurable validation engine to enforce structural coexistence rules and prevent incompatible mark combinations:
+
+```ts
+import {
+  validateOdontogramState,
+  validateMarks,
+  createValidator,
+  RULE_MARK_ID_UNIQUE,
+  RULE_TARGET_INTEGRITY,
+  RULE_SURFACE_APPLICABILITY,
+  RULE_TOOTH_PRESENCE_COEXISTENCE,
+  RULE_MARK_COEXISTENCE,
+} from "@odontogram/core";
+
+const result = validateOdontogramState(state, {
+  strict: false,
+  incompatibleTypes: [["implant", "natural-root"]],
+  allowMissingToothMarks: false,
+  rules: {
+    [RULE_SURFACE_APPLICABILITY]: true,
+  },
+  customRules: [
+    (state, ctx) => {
+      // Custom business rule
+      return null;
+    },
+  ],
+});
+
+if (!result.valid) {
+  console.error("Validation errors:", result.errors);
+}
+```
+
+### Built-in Validation Rules
+
+| Rule ID | Name | Default Severity | Description |
+| ------- | ---- | ---------------- | ----------- |
+| `mark-id-unique` | Mark ID Uniqueness | `error` | Ensures all mark IDs are non-empty and unique across the state. |
+| `target-integrity` | Target Integrity | `error` | Enforces valid tooth identifiers and surfaces; prevents duplicate surfaces in one target. |
+| `surface-applicability` | Surface Applicability | `error` | Verifies anatomical validity (e.g. Incisal on anterior only, Occlusal on posterior only). |
+| `tooth-presence-coexistence` | Presence Coexistence | `error` | Prevents surface marks on missing teeth or restorations on unerupted teeth. |
+| `mark-coexistence` | Mark Coexistence | `warning` | Detects configured incompatible concurrent mark types (e.g. implant + natural root). |
+| `tooth-catalog-validity` | Catalog Validity | `warning` | Verifies tooth identifiers against active dentition catalog. |
+
+---
+
+## SelectionState
 
 ```ts
 interface SelectionState {

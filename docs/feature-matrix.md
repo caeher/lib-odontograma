@@ -57,25 +57,43 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Drag selection          |  —   |     —     |  —  |   🔲    |    —     | later |
 | Keyboard navigation     |  —   |     —     |  —  |   🔲    |    —     | later |
 
-## Marks
+## Marks & Annotations
 
-| Feature                | Core | Dentition | SVG | Plugins | Adapters | Stage |
-| ---------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
-| Mark state model       |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| Mark rendering (color) |  —   |     —     | ✅  |    —    |    —     | 01    |
-| Mark style overrides   |  ✅  |     —     | ✅  |    —    |    —     | 01    |
-| Mark type catalog      |  —   |     —     |  —  |   🔲    |    —     | later |
-| Mark symbols / icons   |  —   |     —     |  —  |   🔲    |    —     | later |
+| Feature                          | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| -------------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Mark state model                 |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| MarkTarget (surfaces/tooth/teeth)|  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Multi-surface marks on one tooth |  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Whole-tooth marks (crown/implant)|  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Multi-tooth annotations (bridge) |  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Multiple marks / tooth identity  |  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Semantic status lifecycle        |  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Clinician text notes & metadata  |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Mark style & statusColors        |  ✅  |     —     | ✅  |    —    |    —     | 02    |
+| Mark type catalog                |  —   |     —     |  —  |   🔲    |    —     | later |
+| Mark symbols / icons             |  —   |     —     |  —  |   🔲    |    —     | later |
+
+## Validation & Coexistence
+
+| Feature                          | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| -------------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Mark ID uniqueness               |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Target integrity validation      |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Surface applicability checks     |  ✅  |    ✅     |  —  |    —    |    —     | 02    |
+| Tooth presence coexistence       |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Mark type incompatibility matrix |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Configurable validator rules     |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Custom validation rules          |  ✅  |     —     |  —  |    —    |    —     | 02    |
 
 ## Integration
 
-| Feature               | Core | Dentition | SVG | Plugins | Adapters | Stage    |
-| --------------------- | :--: | :-------: | :-: | :-----: | :------: | -------- |
-| Vanilla JS example    |  —   |     —     |  —  |    —    |    —     | 01       |
-| React adapter         |  —   |     —     |  —  |    —    |    🔲    | later    |
-| Vue adapter           |  —   |     —     |  —  |    —    |    🔲    | later    |
-| State serialization   |  ✅  |     —     |  —  |    —    |    —     | 01       |
-| Backend / persistence |  —   |     —     |  —  |    —    |    —     | excluded |
+| Feature                          | Core | Dentition | SVG | Plugins | Adapters | Stage    |
+| -------------------------------- | :--: | :-------: | :-: | :-----: | :------: | -------- |
+| Vanilla JS example               |  —   |     —     |  —  |    —    |    —     | 01       |
+| React adapter                    |  —   |     —     |  —  |    —    |    🔲    | later    |
+| Vue adapter                      |  —   |     —     |  —  |    —    |    🔲    | later    |
+| State serialization fixtures     |  ✅  |     —     |  —  |    —    |    —     | 02       |
+| Backend / persistence            |  —   |     —     |  —  |    —    |    —     | excluded |
 
 ## Explicitly excluded (all stages)
 

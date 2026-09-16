@@ -112,7 +112,24 @@ teeth: {
 
 - Omitted ids default to `"present"` for rendering only.
 - Omission does **not** mean missing or unerupted.
-- Marks represent findings/procedures, not absence (see issue #5).
+- Marks represent findings/procedures, not absence.
+
+## Structural coexistence rules and validation
+
+The odontogram model enforces clinical and structural coexistence gates via configurable validators:
+
+1. **Surface Applicability**:
+   - Anterior teeth (`positions 1–3`): Applicable surfaces are `M, I, D, B, L`. Occlusal (`O`) is strictly forbidden.
+   - Posterior teeth (`positions 4–8`): Applicable surfaces are `M, O, D, B, L`. Incisal (`I`) is strictly forbidden.
+2. **Tooth Presence Coexistence**:
+   - A `missing` tooth cannot have active surface findings (e.g. caries, composite restorations).
+   - An `unerupted` tooth cannot have surface restorations or caries.
+3. **Identity & Target Integrity**:
+   - Mark `id` strings must be unique across state.
+   - Surface marks cannot duplicate surface codes on the same tooth (e.g. `["M", "O", "M"]`).
+   - Multi-tooth marks (e.g. bridges, splints) must specify a non-empty array of valid teeth.
+4. **Mark Type Incompatibility**:
+   - Consumers can configure mutually exclusive concurrent marks (e.g. `["implant", "natural-root"]`).
 
 ## Professional review checklist
 
@@ -121,6 +138,8 @@ teeth: {
 - [ ] Primary catalog complete (20 teeth)
 - [ ] Successor/predecessor map clinically accurate
 - [ ] Applicable surfaces by tooth class approved
+- [ ] Structural coexistence rules (anterior/posterior surface validity, missing tooth coexistence) reviewed
+- [ ] Multi-surface restoration, whole-tooth mark, and multi-tooth annotation serialization examples reviewed
 - [ ] Mesial/distal orientation rules verified for all quadrants
 - [ ] Buccal/lingual orientation rules verified for both arches
 - [ ] Numbering systems conversion tables (FDI, Universal, Palmer) verified
@@ -144,3 +163,4 @@ cd packages/dentition
 npx tsx scripts/generate-fixtures.mts
 npm test
 ```
+
