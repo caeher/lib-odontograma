@@ -113,12 +113,39 @@ export function normalizeTarget(input: {
   teeth?: ToothId[];
   surfaces?: SurfaceId[];
 }): MarkTarget {
-  if (input.target) {
-    return input.target;
-  }
+  // If teeth array is provided explicitly, it takes precedence
   if (input.teeth && input.teeth.length > 0) {
     return { kind: "teeth", teeth: [...input.teeth] };
   }
+
+  // If surfaces or tooth are explicitly provided, construct or update surface/tooth target
+  if (input.surfaces !== undefined || input.tooth !== undefined) {
+    const tooth =
+      input.tooth ??
+      (input.target && "tooth" in input.target ? (input.target.tooth as ToothId) : undefined);
+    if (tooth) {
+      const surfaces =
+        input.surfaces !== undefined
+          ? input.surfaces
+          : input.target && "surfaces" in input.target
+            ? (input.target.surfaces as SurfaceId[])
+            : undefined;
+
+      if (surfaces && surfaces.length > 0) {
+        return {
+          kind: "surface",
+          tooth,
+          surfaces: [...surfaces],
+        };
+      }
+      return { kind: "tooth", tooth };
+    }
+  }
+
+  if (input.target) {
+    return input.target;
+  }
+
   if (input.tooth) {
     if (input.surfaces && input.surfaces.length > 0) {
       return {
@@ -129,6 +156,7 @@ export function normalizeTarget(input: {
     }
     return { kind: "tooth", tooth: input.tooth };
   }
+
   return { kind: "teeth", teeth: [] };
 }
 
