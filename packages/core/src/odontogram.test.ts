@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Odontogram } from "./odontogram.js";
 import { createPlugin } from "./plugin.js";
 import { createDefaultState, getToothPresence } from "./defaults.js";
-import type { SelectionState, ViewRenderContext } from "./types.js";
+import type { SelectionState, ValidationResult, ViewRenderContext } from "./types.js";
 
 function createMockView(type: string) {
   let renderCount = 0;
@@ -299,7 +299,7 @@ describe("Odontogram", () => {
   });
 
   it("runs validate() on the odontogram instance and emits validationDidChange callback", () => {
-    let validationResults: any = null;
+    let validationResults: ValidationResult | null = null;
     const odontogram = new Odontogram(container, {
       initialView: "permanent",
       validator: true,
@@ -321,4 +321,3 @@ describe("Odontogram", () => {
     expect(directResult.valid).toBe(false);
   });
 });
-
