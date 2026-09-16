@@ -1,6 +1,7 @@
 import { createDefaultState, DEFAULT_OPTIONS } from "./defaults.js";
+import { OdontogramError, OdontogramValidationError, VALIDATION_CODES } from "./errors.js";
 import { normalizeMarks } from "./marks.js";
-import { validateOdontogramState } from "./validation.js";
+import { deepClone, validateOdontogramState, validateOptions } from "./validation.js";
 import type {
   OdontogramOptions,
   OdontogramPlugin,
@@ -31,8 +32,28 @@ export class Odontogram {
   private hostEl: HTMLElement | null = null;
 
   constructor(el: HTMLElement, options: OdontogramOptions = {}) {
+    if (!el || typeof el !== "object" || !("appendChild" in el)) {
+      throw new OdontogramError(
+        "A valid HTMLElement container is required to instantiate Odontogram.",
+        VALIDATION_CODES.ERR_INVALID_CONTAINER,
+      );
+    }
+
+    const optionsValidation = validateOptions(options);
+    if (!optionsValidation.valid) {
+      throw new OdontogramValidationError(
+        `Invalid odontogram configuration options: ${optionsValidation.errors[0]?.message}`,
+        optionsValidation.issues,
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+
+    for (const warning of optionsValidation.warnings) {
+      console.warn(`[Odontogram] ${warning.message}`);
+    }
+
     this.el = el;
-    this.options = { ...options };
+    this.options = deepClone(options);
     this.state = createDefaultState(options.initialView ?? DEFAULT_OPTIONS.initialView);
     this.registerPlugins(options.plugins ?? []);
   }
@@ -82,11 +103,44 @@ export class Odontogram {
       );
       return;
     }
-    this.options = { ...this.options, [name]: value };
+
+    const candidateOptions: OdontogramOptions = { ...this.options, [name]: value };
+    const validation = validateOptions(candidateOptions);
+    if (!validation.valid) {
+      throw new OdontogramValidationError(
+        `Invalid option "${String(name)}": ${validation.errors[0]?.message}`,
+        validation.issues,
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+
+    for (const warning of validation.warnings) {
+      if (warning.path === `options.${String(name)}`) {
+        console.warn(`[Odontogram] ${warning.message}`);
+      }
+    }
+
+    this.options = { ...this.options, [name]: deepClone(value) };
     this.requestRender();
   }
 
   changeView(view: ViewType): void {
+    if (typeof view !== "string" || view.trim() === "") {
+      throw new OdontogramValidationError(
+        "View must be a non-empty string.",
+        [
+          {
+            ruleId: "view-validity",
+            code: VALIDATION_CODES.ERR_INVALID_STATE,
+            severity: "error",
+            message: "View must be a non-empty string.",
+            path: "state.view",
+          },
+        ],
+        VALIDATION_CODES.ERR_INVALID_STATE,
+      );
+    }
+
     if (this.state.view === view) return;
     this.state = { ...this.state, view };
     if (this.rendered) {
@@ -96,47 +150,92 @@ export class Odontogram {
   }
 
   getState(): OdontogramState {
-    return {
-      view: this.state.view,
-      marks: this.state.marks.map((m) => ({
-        ...m,
-        target: { ...m.target },
-        ...(m.surfaces ? { surfaces: [...m.surfaces] } : {}),
-        ...(m.metadata ? { metadata: { ...m.metadata } } : {}),
-        ...(m.style ? { style: { ...m.style } } : {}),
-      })),
-      selection: {
-        teeth: [...this.state.selection.teeth],
-        surfaces: [...this.state.selection.surfaces],
-      },
-      teeth: { ...this.state.teeth },
-    };
+    return deepClone(this.state);
   }
 
+  /**
+   * Updates state snapshot atomically.
+   * If candidate state contains structural errors or fails active validation rules,
+   * the update is rejected atomically and throws OdontogramValidationError,
+   * leaving previous state completely intact.
+   */
   setState(state: OdontogramState | OdontogramStateInput | Partial<OdontogramState>): void {
-    const nextView = state.view ?? this.state.view;
-    const nextMarks = state.marks !== undefined ? normalizeMarks(state.marks) : this.state.marks;
-    const nextSelection = state.selection ?? this.state.selection;
-    const nextTeeth = state.teeth ?? this.state.teeth;
+    if (!state || typeof state !== "object") {
+      throw new OdontogramValidationError(
+        "setState requires a valid state object.",
+        [
+          {
+            ruleId: "state-structure",
+            code: VALIDATION_CODES.ERR_INVALID_STATE,
+            severity: "error",
+            message: "State input must be a non-null object.",
+            path: "state",
+          },
+        ],
+        VALIDATION_CODES.ERR_INVALID_STATE,
+      );
+    }
 
-    const viewChanged = nextView !== this.state.view;
-    this.state = {
+    // Clone input to prevent caller mutations during evaluation
+    const clonedInput = deepClone(state);
+    const nextView = clonedInput.view ?? this.state.view;
+    const nextMarks =
+      clonedInput.marks !== undefined
+        ? normalizeMarks(clonedInput.marks)
+        : deepClone(this.state.marks);
+    const nextSelection: SelectionState = clonedInput.selection ?? deepClone(this.state.selection);
+    const nextTeeth = clonedInput.teeth ?? deepClone(this.state.teeth);
+
+    const candidateState: OdontogramState = {
       view: nextView,
-      marks: [...nextMarks],
+      marks: nextMarks,
       selection: {
-        teeth: [...nextSelection.teeth],
-        surfaces: [...nextSelection.surfaces],
+        teeth: nextSelection.teeth ? [...nextSelection.teeth] : [],
+        surfaces: nextSelection.surfaces ? [...nextSelection.surfaces] : [],
       },
       teeth: { ...nextTeeth },
     };
 
+    // 1. Structural integrity validation (always strictly enforced for state updates)
+    const structuralResult = validateOdontogramState(candidateState, {});
+    if (!structuralResult.valid) {
+      throw new OdontogramValidationError(
+        `State update rejected due to structural validation errors: ${structuralResult.errors[0]?.message}`,
+        structuralResult.issues,
+        VALIDATION_CODES.ERR_INVALID_STATE,
+      );
+    }
+
+    // 2. Active instance validator enforcement (if configured)
+    const validatorOpt = this.getOption("validator");
+    let activeValidationResult: ValidationResult | null = null;
+
+    if (typeof validatorOpt === "function") {
+      activeValidationResult = validatorOpt(candidateState);
+    } else if (typeof validatorOpt === "object") {
+      activeValidationResult = validateOdontogramState(candidateState, validatorOpt);
+    } else if (validatorOpt === true) {
+      activeValidationResult = structuralResult;
+    }
+
+    if (activeValidationResult && !activeValidationResult.valid) {
+      throw new OdontogramValidationError(
+        `State update rejected due to configured validation rules: ${activeValidationResult.errors[0]?.message}`,
+        activeValidationResult.issues,
+        VALIDATION_CODES.ERR_INVALID_STATE,
+      );
+    }
+
+    // 3. Atomically apply the validated state
+    const viewChanged = nextView !== this.state.view;
+    this.state = candidateState;
+
     this.getOption("marksSet")?.({ marks: this.state.marks });
 
-    const validatorOpt = this.getOption("validator");
     const validationCallback = this.getOption("validationDidChange");
-    if (validatorOpt || validationCallback) {
-      const result = this.validate();
-      validationCallback?.({ result });
+    if (validationCallback) {
+      const finalResult = activeValidationResult ?? this.validate();
+      validationCallback({ result: finalResult });
     }
 
     if (viewChanged && this.rendered) {
@@ -147,7 +246,7 @@ export class Odontogram {
     }
   }
 
-  /** Run validation against the current state. */
+  /** Run validation against the current state snapshot. */
   validate(config?: ValidatorConfig): ValidationResult {
     const validatorOpt = this.getOption("validator");
     if (typeof validatorOpt === "function") {

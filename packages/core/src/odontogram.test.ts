@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Odontogram } from "./odontogram.js";
 import { createPlugin } from "./plugin.js";
 import { createDefaultState, getToothPresence } from "./defaults.js";
+import { OdontogramError, OdontogramValidationError, VALIDATION_CODES } from "./errors.js";
 import type { SelectionState, ValidationResult, ViewRenderContext } from "./types.js";
 
 function createMockView(type: string) {
@@ -30,6 +31,30 @@ describe("Odontogram", () => {
 
   afterEach(() => {
     container.remove();
+  });
+
+  it("throws OdontogramError when container is not a valid HTMLElement", () => {
+    expect(() => new Odontogram(null as unknown as HTMLElement)).toThrow(OdontogramError);
+    expect(() => new Odontogram({} as unknown as HTMLElement)).toThrow(OdontogramError);
+  });
+
+  it("throws OdontogramValidationError when constructor options are invalid", () => {
+    expect(
+      () =>
+        new Odontogram(container, {
+          notation: "invalid-notation" as unknown as "fdi",
+        }),
+    ).toThrow(OdontogramValidationError);
+  });
+
+  it("warns when unknown options are provided to constructor", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const odontogram = new Odontogram(container, {
+      unknownCustomOption: "value",
+    } as unknown as object);
+    expect(odontogram).toBeDefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("Unknown configuration option"));
+    warn.mockRestore();
   });
 
   it("render() mounts host element and calls view render", () => {
@@ -75,6 +100,13 @@ describe("Odontogram", () => {
     odontogram.setOption("initialView", "deciduous");
     expect(warn).toHaveBeenCalled();
     warn.mockRestore();
+  });
+
+  it("setOption throws OdontogramValidationError for invalid option values", () => {
+    const odontogram = new Odontogram(container);
+    expect(() => odontogram.setOption("notation", "invalid" as unknown as "fdi")).toThrow(
+      OdontogramValidationError,
+    );
   });
 
   it("changeView switches view and re-renders", () => {
@@ -175,7 +207,6 @@ describe("Odontogram", () => {
 
     odontogram.render();
 
-    // Set initial state with canonical FDI identifiers
     odontogram.setState({
       marks: [
         { id: "m1", tooth: "16", surfaces: ["O"], type: "caries" },
@@ -248,7 +279,6 @@ describe("Odontogram", () => {
     odontogram.render();
     expect(capturedCtx).toBeTruthy();
 
-    // Emit interaction from view using canonical tooth id "16" (which is Universal "3")
     const dummyEvent = new MouseEvent("click");
     capturedCtx!.emitToothClick("16", dummyEvent);
     expect(clickedTooth).toBe("16");
@@ -298,26 +328,125 @@ describe("Odontogram", () => {
     });
   });
 
-  it("runs validate() on the odontogram instance and emits validationDidChange callback", () => {
+  it("applies changes atomically: rejecting invalid input leaves previous state completely intact", () => {
+    const { view } = createMockView("permanent");
+    const plugin = createPlugin({ name: "test", views: [view] });
+    const marksSetCallback = vi.fn();
+    const odontogram = new Odontogram(container, {
+      plugins: [plugin],
+      initialView: "permanent",
+      marksSet: marksSetCallback,
+    });
+
+    odontogram.render();
+
+    const initialValidMarks = [
+      { id: "m-valid-1", tooth: "16", surfaces: ["O" as const], type: "caries" },
+    ];
+    odontogram.setState({ marks: initialValidMarks });
+
+    const stateBefore = odontogram.getState();
+    expect(stateBefore.marks).toHaveLength(1);
+    expect(stateBefore.marks[0].id).toBe("m-valid-1");
+
+    const renderCallsBefore = view.render.mock.calls.length;
+    const marksSetCallsBefore = marksSetCallback.mock.calls.length;
+
+    // Attempt invalid state update: duplicate surfaces ["O", "O"] and invalid surface "Z"
+    let thrownError: OdontogramValidationError | null = null;
+    try {
+      odontogram.setState({
+        marks: [
+          {
+            id: "m-invalid",
+            tooth: "16",
+            surfaces: ["O" as const, "Z" as unknown as "O"],
+            type: "caries",
+          },
+        ],
+      });
+    } catch (err) {
+      if (err instanceof OdontogramValidationError) {
+        thrownError = err;
+      }
+    }
+
+    expect(thrownError).toBeInstanceOf(OdontogramValidationError);
+    expect(thrownError?.code).toBe(VALIDATION_CODES.ERR_INVALID_STATE);
+    expect(thrownError?.errors.some((e) => e.code === VALIDATION_CODES.ERR_INVALID_SURFACE)).toBe(
+      true,
+    );
+
+    // State MUST be unchanged
+    const stateAfter = odontogram.getState();
+    expect(stateAfter).toEqual(stateBefore);
+    expect(stateAfter.marks).toHaveLength(1);
+    expect(stateAfter.marks[0].id).toBe("m-valid-1");
+
+    // No re-render and no callback after failed update
+    expect(view.render.mock.calls.length).toBe(renderCallsBefore);
+    expect(marksSetCallback.mock.calls.length).toBe(marksSetCallsBefore);
+  });
+
+  it("preserves unknown mark types without loss of metadata or properties", () => {
+    const odontogram = new Odontogram(container, { initialView: "permanent" });
+
+    odontogram.setState({
+      marks: [
+        {
+          id: "custom-mark-1",
+          type: "custom-plugin-telemetry",
+          status: "existing",
+          tooth: "16",
+          surfaces: ["O"],
+          text: "Custom probe reading",
+          metadata: {
+            probeMm: [3, 2, 4],
+            sensorId: "sens-99",
+          },
+          style: { fill: "#123456" },
+        },
+      ],
+    });
+
+    const state = odontogram.getState();
+    expect(state.marks).toHaveLength(1);
+    expect(state.marks[0].type).toBe("custom-plugin-telemetry");
+    expect(state.marks[0].metadata).toEqual({
+      probeMm: [3, 2, 4],
+      sensorId: "sens-99",
+    });
+    expect(state.marks[0].style).toEqual({ fill: "#123456" });
+  });
+
+  it("runs validate() on the odontogram instance and emits validationDidChange callback for non-fatal diagnostics", () => {
     let validationResults: ValidationResult | null = null;
     const odontogram = new Odontogram(container, {
       initialView: "permanent",
-      validator: true,
+      validator: {
+        incompatibleTypes: [["implant", "natural-root"]],
+      },
       validationDidChange: (arg) => {
         validationResults = arg.result;
       },
     });
 
-    // Set invalid state (caries on incisal anterior tooth)
+    // Valid state with a coexistence warning
     odontogram.setState({
-      marks: [{ id: "m-invalid", tooth: "11", surfaces: ["O"], type: "caries" }],
+      marks: [
+        { id: "m-imp", tooth: "16", type: "implant" },
+        { id: "m-nat", tooth: "16", type: "natural-root" },
+      ],
     });
 
-    expect(validationResults).toBeTruthy();
-    expect(validationResults.valid).toBe(false);
-    expect(validationResults.errors.length).toBeGreaterThan(0);
+    const results = validationResults as ValidationResult | null;
+    expect(results).toBeTruthy();
+    expect(results?.valid).toBe(true);
+    expect(results?.warnings.length).toBeGreaterThan(0);
+    expect(results?.warnings[0].code).toBe(VALIDATION_CODES.WARN_INCOMPATIBLE_MARKS);
 
     const directResult = odontogram.validate();
-    expect(directResult.valid).toBe(false);
+    expect(directResult.valid).toBe(true);
+    expect(directResult.warnings).toHaveLength(1);
   });
 });
