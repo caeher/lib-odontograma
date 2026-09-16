@@ -4,7 +4,9 @@ import { renderSchematicView } from "./schematic-view.js";
 import { mapSurfaceToFace } from "@odontogram/dentition";
 import type { ViewRenderContext } from "@odontogram/core";
 
-function createContext(stateOverrides: Partial<ViewRenderContext["state"]> = {}): ViewRenderContext {
+function createContext(
+  stateOverrides: Partial<ViewRenderContext["state"]> = {},
+): ViewRenderContext {
   const el = document.createElement("div");
   const state = {
     view: "permanent",
@@ -51,26 +53,20 @@ describe("schematic SVG view", () => {
 
   it("maps mesial to screen-right for patient-right teeth", () => {
     renderIntoDocument();
-    const mesial = document.querySelector(
-      '.odontogram-surface[data-tooth="16"][data-surface="M"]',
-    );
+    const mesial = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="M"]');
     expect(mesial?.getAttribute("data-face")).toBe(mapSurfaceToFace("16", "M"));
     expect(mesial?.getAttribute("data-face")).toBe("right");
   });
 
   it("maps mesial to screen-left for patient-left teeth", () => {
     renderIntoDocument();
-    const mesial = document.querySelector(
-      '.odontogram-surface[data-tooth="26"][data-surface="M"]',
-    );
+    const mesial = document.querySelector('.odontogram-surface[data-tooth="26"][data-surface="M"]');
     expect(mesial?.getAttribute("data-face")).toBe("left");
   });
 
   it("maps mandibular buccal to bottom", () => {
     renderIntoDocument();
-    const buccal = document.querySelector(
-      '.odontogram-surface[data-tooth="46"][data-surface="B"]',
-    );
+    const buccal = document.querySelector('.odontogram-surface[data-tooth="46"][data-surface="B"]');
     expect(buccal?.getAttribute("data-face")).toBe("bottom");
   });
 
@@ -104,5 +100,46 @@ describe("schematic SVG view", () => {
     expect(tooth?.getAttribute("data-presence")).toBe("unerupted");
     const rect = tooth?.querySelector("rect");
     expect(rect?.getAttribute("stroke-dasharray")).toBe("4 3");
+  });
+
+  it("renders FDI notation labels and accessibility attributes by default", () => {
+    renderIntoDocument();
+    const tooth16 = document.querySelector('.odontogram-tooth[data-tooth="16"]');
+    expect(tooth16?.getAttribute("data-notation-label")).toBe("16");
+    expect(tooth16?.getAttribute("aria-label")).toBe("FDI 16");
+    expect(tooth16?.querySelector("text")?.textContent).toBe("16");
+  });
+
+  it("renders Universal notation labels when notation option is universal", () => {
+    const ctx = createContext();
+    ctx.options.notation = "universal";
+    document.body.appendChild(ctx.el);
+    renderSchematicView(ctx);
+
+    const tooth11 = document.querySelector('.odontogram-tooth[data-tooth="11"]');
+    expect(tooth11?.getAttribute("data-notation-label")).toBe("8");
+    expect(tooth11?.getAttribute("aria-label")).toBe("Universal 8");
+    expect(tooth11?.querySelector("text")?.textContent).toBe("8");
+
+    const tooth18 = document.querySelector('.odontogram-tooth[data-tooth="18"]');
+    expect(tooth18?.getAttribute("data-notation-label")).toBe("1");
+    expect(tooth18?.querySelector("text")?.textContent).toBe("1");
+  });
+
+  it("renders Palmer notation labels and accessible attributes when notation option is palmer", () => {
+    const ctx = createContext();
+    ctx.options.notation = "palmer";
+    document.body.appendChild(ctx.el);
+    renderSchematicView(ctx);
+
+    const tooth18 = document.querySelector('.odontogram-tooth[data-tooth="18"]');
+    expect(tooth18?.getAttribute("data-notation-label")).toBe("8┘");
+    expect(tooth18?.getAttribute("aria-label")).toBe("UR8");
+    expect(tooth18?.querySelector("text")?.textContent).toBe("8┘");
+
+    const tooth21 = document.querySelector('.odontogram-tooth[data-tooth="21"]');
+    expect(tooth21?.getAttribute("data-notation-label")).toBe("└1");
+    expect(tooth21?.getAttribute("aria-label")).toBe("UL1");
+    expect(tooth21?.querySelector("text")?.textContent).toBe("└1");
   });
 });

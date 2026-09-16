@@ -11,6 +11,7 @@ import {
   getArch,
   getTeethForView,
   mapSurfaceToFace,
+  toAccessibleNotation,
   toNotation,
   type GraphicFace,
   type Notation,
@@ -115,11 +116,7 @@ export function createFacePath(face: GraphicFace, x: number, y: number): string 
   }
 }
 
-function renderMissingIndicator(
-  toothGroup: SVGGElement,
-  x: number,
-  y: number,
-): void {
+function renderMissingIndicator(toothGroup: SVGGElement, x: number, y: number): void {
   const line1 = document.createElementNS("http://www.w3.org/2000/svg", "line");
   line1.setAttribute("x1", String(x + 8));
   line1.setAttribute("y1", String(y + 8));
@@ -139,10 +136,7 @@ function renderMissingIndicator(
   toothGroup.appendChild(line2);
 }
 
-function applyPresenceStyle(
-  element: SVGElement,
-  presence: ToothPresence,
-): void {
+function applyPresenceStyle(element: SVGElement, presence: ToothPresence): void {
   if (presence === "missing") {
     element.setAttribute("opacity", "0.35");
   } else if (presence === "unerupted") {
@@ -180,10 +174,13 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
   for (const layout of allLayout) {
     const { tooth, x, y, label } = layout;
     const presence = getToothPresence(state.teeth, tooth);
+    const accessibleLabel = toAccessibleNotation(tooth, notation);
     const toothGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
     toothGroup.setAttribute("class", "odontogram-tooth");
     toothGroup.setAttribute("data-tooth", tooth);
     toothGroup.setAttribute("data-presence", presence);
+    toothGroup.setAttribute("data-notation-label", label);
+    toothGroup.setAttribute("aria-label", accessibleLabel);
 
     const isToothSelected = state.selection.teeth.includes(tooth);
     const toothClassNames = normalizeClassNames(
