@@ -90,7 +90,7 @@ describe("Marks utilities", () => {
       expect(mark.metadata).toEqual({ shade: "A2" });
     });
 
-    it("normalizes multi-tooth group shorthand", () => {
+    it("normalizes multi-tooth mark shorthand", () => {
       const mark = normalizeMark({
         id: "m3",
         teeth: ["14", "15", "16"],
@@ -104,6 +104,31 @@ describe("Marks utilities", () => {
         teeth: ["14", "15", "16"],
       });
       expect(getMarkTargetTeeth(mark)).toEqual(["14", "15", "16"]);
+    });
+
+    it("normalizes target structures directly via normalizeTarget", () => {
+      const surfaceNorm = normalizeTarget({ tooth: "16", surfaces: ["O"] });
+      expect(surfaceNorm).toEqual({ kind: "surface", tooth: "16", surfaces: ["O"] });
+
+      const toothNorm = normalizeTarget({ tooth: "16" });
+      expect(toothNorm).toEqual({ kind: "tooth", tooth: "16" });
+
+      const teethNorm = normalizeTarget({ teeth: ["11", "21"] });
+      expect(teethNorm).toEqual({ kind: "teeth", teeth: ["11", "21"] });
+    });
+
+    it("creates marks using createMark helper with auto-generated id if omitted", () => {
+      const mark = createMark({
+        tooth: "16",
+        surfaces: ["O"],
+        type: "sealant",
+        status: "completed",
+      });
+
+      expect(mark.id).toBeDefined();
+      expect(mark.type).toBe("sealant");
+      expect(mark.status).toBe("completed");
+      expect(isSurfaceMark(mark)).toBe(true);
     });
   });
 

@@ -5,6 +5,7 @@ import type {
   OdontogramOptions,
   OdontogramPlugin,
   OdontogramState,
+  OdontogramStateInput,
   SelectionState,
   SurfaceId,
   ToothId,
@@ -112,7 +113,7 @@ export class Odontogram {
     };
   }
 
-  setState(state: OdontogramState | Partial<OdontogramState>): void {
+  setState(state: OdontogramState | OdontogramStateInput | Partial<OdontogramState>): void {
     const nextView = state.view ?? this.state.view;
     const nextMarks = state.marks !== undefined ? normalizeMarks(state.marks) : this.state.marks;
     const nextSelection = state.selection ?? this.state.selection;

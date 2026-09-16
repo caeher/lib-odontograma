@@ -28,12 +28,7 @@ export interface MarkStyle {
 
 /** Semantic lifecycle status of a finding or procedure. */
 export type MarkStatus =
-  | "existing"
-  | "planned"
-  | "completed"
-  | "proposed"
-  | "referred"
-  | (string & {});
+  "existing" | "planned" | "completed" | "proposed" | "referred" | (string & {});
 
 /** Target specifying one or more clinical surfaces on a single tooth. */
 export interface ToothSurfaceTarget {
@@ -63,11 +58,7 @@ export interface ComplexTarget {
 }
 
 /** Target scope descriptor for an odontographic mark or annotation. */
-export type MarkTarget =
-  | ToothSurfaceTarget
-  | WholeToothTarget
-  | MultiToothTarget
-  | ComplexTarget;
+export type MarkTarget = ToothSurfaceTarget | WholeToothTarget | MultiToothTarget | ComplexTarget;
 
 /** An odontographic mark recorded on a tooth, surfaces, or a group of teeth. */
 export interface OdontographicMark<TMetadata = Record<string, unknown>> {
@@ -150,10 +141,7 @@ export type CustomValidationRule = (
 /** Configuration options for the odontogram validator. */
 export interface ValidatorConfig {
   /** Enable/disable specific rules by ID or configure their severity. */
-  rules?: Record<
-    string,
-    boolean | { severity?: ValidationSeverity; enabled?: boolean }
-  >;
+  rules?: Record<string, boolean | { severity?: ValidationSeverity; enabled?: boolean }>;
   /** Whether to allow marks on missing teeth (default: false). */
   allowMissingToothMarks?: boolean;
   /** Whether to allow marks on unerupted teeth (default: false). */
@@ -174,6 +162,17 @@ export interface ValidatorConfig {
 export interface SelectionState {
   teeth: ToothId[];
   surfaces: Array<{ tooth: ToothId; surface: SurfaceId }>;
+}
+
+/** Input state snapshot, allowing flexible / legacy mark inputs. */
+export interface OdontogramStateInput<
+  TMeta extends Record<string, unknown> = Record<string, unknown>,
+> {
+  view?: ViewType;
+  marks?: Array<MarkInput<TMeta>>;
+  selection?: SelectionState;
+  /** Sparse overlay; omitted tooth ids default to present for rendering only. */
+  teeth?: Record<ToothId, ToothState>;
 }
 
 /** Serializable odontogram state snapshot. */
@@ -255,10 +254,7 @@ export interface OdontogramOptions {
   markColors?: Record<string, string>;
   statusColors?: Record<string, string>;
 
-  validator?:
-    | boolean
-    | ValidatorConfig
-    | ((state: OdontogramState) => ValidationResult);
+  validator?: boolean | ValidatorConfig | ((state: OdontogramState) => ValidationResult);
 
   toothClick?: (arg: ToothClickArg) => void;
   surfaceClick?: (arg: SurfaceClickArg) => void;

@@ -27,27 +27,20 @@ export function isWholeToothTarget(target: MarkTarget): target is WholeToothTarg
   return (
     "tooth" in target &&
     typeof (target as WholeToothTarget).tooth === "string" &&
-    (!("surfaces" in target) ||
-      (target as { surfaces?: SurfaceId[] }).surfaces === undefined)
+    (!("surfaces" in target) || (target as { surfaces?: SurfaceId[] }).surfaces === undefined)
   );
 }
 
 /** Check if a target specifies multiple teeth. */
 export function isMultiToothTarget(target: MarkTarget): target is MultiToothTarget {
   if (target.kind === "teeth" || target.kind === "group") return true;
-  return (
-    "teeth" in target &&
-    Array.isArray((target as MultiToothTarget).teeth)
-  );
+  return "teeth" in target && Array.isArray((target as MultiToothTarget).teeth);
 }
 
 /** Check if a target specifies complex multi-element targets. */
 export function isComplexTarget(target: MarkTarget): target is ComplexTarget {
   if (target.kind === "complex" || target.kind === "elements") return true;
-  return (
-    "elements" in target &&
-    Array.isArray((target as ComplexTarget).elements)
-  );
+  return "elements" in target && Array.isArray((target as ComplexTarget).elements);
 }
 
 /** Check if a mark targets specific surfaces on a single tooth. */
@@ -88,10 +81,7 @@ export function getMarkTargetTeeth(mark: OdontographicMark): ToothId[] {
 }
 
 /** Get all surfaces targeted by a mark for a given tooth (or all targeted surfaces if tooth is omitted). */
-export function getMarkTargetSurfaces(
-  mark: OdontographicMark,
-  toothId?: ToothId,
-): SurfaceId[] {
+export function getMarkTargetSurfaces(mark: OdontographicMark, toothId?: ToothId): SurfaceId[] {
   const { target } = mark;
   if (isSurfaceTarget(target)) {
     if (!toothId || target.tooth === toothId) {
@@ -142,13 +132,20 @@ export function normalizeTarget(input: {
   return { kind: "teeth", teeth: [] };
 }
 
+let markSequence = 0;
+
+function generateMarkId(): string {
+  markSequence = (markSequence + 1) % 1_000_000;
+  return `mark-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}-${markSequence}`;
+}
+
 /** Normalizes any MarkInput into a fully-formed canonical OdontographicMark. */
 export function normalizeMark<TMetadata = Record<string, unknown>>(
   input: MarkInput<TMetadata>,
 ): OdontographicMark<TMetadata> {
   const target = normalizeTarget(input);
   const mark: OdontographicMark<TMetadata> = {
-    id: input.id,
+    id: input.id ?? generateMarkId(),
     type: input.type,
     target,
   };
