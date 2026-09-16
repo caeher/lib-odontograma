@@ -142,4 +142,91 @@ describe("schematic SVG view", () => {
     expect(tooth21?.getAttribute("aria-label")).toBe("UL1");
     expect(tooth21?.querySelector("text")?.textContent).toBe("└1");
   });
+
+  it("renders multi-surface marks across all targeted surfaces", () => {
+    renderIntoDocument({
+      marks: [
+        {
+          id: "m-mod-16",
+          type: "restoration",
+          status: "completed",
+          target: {
+            tooth: "16",
+            surfaces: ["M", "O", "D"],
+          },
+          tooth: "16",
+          surfaces: ["M", "O", "D"],
+          style: { fill: "#1976d2" },
+        },
+      ],
+    });
+
+    const mesial = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="M"] path');
+    const occlusal = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="O"] path');
+    const distal = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="D"] path');
+    const buccal = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="B"] path');
+
+    expect(mesial?.getAttribute("fill")).toBe("#1976d2");
+    expect(occlusal?.getAttribute("fill")).toBe("#1976d2");
+    expect(distal?.getAttribute("fill")).toBe("#1976d2");
+    expect(buccal?.getAttribute("fill")).toBe("#e0e0e0"); // default surface color
+  });
+
+  it("renders multiple marks on one tooth with correct data attributes and colors", () => {
+    renderIntoDocument({
+      marks: [
+        {
+          id: "m-1",
+          type: "restoration",
+          status: "completed",
+          target: { tooth: "16", surfaces: ["O"] },
+          tooth: "16",
+          surfaces: ["O"],
+        },
+        {
+          id: "m-2",
+          type: "caries",
+          status: "existing",
+          target: { tooth: "16", surfaces: ["B"] },
+          tooth: "16",
+          surfaces: ["B"],
+        },
+      ],
+    });
+
+    const tooth16 = document.querySelector('.odontogram-tooth[data-tooth="16"]');
+    expect(tooth16?.getAttribute("data-tooth-marks")).toBe("m-1 m-2");
+
+    const occSurface = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="O"]');
+    expect(occSurface?.getAttribute("data-mark-ids")).toBe("m-1");
+    expect(occSurface?.getAttribute("data-status")).toBe("completed");
+
+    const buccalSurface = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="B"]');
+    expect(buccalSurface?.getAttribute("data-mark-ids")).toBe("m-2");
+    expect(buccalSurface?.getAttribute("data-status")).toBe("existing");
+  });
+
+  it("applies statusColors when specific mark color or style is not defined", () => {
+    const ctx = createContext({
+      marks: [
+        {
+          id: "m-planned",
+          type: "unspecified-type",
+          status: "planned",
+          target: { tooth: "16", surfaces: ["O"] },
+          tooth: "16",
+          surfaces: ["O"],
+        },
+      ],
+    });
+    ctx.options.statusColors = {
+      planned: "#ff9800",
+    };
+    document.body.appendChild(ctx.el);
+    renderSchematicView(ctx);
+
+    const path = document.querySelector('.odontogram-surface[data-tooth="16"][data-surface="O"] path');
+    expect(path?.getAttribute("fill")).toBe("#ff9800");
+  });
 });
+

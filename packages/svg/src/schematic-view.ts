@@ -5,7 +5,14 @@ import type {
   OdontographicMark,
   ToothPresence,
 } from "@odontogram/core";
-import { getToothPresence } from "@odontogram/core";
+import {
+  getToothPresence,
+  getMarksForSurface,
+  getMarksForTooth,
+  getMarkTargetSurfaces,
+  getMarkTargetTeeth,
+  isWholeToothMark,
+} from "@odontogram/core";
 import {
   getApplicableSurfaces,
   getArch,
@@ -79,17 +86,22 @@ function isSurfaceSelected(ctx: ViewRenderContext, tooth: ToothId, surface: Surf
   return selection.surfaces.some((s) => s.tooth === tooth && s.surface === surface);
 }
 
-function getMarkForSurface(
-  marks: OdontographicMark[],
-  tooth: ToothId,
-  surface: SurfaceId,
-): OdontographicMark | undefined {
-  return marks.find((m) => m.tooth === tooth && m.surfaces.includes(surface));
-}
-
 function normalizeClassNames(input: string | string[] | undefined): string {
   if (!input) return "";
   return Array.isArray(input) ? input.join(" ") : input;
+}
+
+/** Resolve fill color for a mark considering styles, type colors, and status colors */
+function resolveMarkFill(
+  mark: OdontographicMark,
+  markColors: Record<string, string>,
+  statusColors: Record<string, string>,
+  fallback = "#ef5350",
+): string {
+  if (mark.style?.fill) return mark.style.fill;
+  if (markColors[mark.type]) return markColors[mark.type];
+  if (mark.status && statusColors[mark.status]) return statusColors[mark.status];
+  return fallback;
 }
 
 /** Create SVG path for a graphic face region within a tooth box. */
@@ -170,6 +182,7 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
   const surfaceColor = options.surfaceColor ?? "#e0e0e0";
   const selectionColor = options.selectionColor ?? "#90caf9";
   const markColors = options.markColors ?? {};
+  const statusColors = options.statusColors ?? {};
 
   for (const layout of allLayout) {
     const { tooth, x, y, label } = layout;
@@ -181,6 +194,16 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
     toothGroup.setAttribute("data-presence", presence);
     toothGroup.setAttribute("data-notation-label", label);
     toothGroup.setAttribute("aria-label", accessibleLabel);
+
+    const toothMarks = getMarksForTooth(state.marks, tooth);
+    const wholeToothMarks = toothMarks.filter((m) => isWholeToothMark(m));
+
+    if (toothMarks.length > 0) {
+      toothGroup.setAttribute(
+        "data-tooth-marks",
+        toothMarks.map((m) => m.id).join(" "),
+      );
+    }
 
     const isToothSelected = state.selection.teeth.includes(tooth);
     const toothClassNames = normalizeClassNames(
@@ -196,7 +219,14 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
     bg.setAttribute("width", String(TOOTH_WIDTH));
     bg.setAttribute("height", String(TOOTH_HEIGHT));
     bg.setAttribute("rx", "4");
-    bg.setAttribute("fill", isToothSelected ? selectionColor : toothColor);
+
+    let toothFill = isToothSelected ? selectionColor : toothColor;
+    if (!isToothSelected && wholeToothMarks.length > 0) {
+      const topWholeToothMark = wholeToothMarks[wholeToothMarks.length - 1];
+      toothFill = resolveMarkFill(topWholeToothMark, markColors, statusColors, toothColor);
+    }
+
+    bg.setAttribute("fill", toothFill);
     bg.setAttribute("stroke", "#999");
     bg.setAttribute("stroke-width", "1");
     bg.style.cursor = "pointer";
@@ -206,6 +236,12 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
       ctx.emitToothClick(tooth, e);
     });
     toothGroup.appendChild(bg);
+
+    if (wholeToothMarks.length > 0) {
+      for (const wtm of wholeToothMarks) {
+        options.markDidMount?.({ mark: wtm, el: toothGroup });
+      }
+    }
 
     if (presence === "missing") {
       renderMissingIndicator(toothGroup, x, y);
@@ -220,11 +256,12 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
         surfaceGroup.setAttribute("data-face", face);
 
         const selected = isSurfaceSelected(ctx, tooth, surface);
-        const mark = getMarkForSurface(state.marks, tooth, surface);
+        const surfaceMarks = getMarksForSurface(state.marks, tooth, surface);
+        const topMark = surfaceMarks.length > 0 ? surfaceMarks[surfaceMarks.length - 1] : undefined;
 
         let fill = surfaceColor;
-        if (mark) {
-          fill = mark.style?.fill ?? markColors[mark.type] ?? "#ef5350";
+        if (topMark) {
+          fill = resolveMarkFill(topMark, markColors, statusColors);
         }
         if (selected) {
           fill = selectionColor;
@@ -233,10 +270,10 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
         const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
         path.setAttribute("d", createFacePath(face, x, y));
         path.setAttribute("fill", fill);
-        path.setAttribute("stroke", mark?.style?.stroke ?? "#bbb");
-        path.setAttribute("stroke-width", String(mark?.style?.strokeWidth ?? 0.5));
-        if (mark?.style?.opacity !== undefined) {
-          path.setAttribute("opacity", String(mark.style.opacity));
+        path.setAttribute("stroke", topMark?.style?.stroke ?? "#bbb");
+        path.setAttribute("stroke-width", String(topMark?.style?.strokeWidth ?? 0.5));
+        if (topMark?.style?.opacity !== undefined) {
+          path.setAttribute("opacity", String(topMark.style.opacity));
         }
         applyPresenceStyle(path, presence);
         path.style.cursor = "pointer";
@@ -246,15 +283,35 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
         });
         surfaceGroup.appendChild(path);
 
-        if (mark) {
-          const markClassNames = normalizeClassNames(options.markClassNames?.({ mark }));
-          if (markClassNames) {
+        if (surfaceMarks.length > 0) {
+          surfaceGroup.setAttribute(
+            "data-mark-ids",
+            surfaceMarks.map((m) => m.id).join(" "),
+          );
+          surfaceGroup.setAttribute(
+            "data-mark-types",
+            surfaceMarks.map((m) => m.type).join(" "),
+          );
+          const statuses = surfaceMarks.map((m) => m.status).filter(Boolean);
+          if (statuses.length > 0) {
+            surfaceGroup.setAttribute("data-status", statuses.join(" "));
+          }
+
+          const markClasses = surfaceMarks
+            .map((m) => normalizeClassNames(options.markClassNames?.({ mark: m })))
+            .filter(Boolean)
+            .join(" ");
+
+          if (markClasses) {
             surfaceGroup.setAttribute(
               "class",
-              `odontogram-surface odontogram-surface-${surface} ${markClassNames}`,
+              `odontogram-surface odontogram-surface-${surface} ${markClasses}`,
             );
           }
-          options.markDidMount?.({ mark, el: surfaceGroup });
+
+          for (const m of surfaceMarks) {
+            options.markDidMount?.({ mark: m, el: surfaceGroup });
+          }
         }
 
         toothGroup.appendChild(surfaceGroup);
@@ -292,13 +349,25 @@ export function destroySchematicView(ctx: ViewRenderContext): void {
   }
 
   for (const mark of state.marks) {
-    for (const surface of mark.surfaces) {
-      const markEl = ctx.el.querySelector(
-        `[data-tooth="${mark.tooth}"][data-surface="${surface}"]`,
-      );
-      if (markEl) {
-        options.markWillUnmount?.({ mark, el: markEl });
+    const targetedTeeth = getMarkTargetTeeth(mark);
+    for (const tooth of targetedTeeth) {
+      const targetedSurfaces = getMarkTargetSurfaces(mark, tooth);
+      if (targetedSurfaces.length > 0) {
+        for (const surface of targetedSurfaces) {
+          const markEl = ctx.el.querySelector(
+            `[data-tooth="${tooth}"][data-surface="${surface}"]`,
+          );
+          if (markEl) {
+            options.markWillUnmount?.({ mark, el: markEl });
+          }
+        }
+      } else {
+        const toothEl = ctx.el.querySelector(`[data-tooth="${tooth}"]`);
+        if (toothEl) {
+          options.markWillUnmount?.({ mark, el: toothEl });
+        }
       }
     }
   }
 }
+
