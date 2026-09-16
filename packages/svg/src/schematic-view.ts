@@ -99,8 +99,10 @@ function resolveMarkFill(
   fallback = "#ef5350",
 ): string {
   if (mark.style?.fill) return mark.style.fill;
-  if (markColors[mark.type]) return markColors[mark.type];
-  if (mark.status && statusColors[mark.status]) return statusColors[mark.status];
+  const byType = markColors[mark.type];
+  if (byType) return byType;
+  const byStatus = mark.status ? statusColors[mark.status] : undefined;
+  if (byStatus) return byStatus;
   return fallback;
 }
 
@@ -223,7 +225,9 @@ export function renderSchematicView(ctx: ViewRenderContext): void {
     let toothFill = isToothSelected ? selectionColor : toothColor;
     if (!isToothSelected && wholeToothMarks.length > 0) {
       const topWholeToothMark = wholeToothMarks[wholeToothMarks.length - 1];
-      toothFill = resolveMarkFill(topWholeToothMark, markColors, statusColors, toothColor);
+      if (topWholeToothMark) {
+        toothFill = resolveMarkFill(topWholeToothMark, markColors, statusColors, toothColor);
+      }
     }
 
     bg.setAttribute("fill", toothFill);
