@@ -1,13 +1,15 @@
+import { VALIDATION_CODES } from "./errors.js";
 import {
   getMarksForTooth,
   getMarkTargetSurfaces,
   getMarkTargetTeeth,
+  isComplexTarget,
   isMultiToothTarget,
   isSurfaceTarget,
   isWholeToothTarget,
-  isComplexTarget,
 } from "./marks.js";
 import type {
+  OdontogramOptions,
   OdontogramState,
   OdontographicMark,
   SurfaceId,
@@ -26,23 +28,71 @@ export const RULE_SURFACE_APPLICABILITY = "surface-applicability";
 export const RULE_TOOTH_PRESENCE_COEXISTENCE = "tooth-presence-coexistence";
 export const RULE_MARK_COEXISTENCE = "mark-coexistence";
 export const RULE_TOOTH_CATALOG_VALIDITY = "tooth-catalog-validity";
+export const RULE_UNKNOWN_MARK_TYPE = "unknown-mark-type";
+export const RULE_SELECTION_INTEGRITY = "selection-integrity";
+export const RULE_TEETH_OVERLAY_INTEGRITY = "teeth-overlay-integrity";
+export const RULE_OPTIONS_VALIDITY = "options-validity";
 
 const VALID_SURFACES = new Set<SurfaceId>(["M", "O", "I", "D", "B", "L"]);
+const VALID_PRESENCE_VALUES = new Set(["present", "missing", "unerupted"]);
+const VALID_NOTATIONS = new Set(["fdi", "universal", "palmer"]);
+
+const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
+  "plugins",
+  "initialView",
+  "notation",
+  "height",
+  "selectable",
+  "toothColor",
+  "surfaceColor",
+  "selectionColor",
+  "markColors",
+  "statusColors",
+  "validator",
+  "toothClick",
+  "surfaceClick",
+  "selectionDidChange",
+  "marksSet",
+  "validationDidChange",
+  "toothClassNames",
+  "markClassNames",
+  "toothDidMount",
+  "toothWillUnmount",
+  "markDidMount",
+  "markWillUnmount",
+  "viewDidMount",
+  "viewWillUnmount",
+]);
+
+/** Deeply clones any serializable object to prevent consumer mutation leakage. */
+export function deepClone<T>(val: T): T {
+  if (val === null || typeof val !== "object") {
+    return val;
+  }
+  if (Array.isArray(val)) {
+    return val.map((item) => deepClone(item)) as unknown as T;
+  }
+  const copy: Record<string, unknown> = {};
+  for (const key of Object.keys(val as Record<string, unknown>)) {
+    copy[key] = deepClone((val as Record<string, unknown>)[key]);
+  }
+  return copy as T;
+}
 
 /** Default FDI anterior/posterior surface applicability checker */
 function defaultIsSurfaceApplicable(tooth: ToothId, surface: SurfaceId): boolean {
   if (!VALID_SURFACES.has(surface)) return false;
 
-  // If tooth is standard 2-digit FDI string
+  // Standard 2-digit FDI string: Quadrant 1-8, Position 1-8
   if (tooth.length === 2) {
     const pos = parseInt(tooth.charAt(1), 10);
     if (!isNaN(pos)) {
       if (pos >= 1 && pos <= 3) {
-        // Anterior: M, I, D, B, L (no O)
+        // Anterior (Central, Lateral, Canine): M, I, D, B, L (no O)
         return surface !== "O";
       }
       if (pos >= 4 && pos <= 8) {
-        // Posterior: M, O, D, B, L (no I)
+        // Posterior (Premolars, Molars): M, O, D, B, L (no I)
         return surface !== "I";
       }
     }
@@ -79,6 +129,105 @@ function getRuleConfig(
 }
 
 /**
+ * Validates an OdontogramOptions object for correct types and unknown properties.
+ */
+export function validateOptions(options: OdontogramOptions): ValidationResult {
+  const issues: ValidationIssue[] = [];
+
+  if (!options || typeof options !== "object") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: "Options must be an object.",
+      path: "options",
+    });
+    return {
+      valid: false,
+      issues,
+      errors: issues,
+      warnings: [],
+    };
+  }
+
+  // Check for unknown options
+  for (const key of Object.keys(options)) {
+    if (!KNOWN_OPTION_KEYS.has(key as keyof OdontogramOptions)) {
+      issues.push({
+        ruleId: RULE_OPTIONS_VALIDITY,
+        code: VALIDATION_CODES.WARN_UNKNOWN_OPTION,
+        severity: "warning",
+        message: `Unknown configuration option "${key}". Verify option spelling against OdontogramOptions.`,
+        path: `options.${key}`,
+      });
+    }
+  }
+
+  // Validate specific option types
+  if (options.notation !== undefined && !VALID_NOTATIONS.has(options.notation)) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Invalid notation "${options.notation}". Must be "fdi", "universal", or "palmer".`,
+      path: "options.notation",
+    });
+  }
+
+  if (options.height !== undefined) {
+    if (typeof options.height === "number") {
+      if (options.height <= 0 || isNaN(options.height)) {
+        issues.push({
+          ruleId: RULE_OPTIONS_VALIDITY,
+          code: VALIDATION_CODES.ERR_INVALID_OPTION,
+          severity: "error",
+          message: `Option "height" must be a positive number or valid CSS string.`,
+          path: "options.height",
+        });
+      }
+    } else if (typeof options.height !== "string" || options.height.trim() === "") {
+      issues.push({
+        ruleId: RULE_OPTIONS_VALIDITY,
+        code: VALIDATION_CODES.ERR_INVALID_OPTION,
+        severity: "error",
+        message: `Option "height" must be a non-empty string or positive number.`,
+        path: "options.height",
+      });
+    }
+  }
+
+  if (options.selectable !== undefined && typeof options.selectable !== "boolean") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "selectable" must be a boolean.`,
+      path: "options.selectable",
+    });
+  }
+
+  if (options.plugins !== undefined && !Array.isArray(options.plugins)) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "plugins" must be an array of OdontogramPlugin instances.`,
+      path: "options.plugins",
+    });
+  }
+
+  const errors = issues.filter((i) => i.severity === "error");
+  const warnings = issues.filter((i) => i.severity === "warning");
+
+  return {
+    valid: errors.length === 0,
+    issues,
+    errors,
+    warnings,
+  };
+}
+
+/**
  * Validates an OdontogramState against structural coexistence rules,
  * identity constraints, target integrity, and configurable rules.
  */
@@ -87,32 +236,65 @@ export function validateOdontogramState(
   config: ValidatorConfig = {},
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
+
+  if (!state || typeof state !== "object") {
+    issues.push({
+      ruleId: "state-structure",
+      code: VALIDATION_CODES.ERR_INVALID_STATE,
+      severity: "error",
+      message: "Odontogram state must be an object.",
+      path: "state",
+    });
+    return {
+      valid: false,
+      issues,
+      errors: issues,
+      warnings: [],
+    };
+  }
+
   const teethOverlay = state.teeth || {};
   const marks = state.marks || [];
+  const selection = state.selection || { teeth: [], surfaces: [] };
 
   // 1. Mark ID Uniqueness & Integrity
   const idRule = getRuleConfig(config, RULE_MARK_ID_UNIQUE, "error");
   if (idRule.enabled) {
     const seenIds = new Set<string>();
-    for (const mark of marks) {
+    marks.forEach((mark, i) => {
+      const markPath = `marks[${i}].id`;
+      if (!mark || typeof mark !== "object") {
+        issues.push({
+          ruleId: RULE_MARK_ID_UNIQUE,
+          code: VALIDATION_CODES.ERR_INVALID_MARK_ID,
+          severity: idRule.severity,
+          message: `Mark at index ${i} must be an object.`,
+          path: `marks[${i}]`,
+        });
+        return;
+      }
       if (!mark.id || typeof mark.id !== "string" || mark.id.trim() === "") {
         issues.push({
           ruleId: RULE_MARK_ID_UNIQUE,
+          code: VALIDATION_CODES.ERR_INVALID_MARK_ID,
           severity: idRule.severity,
           message: "Mark must have a non-empty string 'id'.",
+          path: markPath,
           markId: mark.id,
         });
       } else if (seenIds.has(mark.id)) {
         issues.push({
           ruleId: RULE_MARK_ID_UNIQUE,
+          code: VALIDATION_CODES.ERR_DUPLICATE_MARK_ID,
           severity: idRule.severity,
           message: `Duplicate mark id "${mark.id}". Mark identifiers must be unique across the odontogram.`,
+          path: markPath,
           markId: mark.id,
         });
       } else {
         seenIds.add(mark.id);
       }
-    }
+    });
   }
 
   // 2. Target Integrity & Surface Validity
@@ -120,18 +302,37 @@ export function validateOdontogramState(
   const isSurfaceApplicableFn = config.isSurfaceApplicable ?? defaultIsSurfaceApplicable;
   const surfaceApplicabilityRule = getRuleConfig(config, RULE_SURFACE_APPLICABILITY, "error");
 
-  for (const mark of marks) {
-    const { target } = mark;
-    if (!target) {
+  marks.forEach((mark, i) => {
+    if (!mark || typeof mark !== "object") return;
+    const markBasePath = `marks[${i}]`;
+
+    // Type validation
+    if (!mark.type || typeof mark.type !== "string" || mark.type.trim() === "") {
       if (targetRule.enabled) {
         issues.push({
           ruleId: RULE_TARGET_INTEGRITY,
+          code: VALIDATION_CODES.ERR_INVALID_STATE,
           severity: targetRule.severity,
-          message: `Mark "${mark.id}" must define a valid target.`,
+          message: `Mark "${mark.id || i}" must have a non-empty string 'type'.`,
+          path: `${markBasePath}.type`,
           markId: mark.id,
         });
       }
-      continue;
+    }
+
+    const { target } = mark;
+    if (!target || typeof target !== "object") {
+      if (targetRule.enabled) {
+        issues.push({
+          ruleId: RULE_TARGET_INTEGRITY,
+          code: VALIDATION_CODES.ERR_MISSING_TARGET,
+          severity: targetRule.severity,
+          message: `Mark "${mark.id}" must define a valid target.`,
+          path: `${markBasePath}.target`,
+          markId: mark.id,
+        });
+      }
+      return;
     }
 
     if (isSurfaceTarget(target)) {
@@ -139,8 +340,10 @@ export function validateOdontogramState(
         if (targetRule.enabled) {
           issues.push({
             ruleId: RULE_TARGET_INTEGRITY,
+            code: VALIDATION_CODES.ERR_INVALID_TOOTH_ID,
             severity: targetRule.severity,
             message: `Mark "${mark.id}" target has invalid or missing tooth identifier.`,
+            path: `${markBasePath}.target.tooth`,
             markId: mark.id,
           });
         }
@@ -149,22 +352,26 @@ export function validateOdontogramState(
         if (targetRule.enabled) {
           issues.push({
             ruleId: RULE_TARGET_INTEGRITY,
+            code: VALIDATION_CODES.ERR_EMPTY_SURFACES,
             severity: targetRule.severity,
             message: `Surface mark "${mark.id}" on tooth "${target.tooth}" must specify at least one surface.`,
+            path: `${markBasePath}.target.surfaces`,
             markId: mark.id,
             toothId: target.tooth,
           });
         }
       } else {
-        // Check duplicate surfaces in target
         const seenSurfaces = new Set<SurfaceId>();
-        for (const surf of target.surfaces) {
+        target.surfaces.forEach((surf, surfIdx) => {
+          const surfPath = `${markBasePath}.target.surfaces[${surfIdx}]`;
           if (!VALID_SURFACES.has(surf)) {
             if (targetRule.enabled) {
               issues.push({
                 ruleId: RULE_TARGET_INTEGRITY,
+                code: VALIDATION_CODES.ERR_INVALID_SURFACE,
                 severity: targetRule.severity,
                 message: `Invalid clinical surface code "${surf}" in mark "${mark.id}". Must be one of M, O, I, D, B, L.`,
+                path: surfPath,
                 markId: mark.id,
                 toothId: target.tooth,
                 surface: surf,
@@ -174,8 +381,10 @@ export function validateOdontogramState(
             if (targetRule.enabled) {
               issues.push({
                 ruleId: RULE_TARGET_INTEGRITY,
+                code: VALIDATION_CODES.ERR_DUPLICATE_SURFACE,
                 severity: targetRule.severity,
                 message: `Duplicate surface "${surf}" in mark "${mark.id}" for tooth "${target.tooth}".`,
+                path: surfPath,
                 markId: mark.id,
                 toothId: target.tooth,
                 surface: surf,
@@ -193,22 +402,26 @@ export function validateOdontogramState(
           ) {
             issues.push({
               ruleId: RULE_SURFACE_APPLICABILITY,
+              code: VALIDATION_CODES.ERR_INAPPLICABLE_SURFACE,
               severity: surfaceApplicabilityRule.severity,
               message: `Surface "${surf}" is clinically inapplicable for tooth "${target.tooth}".`,
+              path: surfPath,
               markId: mark.id,
               toothId: target.tooth,
               surface: surf,
             });
           }
-        }
+        });
       }
     } else if (isWholeToothTarget(target)) {
       if (!target.tooth || typeof target.tooth !== "string" || target.tooth.trim() === "") {
         if (targetRule.enabled) {
           issues.push({
             ruleId: RULE_TARGET_INTEGRITY,
+            code: VALIDATION_CODES.ERR_INVALID_TOOTH_ID,
             severity: targetRule.severity,
             message: `Whole-tooth mark "${mark.id}" must have a valid tooth identifier.`,
+            path: `${markBasePath}.target.tooth`,
             markId: mark.id,
           });
         }
@@ -218,20 +431,25 @@ export function validateOdontogramState(
         if (targetRule.enabled) {
           issues.push({
             ruleId: RULE_TARGET_INTEGRITY,
+            code: VALIDATION_CODES.ERR_EMPTY_TEETH,
             severity: targetRule.severity,
             message: `Multi-tooth mark "${mark.id}" must specify at least one tooth in 'teeth' array.`,
+            path: `${markBasePath}.target.teeth`,
             markId: mark.id,
           });
         }
       } else {
         const seenTeeth = new Set<ToothId>();
-        for (const t of target.teeth) {
-          if (!t || typeof t !== "string") {
+        target.teeth.forEach((t, tIdx) => {
+          const toothPath = `${markBasePath}.target.teeth[${tIdx}]`;
+          if (!t || typeof t !== "string" || t.trim() === "") {
             if (targetRule.enabled) {
               issues.push({
                 ruleId: RULE_TARGET_INTEGRITY,
+                code: VALIDATION_CODES.ERR_INVALID_TOOTH_ID,
                 severity: targetRule.severity,
                 message: `Invalid tooth ID in multi-tooth mark "${mark.id}".`,
+                path: toothPath,
                 markId: mark.id,
               });
             }
@@ -239,8 +457,10 @@ export function validateOdontogramState(
             if (targetRule.enabled) {
               issues.push({
                 ruleId: RULE_TARGET_INTEGRITY,
+                code: VALIDATION_CODES.ERR_DUPLICATE_TOOTH,
                 severity: targetRule.severity,
                 message: `Duplicate tooth "${t}" in multi-tooth mark "${mark.id}".`,
+                path: toothPath,
                 markId: mark.id,
                 toothId: t,
               });
@@ -248,36 +468,95 @@ export function validateOdontogramState(
           } else {
             seenTeeth.add(t);
           }
-        }
+        });
       }
     } else if (isComplexTarget(target)) {
       if (!Array.isArray(target.elements) || target.elements.length === 0) {
         if (targetRule.enabled) {
           issues.push({
             ruleId: RULE_TARGET_INTEGRITY,
+            code: VALIDATION_CODES.ERR_EMPTY_ELEMENTS,
             severity: targetRule.severity,
             message: `Complex mark "${mark.id}" must specify at least one element.`,
+            path: `${markBasePath}.target.elements`,
             markId: mark.id,
           });
         }
+      } else {
+        target.elements.forEach((el, elIdx) => {
+          const elPath = `${markBasePath}.target.elements[${elIdx}]`;
+          if (!el.tooth || typeof el.tooth !== "string" || el.tooth.trim() === "") {
+            if (targetRule.enabled) {
+              issues.push({
+                ruleId: RULE_TARGET_INTEGRITY,
+                code: VALIDATION_CODES.ERR_INVALID_TOOTH_ID,
+                severity: targetRule.severity,
+                message: `Element at index ${elIdx} in complex mark "${mark.id}" must have a valid tooth ID.`,
+                path: `${elPath}.tooth`,
+                markId: mark.id,
+              });
+            }
+          }
+          if (el.surfaces) {
+            el.surfaces.forEach((surf, sIdx) => {
+              const surfPath = `${elPath}.surfaces[${sIdx}]`;
+              if (!VALID_SURFACES.has(surf)) {
+                if (targetRule.enabled) {
+                  issues.push({
+                    ruleId: RULE_TARGET_INTEGRITY,
+                    code: VALIDATION_CODES.ERR_INVALID_SURFACE,
+                    severity: targetRule.severity,
+                    message: `Invalid surface "${surf}" in complex mark "${mark.id}".`,
+                    path: surfPath,
+                    markId: mark.id,
+                    toothId: el.tooth,
+                    surface: surf,
+                  });
+                }
+              }
+            });
+          }
+        });
       }
     }
-  }
+  });
 
-  // 3. Tooth Presence Coexistence
+  // 3. Tooth Presence Coexistence & Teeth Overlay Integrity
   const presenceRule = getRuleConfig(config, RULE_TOOTH_PRESENCE_COEXISTENCE, "error");
-  if (presenceRule.enabled) {
-    for (const [toothId, toothState] of Object.entries(teethOverlay)) {
+  const overlayRule = getRuleConfig(config, RULE_TEETH_OVERLAY_INTEGRITY, "error");
+
+  for (const [toothId, toothState] of Object.entries(teethOverlay)) {
+    const presencePath = `teeth.${toothId}.presence`;
+    if (
+      !toothState ||
+      typeof toothState !== "object" ||
+      !VALID_PRESENCE_VALUES.has(toothState.presence)
+    ) {
+      if (overlayRule.enabled) {
+        issues.push({
+          ruleId: RULE_TEETH_OVERLAY_INTEGRITY,
+          code: VALIDATION_CODES.ERR_INVALID_PRESENCE,
+          severity: overlayRule.severity,
+          message: `Invalid presence value "${toothState?.presence}" for tooth "${toothId}". Must be "present", "missing", or "unerupted".`,
+          path: presencePath,
+          toothId,
+        });
+      }
+      continue;
+    }
+
+    if (presenceRule.enabled) {
       if (toothState.presence === "missing" && !config.allowMissingToothMarks) {
         const toothMarks = getMarksForTooth(marks, toothId);
         for (const mark of toothMarks) {
           const surfaces = getMarkTargetSurfaces(mark, toothId);
-          // If the mark has specific surface findings on a missing tooth, it is incompatible
           if (surfaces.length > 0) {
             issues.push({
               ruleId: RULE_TOOTH_PRESENCE_COEXISTENCE,
+              code: VALIDATION_CODES.ERR_PRESENCE_CONFLICT,
               severity: presenceRule.severity,
               message: `Tooth "${toothId}" is marked as missing; recording surface mark "${mark.id}" (${mark.type}) on surfaces [${surfaces.join(", ")}] is structurally incompatible.`,
+              path: presencePath,
               markId: mark.id,
               toothId,
             });
@@ -290,8 +569,10 @@ export function validateOdontogramState(
           if (surfaces.length > 0 && (mark.type === "caries" || mark.type === "restoration")) {
             issues.push({
               ruleId: RULE_TOOTH_PRESENCE_COEXISTENCE,
+              code: VALIDATION_CODES.ERR_PRESENCE_CONFLICT,
               severity: presenceRule.severity,
               message: `Tooth "${toothId}" is marked as unerupted; recording surface ${mark.type} mark "${mark.id}" is structurally incompatible.`,
+              path: presencePath,
               markId: mark.id,
               toothId,
             });
@@ -301,11 +582,78 @@ export function validateOdontogramState(
     }
   }
 
-  // 4. Mark Coexistence & Incompatible Types
+  // 4. Selection State Integrity
+  const selectionRule = getRuleConfig(config, RULE_SELECTION_INTEGRITY, "error");
+  if (selectionRule.enabled) {
+    if (selection.teeth && Array.isArray(selection.teeth)) {
+      const seenTeeth = new Set<ToothId>();
+      selection.teeth.forEach((t, idx) => {
+        const selToothPath = `selection.teeth[${idx}]`;
+        if (!t || typeof t !== "string" || t.trim() === "") {
+          issues.push({
+            ruleId: RULE_SELECTION_INTEGRITY,
+            code: VALIDATION_CODES.ERR_INVALID_SELECTION,
+            severity: selectionRule.severity,
+            message: `Invalid tooth ID in selection.`,
+            path: selToothPath,
+          });
+        } else if (seenTeeth.has(t)) {
+          issues.push({
+            ruleId: RULE_SELECTION_INTEGRITY,
+            code: VALIDATION_CODES.ERR_INVALID_SELECTION,
+            severity: selectionRule.severity,
+            message: `Duplicate tooth "${t}" in selection.`,
+            path: selToothPath,
+            toothId: t,
+          });
+        } else {
+          seenTeeth.add(t);
+        }
+      });
+    }
+
+    if (selection.surfaces && Array.isArray(selection.surfaces)) {
+      const seenSurfs = new Set<string>();
+      selection.surfaces.forEach((s, idx) => {
+        const selSurfPath = `selection.surfaces[${idx}]`;
+        if (
+          !s ||
+          typeof s !== "object" ||
+          !s.tooth ||
+          !s.surface ||
+          !VALID_SURFACES.has(s.surface)
+        ) {
+          issues.push({
+            ruleId: RULE_SELECTION_INTEGRITY,
+            code: VALIDATION_CODES.ERR_INVALID_SELECTION,
+            severity: selectionRule.severity,
+            message: `Invalid surface entry in selection.`,
+            path: selSurfPath,
+          });
+        } else {
+          const key = `${s.tooth}:${s.surface}`;
+          if (seenSurfs.has(key)) {
+            issues.push({
+              ruleId: RULE_SELECTION_INTEGRITY,
+              code: VALIDATION_CODES.ERR_INVALID_SELECTION,
+              severity: selectionRule.severity,
+              message: `Duplicate surface selection "${key}".`,
+              path: selSurfPath,
+              toothId: s.tooth,
+              surface: s.surface,
+            });
+          } else {
+            seenSurfs.add(key);
+          }
+        }
+      });
+    }
+  }
+
+  // 5. Mark Coexistence & Incompatible Types
   const coexistenceRule = getRuleConfig(config, RULE_MARK_COEXISTENCE, "warning");
   if (coexistenceRule.enabled && config.incompatibleTypes) {
     for (const [typeA, typeB] of config.incompatibleTypes) {
-      // Find teeth containing both typeA and typeB
       const teethWithMarks = new Set<ToothId>();
       for (const m of marks) {
         for (const t of getMarkTargetTeeth(m)) {
@@ -323,8 +671,10 @@ export function validateOdontogramState(
             for (const b of marksB) {
               issues.push({
                 ruleId: RULE_MARK_COEXISTENCE,
+                code: VALIDATION_CODES.WARN_INCOMPATIBLE_MARKS,
                 severity: coexistenceRule.severity,
                 message: `Incompatible mark types "${typeA}" (mark ${a.id}) and "${typeB}" (mark ${b.id}) coexist on tooth "${toothId}".`,
+                path: `marks`,
                 markId: a.id,
                 toothId,
                 details: { conflictingMarkId: b.id },
@@ -336,25 +686,27 @@ export function validateOdontogramState(
     }
   }
 
-  // 5. Tooth Catalog Validity (if custom isValidTooth provided)
+  // 6. Tooth Catalog Validity (if custom isValidTooth provided)
   const catalogRule = getRuleConfig(config, RULE_TOOTH_CATALOG_VALIDITY, "warning");
   if (catalogRule.enabled && config.isValidTooth) {
-    for (const mark of marks) {
-      for (const toothId of getMarkTargetTeeth(mark)) {
-        if (!config.isValidTooth(toothId)) {
+    marks.forEach((mark, mIdx) => {
+      getMarkTargetTeeth(mark).forEach((toothId) => {
+        if (!config.isValidTooth!(toothId)) {
           issues.push({
             ruleId: RULE_TOOTH_CATALOG_VALIDITY,
+            code: VALIDATION_CODES.WARN_UNRECOGNIZED_TOOTH,
             severity: catalogRule.severity,
             message: `Tooth identifier "${toothId}" in mark "${mark.id}" is not recognized in the active catalog.`,
+            path: `marks[${mIdx}]`,
             markId: mark.id,
             toothId,
           });
         }
-      }
-    }
+      });
+    });
   }
 
-  // 6. Custom Validation Rules
+  // 7. Custom Validation Rules
   if (config.customRules && config.customRules.length > 0) {
     const context: ValidationContext = {
       state,
@@ -374,6 +726,7 @@ export function validateOdontogramState(
       } catch (err) {
         issues.push({
           ruleId: "custom-rule-error",
+          code: VALIDATION_CODES.ERR_INVALID_STATE,
           severity: "error",
           message: `Custom validation rule failed: ${err instanceof Error ? err.message : String(err)}`,
         });

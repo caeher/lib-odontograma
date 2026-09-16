@@ -1,5 +1,11 @@
 export { createDefaultState, getToothPresence } from "./defaults.js";
 export {
+  OdontogramError,
+  OdontogramValidationError,
+  VALIDATION_CODES,
+  type ValidationCode,
+} from "./errors.js";
+export {
   createMark,
   getMarksForSurface,
   getMarksForTooth,
@@ -18,21 +24,28 @@ export {
 } from "./marks.js";
 export {
   createValidator,
+  deepClone,
   RULE_MARK_COEXISTENCE,
   RULE_MARK_ID_UNIQUE,
+  RULE_OPTIONS_VALIDITY,
+  RULE_SELECTION_INTEGRITY,
   RULE_SURFACE_APPLICABILITY,
   RULE_TARGET_INTEGRITY,
+  RULE_TEETH_OVERLAY_INTEGRITY,
   RULE_TOOTH_CATALOG_VALIDITY,
   RULE_TOOTH_PRESENCE_COEXISTENCE,
+  RULE_UNKNOWN_MARK_TYPE,
   validateMark,
   validateMarks,
   validateOdontogramState,
+  validateOptions,
 } from "./validation.js";
 export {
   MULTI_MARK_COEXISTENCE_EXAMPLE,
   MULTI_SURFACE_RESTORATIONS_EXAMPLE,
   MULTI_TOOTH_ANNOTATIONS_EXAMPLE,
   SERIALIZATION_EXAMPLES,
+  UNKNOWN_MARK_PRESERVATION_EXAMPLE,
   WHOLE_TOOTH_MARKS_EXAMPLE,
 } from "./examples.js";
 export { Odontogram } from "./odontogram.js";

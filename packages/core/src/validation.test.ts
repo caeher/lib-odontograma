@@ -3,33 +3,45 @@ import {
   createValidator,
   RULE_MARK_COEXISTENCE,
   RULE_MARK_ID_UNIQUE,
+  RULE_OPTIONS_VALIDITY,
+  RULE_SELECTION_INTEGRITY,
   RULE_SURFACE_APPLICABILITY,
   RULE_TARGET_INTEGRITY,
+  RULE_TEETH_OVERLAY_INTEGRITY,
+  RULE_TOOTH_CATALOG_VALIDITY,
   RULE_TOOTH_PRESENCE_COEXISTENCE,
   validateMarks,
   validateOdontogramState,
+  validateOptions,
 } from "./validation.js";
 import { normalizeMarks } from "./marks.js";
-import type { OdontogramState } from "./types.js";
+import { VALIDATION_CODES } from "./errors.js";
+import type { OdontogramOptions, OdontogramState, SurfaceId } from "./types.js";
 
 describe("Odontogram Validation", () => {
   describe("RULE_MARK_ID_UNIQUE", () => {
-    it("detects empty mark IDs", () => {
+    it("detects empty mark IDs and outputs typed code and field path", () => {
       const marks = normalizeMarks([{ id: "", tooth: "16", surfaces: ["O"], type: "caries" }]);
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_MARK_ID_UNIQUE)).toBe(true);
+      const issue = result.errors.find((e) => e.ruleId === RULE_MARK_ID_UNIQUE);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_INVALID_MARK_ID);
+      expect(issue?.path).toBe("marks[0].id");
     });
 
-    it("detects duplicate mark IDs", () => {
+    it("detects duplicate mark IDs and outputs typed code and field path", () => {
       const marks = normalizeMarks([
         { id: "dup-1", tooth: "16", surfaces: ["O"], type: "caries" },
         { id: "dup-1", tooth: "26", surfaces: ["O"], type: "restoration" },
       ]);
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_MARK_ID_UNIQUE)).toBe(true);
-      expect(result.errors[0].message).toContain('Duplicate mark id "dup-1"');
+      const issue = result.errors.find((e) => e.ruleId === RULE_MARK_ID_UNIQUE);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_DUPLICATE_MARK_ID);
+      expect(issue?.path).toBe("marks[1].id");
+      expect(issue?.message).toContain('Duplicate mark id "dup-1"');
     });
 
     it("passes when all mark IDs are unique", () => {
@@ -43,7 +55,7 @@ describe("Odontogram Validation", () => {
   });
 
   describe("RULE_TARGET_INTEGRITY", () => {
-    it("detects surface marks with empty surfaces array", () => {
+    it("detects surface marks with empty surfaces array and outputs typed code and field path", () => {
       const state: OdontogramState = {
         view: "permanent",
         marks: [
@@ -58,7 +70,10 @@ describe("Odontogram Validation", () => {
       };
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_TARGET_INTEGRITY)).toBe(true);
+      const issue = result.errors.find((e) => e.ruleId === RULE_TARGET_INTEGRITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_EMPTY_SURFACES);
+      expect(issue?.path).toBe("marks[0].target.surfaces");
     });
 
     it("detects invalid clinical surface codes", () => {
@@ -76,8 +91,11 @@ describe("Odontogram Validation", () => {
       };
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_TARGET_INTEGRITY)).toBe(true);
-      expect(result.errors[0].message).toContain('Invalid clinical surface code "X"');
+      const issue = result.errors.find((e) => e.ruleId === RULE_TARGET_INTEGRITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_INVALID_SURFACE);
+      expect(issue?.path).toBe("marks[0].target.surfaces[0]");
+      expect(issue?.message).toContain('Invalid clinical surface code "X"');
     });
 
     it("detects duplicate surfaces in a single mark target", () => {
@@ -95,8 +113,11 @@ describe("Odontogram Validation", () => {
       };
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_TARGET_INTEGRITY)).toBe(true);
-      expect(result.errors[0].message).toContain('Duplicate surface "M"');
+      const issue = result.errors.find((e) => e.ruleId === RULE_TARGET_INTEGRITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_DUPLICATE_SURFACE);
+      expect(issue?.path).toBe("marks[0].target.surfaces[2]");
+      expect(issue?.message).toContain('Duplicate surface "M"');
     });
 
     it("detects multi-tooth marks with empty teeth array", () => {
@@ -114,21 +135,66 @@ describe("Odontogram Validation", () => {
       };
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_TARGET_INTEGRITY)).toBe(true);
+      const issue = result.errors.find((e) => e.ruleId === RULE_TARGET_INTEGRITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_EMPTY_TEETH);
+      expect(issue?.path).toBe("marks[0].target.teeth");
+    });
+
+    it("detects duplicate teeth in multi-tooth marks", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: [
+          {
+            id: "m-dup-teeth",
+            type: "bridge",
+            target: { kind: "teeth", teeth: ["14", "15", "14"] },
+          },
+        ],
+        selection: { teeth: [], surfaces: [] },
+        teeth: {},
+      };
+      const result = validateOdontogramState(state);
+      expect(result.valid).toBe(false);
+      const issue = result.errors.find((e) => e.ruleId === RULE_TARGET_INTEGRITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_DUPLICATE_TOOTH);
+      expect(issue?.path).toBe("marks[0].target.teeth[2]");
+    });
+
+    it("detects complex marks with empty elements array", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: [
+          {
+            id: "m-empty-elements",
+            type: "complex",
+            target: { kind: "complex", elements: [] },
+          },
+        ],
+        selection: { teeth: [], surfaces: [] },
+        teeth: {},
+      };
+      const result = validateOdontogramState(state);
+      expect(result.valid).toBe(false);
+      const issue = result.errors.find((e) => e.ruleId === RULE_TARGET_INTEGRITY);
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_EMPTY_ELEMENTS);
+      expect(issue?.path).toBe("marks[0].target.elements");
     });
   });
 
   describe("RULE_SURFACE_APPLICABILITY", () => {
-    it("flags occlusal surface on anterior teeth as invalid", () => {
+    it("flags occlusal surface on anterior teeth as invalid with typed code and field path", () => {
       const marks = normalizeMarks([
         { id: "m-incisor-occ", tooth: "11", surfaces: ["O"], type: "caries" },
       ]);
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_SURFACE_APPLICABILITY)).toBe(true);
-      expect(result.errors[0].message).toContain(
-        'Surface "O" is clinically inapplicable for tooth "11"',
-      );
+      const issue = result.errors.find((e) => e.ruleId === RULE_SURFACE_APPLICABILITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_INAPPLICABLE_SURFACE);
+      expect(issue?.path).toBe("marks[0].target.surfaces[0]");
+      expect(issue?.message).toContain('Surface "O" is clinically inapplicable for tooth "11"');
     });
 
     it("flags incisal surface on posterior teeth as invalid", () => {
@@ -137,10 +203,11 @@ describe("Odontogram Validation", () => {
       ]);
       const result = validateMarks(marks);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_SURFACE_APPLICABILITY)).toBe(true);
-      expect(result.errors[0].message).toContain(
-        'Surface "I" is clinically inapplicable for tooth "16"',
-      );
+      const issue = result.errors.find((e) => e.ruleId === RULE_SURFACE_APPLICABILITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_INAPPLICABLE_SURFACE);
+      expect(issue?.path).toBe("marks[0].target.surfaces[0]");
+      expect(issue?.message).toContain('Surface "I" is clinically inapplicable for tooth "16"');
     });
 
     it("allows incisal on anterior teeth and occlusal on posterior teeth", () => {
@@ -154,7 +221,7 @@ describe("Odontogram Validation", () => {
   });
 
   describe("RULE_TOOTH_PRESENCE_COEXISTENCE", () => {
-    it("flags surface marks on missing teeth", () => {
+    it("flags surface marks on missing teeth with ERR_PRESENCE_CONFLICT", () => {
       const state: OdontogramState = {
         view: "permanent",
         marks: normalizeMarks([
@@ -168,8 +235,11 @@ describe("Odontogram Validation", () => {
 
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE)).toBe(true);
-      expect(result.errors[0].message).toContain(
+      const issue = result.errors.find((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_PRESENCE_CONFLICT);
+      expect(issue?.path).toBe("teeth.16.presence");
+      expect(issue?.message).toContain(
         'Tooth "16" is marked as missing; recording surface mark "m-missing-caries"',
       );
     });
@@ -206,12 +276,101 @@ describe("Odontogram Validation", () => {
 
       const result = validateOdontogramState(state);
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE)).toBe(true);
+      const issue = result.errors.find((e) => e.ruleId === RULE_TOOTH_PRESENCE_COEXISTENCE);
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_PRESENCE_CONFLICT);
+    });
+  });
+
+  describe("RULE_TEETH_OVERLAY_INTEGRITY", () => {
+    it("detects invalid presence strings with ERR_INVALID_PRESENCE and field path", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: [],
+        selection: { teeth: [], surfaces: [] },
+        teeth: {
+          "16": { presence: "decayed" as unknown as "present" },
+        },
+      };
+
+      const result = validateOdontogramState(state);
+      expect(result.valid).toBe(false);
+      const issue = result.errors.find((e) => e.ruleId === RULE_TEETH_OVERLAY_INTEGRITY);
+      expect(issue).toBeDefined();
+      expect(issue?.code).toBe(VALIDATION_CODES.ERR_INVALID_PRESENCE);
+      expect(issue?.path).toBe("teeth.16.presence");
+    });
+  });
+
+  describe("RULE_SELECTION_INTEGRITY", () => {
+    it("detects duplicate tooth selection and duplicate surface selections", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: [],
+        selection: {
+          teeth: ["16", "16"],
+          surfaces: [
+            { tooth: "16", surface: "O" },
+            { tooth: "16", surface: "O" },
+          ],
+        },
+        teeth: {},
+      };
+
+      const result = validateOdontogramState(state);
+      expect(result.valid).toBe(false);
+      const errors = result.errors.filter((e) => e.ruleId === RULE_SELECTION_INTEGRITY);
+      expect(errors.length).toBe(2);
+      expect(errors[0].code).toBe(VALIDATION_CODES.ERR_INVALID_SELECTION);
+      expect(errors[0].path).toBe("selection.teeth[1]");
+      expect(errors[1].path).toBe("selection.surfaces[1]");
+    });
+  });
+
+  describe("RULE_OPTIONS_VALIDITY & validateOptions", () => {
+    it("detects invalid notation option with ERR_INVALID_OPTION", () => {
+      const opts = { notation: "invalid-notation" } as unknown as OdontogramOptions;
+      const result = validateOptions(opts);
+      expect(result.valid).toBe(false);
+      expect(result.errors[0].ruleId).toBe(RULE_OPTIONS_VALIDITY);
+      expect(result.errors[0].code).toBe(VALIDATION_CODES.ERR_INVALID_OPTION);
+      expect(result.errors[0].path).toBe("options.notation");
+    });
+
+    it("emits warning for unknown options with WARN_UNKNOWN_OPTION", () => {
+      const opts = { notation: "fdi", unknownCustomProp: 123 } as unknown as OdontogramOptions;
+      const result = validateOptions(opts);
+      expect(result.valid).toBe(true);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0].ruleId).toBe(RULE_OPTIONS_VALIDITY);
+      expect(result.warnings[0].code).toBe(VALIDATION_CODES.WARN_UNKNOWN_OPTION);
+      expect(result.warnings[0].path).toBe("options.unknownCustomProp");
+    });
+  });
+
+  describe("RULE_TOOTH_CATALOG_VALIDITY", () => {
+    it("warns when tooth identifier is not recognized by isValidTooth predicate", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: normalizeMarks([
+          { id: "m-unknown-tooth", tooth: "99", surfaces: ["O"], type: "caries" },
+        ]),
+        selection: { teeth: [], surfaces: [] },
+        teeth: {},
+      };
+
+      const result = validateOdontogramState(state, {
+        isValidTooth: (id) => id === "16" || id === "11",
+      });
+
+      const warning = result.warnings.find((w) => w.ruleId === RULE_TOOTH_CATALOG_VALIDITY);
+      expect(warning).toBeDefined();
+      expect(warning?.code).toBe(VALIDATION_CODES.WARN_UNRECOGNIZED_TOOTH);
+      expect(warning?.message).toContain('Tooth identifier "99"');
     });
   });
 
   describe("RULE_MARK_COEXISTENCE & Incompatible Types", () => {
-    it("detects configured incompatible mark types on the same tooth", () => {
+    it("detects configured incompatible mark types on the same tooth with typed warning code", () => {
       const state: OdontogramState = {
         view: "permanent",
         marks: normalizeMarks([
@@ -226,8 +385,10 @@ describe("Odontogram Validation", () => {
         incompatibleTypes: [["implant", "natural-root"]],
       });
 
-      expect(result.warnings.some((w) => w.ruleId === RULE_MARK_COEXISTENCE)).toBe(true);
-      expect(result.warnings[0].message).toContain('Incompatible mark types "implant"');
+      const warning = result.warnings.find((w) => w.ruleId === RULE_MARK_COEXISTENCE);
+      expect(warning).toBeDefined();
+      expect(warning?.code).toBe(VALIDATION_CODES.WARN_INCOMPATIBLE_MARKS);
+      expect(warning?.message).toContain('Incompatible mark types "implant"');
     });
 
     it("elevates warnings to errors in strict mode", () => {
@@ -267,6 +428,7 @@ describe("Odontogram Validation", () => {
         if (forbidden) {
           return {
             ruleId: "no-forbidden-type",
+            code: "ERR_CUSTOM_FORBIDDEN",
             severity: "error" as const,
             message: "Custom forbidden mark type is not allowed.",
             markId: forbidden.id,
@@ -281,6 +443,7 @@ describe("Odontogram Validation", () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors[0].ruleId).toBe("no-forbidden-type");
+      expect(result.errors[0].code).toBe("ERR_CUSTOM_FORBIDDEN");
     });
 
     it("allows disabling specific rules by ID", () => {

@@ -245,10 +245,59 @@ export const MULTI_MARK_COEXISTENCE_EXAMPLE: OdontogramState = {
   ],
 };
 
+/** Serialization example: Unknown/custom mark types preserved with full metadata without loss. */
+export const UNKNOWN_MARK_PRESERVATION_EXAMPLE: OdontogramState = {
+  view: "permanent",
+  selection: { teeth: [], surfaces: [] },
+  teeth: {},
+  marks: [
+    {
+      id: "custom-intraoral-scan-16",
+      type: "intraoral-mesh-scan",
+      status: "completed",
+      target: {
+        tooth: "16",
+        surfaces: ["M", "O", "D"],
+      },
+      text: "High-resolution 3D optical mesh impression",
+      metadata: {
+        scannerModel: "Trios-5",
+        pointCount: 45000,
+        meshUri: "storage://scans/2026-09-15/mesh-16.ply",
+        acquisitionTimestamp: "2026-09-15T10:30:00Z",
+      },
+      style: {
+        fill: "#7e57c2",
+        stroke: "#512da8",
+        opacity: 0.85,
+      },
+      tooth: "16",
+      surfaces: ["M", "O", "D"],
+    },
+    {
+      id: "custom-plugin-sensor-46",
+      type: "periodontal-probing-sensor",
+      status: "existing",
+      target: {
+        tooth: "46",
+      },
+      text: "Periodontal pocket depth multi-point telemetry",
+      metadata: {
+        pocketDepthsMm: { MB: 3, B: 2, DB: 4, ML: 3, L: 3, DL: 5 },
+        bleedingOnProbing: true,
+        furcationGrade: 1,
+      },
+      tooth: "46",
+      surfaces: [],
+    },
+  ],
+};
+
 /** Standard dictionary of all Stage 02 serialization examples. */
 export const SERIALIZATION_EXAMPLES = {
   multiSurfaceRestorations: MULTI_SURFACE_RESTORATIONS_EXAMPLE,
   wholeToothMarks: WHOLE_TOOTH_MARKS_EXAMPLE,
   multiToothAnnotations: MULTI_TOOTH_ANNOTATIONS_EXAMPLE,
   multiMarkCoexistence: MULTI_MARK_COEXISTENCE_EXAMPLE,
+  unknownMarkPreservation: UNKNOWN_MARK_PRESERVATION_EXAMPLE,
 } as const;

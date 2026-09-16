@@ -87,7 +87,7 @@ export interface OdontographicMark<TMetadata = Record<string, unknown>> {
 export type MarkInput<TMetadata = Record<string, unknown>> =
   | OdontographicMark<TMetadata>
   | {
-      id: string;
+      id?: string;
       type: string;
       status?: MarkStatus;
       target?: MarkTarget;
@@ -104,12 +104,23 @@ export type ValidationSeverity = "error" | "warning";
 
 /** A single validation diagnostic issue. */
 export interface ValidationIssue {
+  /** Rule identifier (e.g. "mark-id-unique", "surface-applicability"). */
   ruleId: string;
+  /** Typed machine-readable diagnostic code (e.g. "ERR_DUPLICATE_MARK_ID", "ERR_INAPPLICABLE_SURFACE"). */
+  code?: string;
+  /** Severity level ("error" or "warning"). */
   severity: ValidationSeverity;
+  /** Human-readable explanation of the issue. */
   message: string;
+  /** Property or field path where the issue originated (e.g. "marks[0].target.surfaces[1]", "teeth.16.presence"). */
+  path?: string;
+  /** Identifier of the affected mark, if applicable. */
   markId?: string;
+  /** Identifier of the affected tooth, if applicable. */
   toothId?: ToothId;
+  /** Identifier of the affected surface, if applicable. */
   surface?: SurfaceId;
+  /** Additional diagnostic context or metadata. */
   details?: Record<string, unknown>;
 }
 
