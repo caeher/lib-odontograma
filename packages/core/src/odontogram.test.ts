@@ -34,8 +34,8 @@ describe("Odontogram", () => {
   });
 
   it("throws OdontogramError when container is not a valid HTMLElement", () => {
-    expect(() => new Odontogram(null as unknown as HTMLElement)).toThrow(OdontogramError);
     expect(() => new Odontogram({} as unknown as HTMLElement)).toThrow(OdontogramError);
+    expect(() => new Odontogram("invalid" as unknown as HTMLElement)).toThrow(OdontogramError);
   });
 
   it("throws OdontogramValidationError when constructor options are invalid", () => {
