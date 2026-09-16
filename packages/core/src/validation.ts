@@ -8,7 +8,6 @@ import {
   isComplexTarget,
 } from "./marks.js";
 import type {
-  CustomValidationRule,
   OdontogramState,
   OdontographicMark,
   SurfaceId,
