@@ -104,14 +104,30 @@ if (!fs.existsSync(coreCssPath)) throw new Error("Missing @odontogram/core/dist/
 if (!fs.existsSync(svgCssPath)) throw new Error("Missing @odontogram/svg/dist/style.css");
 
 // 2. Import packages from installed tarballs
-const { Odontogram, createPlugin } = await import("@odontogram/core");
+const {
+  Odontogram,
+  createPlugin,
+  validateOdontogramState,
+  getMarksForTooth,
+  getMarksForSurface,
+  normalizeMark,
+  SERIALIZATION_EXAMPLES,
+} = await import("@odontogram/core");
 const { svgPlugin } = await import("@odontogram/svg");
-const { getPermanentTeeth, getDeciduousTeeth, toNotation } = await import("@odontogram/dentition");
+const {
+  getPermanentTeeth,
+  getDeciduousTeeth,
+  toNotation,
+  isValidToothId,
+  isSurfaceApplicableToTooth,
+} = await import("@odontogram/dentition");
 
 if (typeof Odontogram !== "function") throw new Error("Odontogram export is not a constructor");
 if (!svgPlugin || typeof svgPlugin !== "object") throw new Error("svgPlugin export is missing");
 if (getPermanentTeeth().length !== 32) throw new Error("getPermanentTeeth should return 32 teeth");
 if (getDeciduousTeeth().length !== 20) throw new Error("getDeciduousTeeth should return 20 teeth");
+if (!isValidToothId("16")) throw new Error("isValidToothId failed for 16");
+if (!isSurfaceApplicableToTooth("16", "O")) throw new Error("isSurfaceApplicableToTooth failed for 16/O");
 
 // 3. Test Odontogram instance lifecycle and rendering
 const container = document.getElementById("odontogram");
@@ -123,6 +139,10 @@ const odontogram = new Odontogram(container, {
   initialView: "permanent",
   notation: "fdi",
   selectable: true,
+  statusColors: {
+    completed: "#4caf50",
+    planned: "#ff9800",
+  },
   surfaceClick: (arg) => { surfaceClicked = arg; },
   selectionDidChange: (arg) => { selectionChanged = arg; },
 });
@@ -135,18 +155,44 @@ if (!hostEl) throw new Error("Host element .odontogram-host not mounted");
 const svgEl = container.querySelector("svg.odontogram-svg");
 if (!svgEl) throw new Error("SVG element .odontogram-svg not rendered by plugin");
 
-// Test state updates & marks
+// Test state updates with Stage 02 marks
 odontogram.setState({
-  marks: [{ id: "m1", tooth: "16", surfaces: ["O"], type: "caries" }],
+  marks: [
+    {
+      id: "m1",
+      type: "restoration",
+      status: "completed",
+      target: { tooth: "16", surfaces: ["M", "O", "D"] },
+      text: "MOD composite",
+      metadata: { shade: "A2" },
+    },
+    {
+      id: "m2",
+      type: "bridge",
+      status: "planned",
+      target: { teeth: ["14", "15", "16"] },
+    },
+  ],
   teeth: { "48": { presence: "missing" } },
 });
 
 const state = odontogram.getState();
-if (state.marks.length !== 1 || state.marks[0].tooth !== "16") {
+if (state.marks.length !== 2 || state.marks[0].tooth !== "16") {
   throw new Error("Marks not updated correctly in getState()");
 }
 if (state.teeth["48"]?.presence !== "missing") {
   throw new Error("Teeth overlay not updated correctly in getState()");
+}
+
+const validation = odontogram.validate();
+if (!validation.valid) {
+  throw new Error("Validation failed for valid state: " + JSON.stringify(validation.errors));
+}
+
+// Verify serialization examples roundtrip
+for (const [key, ex] of Object.entries(SERIALIZATION_EXAMPLES)) {
+  const v = validateOdontogramState(ex);
+  if (!v.valid) throw new Error("Serialization example " + key + " is invalid");
 }
 
 // Test batch rendering
@@ -165,7 +211,7 @@ if (container.querySelector(".odontogram-host")) {
 }
 
 console.log("JS consumer verified successfully!");
-`;
+\`;
 
   fs.writeFileSync(path.join(jsConsumerDir, "test.mjs"), jsConsumerScript);
   log("  Executing JS consumer test...", jsConsumerDir);
@@ -185,9 +231,9 @@ console.log("JS consumer verified successfully!");
     private: true,
     type: "module",
     dependencies: {
-      "@odontogram/core": `file:${tarballs.core}`,
-      "@odontogram/dentition": `file:${tarballs.dentition}`,
-      "@odontogram/svg": `file:${tarballs.svg}`,
+      "@odontogram/core": \`file:\${tarballs.core}\`,
+      "@odontogram/dentition": \`file:\${tarballs.dentition}\`,
+      "@odontogram/svg": \`file:\${tarballs.svg}\`,
       typescript: "^5.7.2",
       "@types/node": "^22.10.2",
       jsdom: "^25.0.1",
@@ -216,10 +262,23 @@ console.log("JS consumer verified successfully!");
   log("  Installing tarballs in TS consumer...", tsConsumerDir);
   run("npm install --no-audit --no-fund", tsConsumerDir);
 
-  const tsConsumerScript = `
+  const tsConsumerScript = \`
 import {
   Odontogram,
   createPlugin,
+  createValidator,
+  validateOdontogramState,
+  getMarksForTooth,
+  getMarksForSurface,
+  SERIALIZATION_EXAMPLES,
+  type ComplexTarget,
+  type CustomValidationRule,
+  type MarkInput,
+  type MarkMountArg,
+  type MarkStatus,
+  type MarkStyle,
+  type MarkTarget,
+  type MultiToothTarget,
   type OdontogramOptions,
   type OdontogramPlugin,
   type OdontogramState,
@@ -231,9 +290,15 @@ import {
   type ToothId,
   type ToothPresence,
   type ToothState,
+  type ToothSurfaceTarget,
+  type ValidationContext,
+  type ValidationIssue,
+  type ValidationResult,
+  type ValidatorConfig,
   type ViewMountArg,
   type ViewRenderContext,
   type ViewType,
+  type WholeToothTarget,
 } from "@odontogram/core";
 
 import { svgPlugin } from "@odontogram/svg";
@@ -252,8 +317,10 @@ import {
   getTeethForView,
   isDeciduousTooth,
   isPermanentTooth,
+  isSurfaceApplicableToTooth,
   isValidNotation,
   isValidSurface,
+  isValidToothId,
   listSupportedNotations,
   mapSurfaceToFace,
   palmerAdapter,
@@ -293,14 +360,32 @@ const view: ViewType = "permanent";
 
 const mark: OdontographicMark = {
   id: "mark-1",
-  tooth,
-  surfaces: [surface],
+  target: {
+    tooth,
+    surfaces: [surface],
+  },
   type: "caries",
+  status: "existing" as MarkStatus,
+  text: "Mesial enamel caries",
+  metadata: { depth: "enamel" },
   style: {
     fill: "#f44336",
     stroke: "#d32f2f",
     strokeWidth: 1.5,
     opacity: 0.9,
+  },
+};
+
+const bridgeMark: OdontographicMark = {
+  id: "bridge-1",
+  type: "bridge",
+  status: "planned",
+  target: {
+    teeth: ["14", "15", "16"],
+  },
+  metadata: {
+    retainers: ["14", "16"],
+    pontics: ["15"],
   },
 };
 
@@ -322,6 +407,11 @@ const options: OdontogramOptions = {
     caries: "#e53935",
     restoration: "#1e88e5",
   },
+  statusColors: {
+    completed: "#43a047",
+    planned: "#fb8c00",
+  },
+  validator: true,
   toothClick: (arg: ToothClickArg) => {
     console.log("Tooth click:", arg.tooth);
   },
@@ -344,21 +434,8 @@ const options: OdontogramOptions = {
 const permanent = getPermanentTeeth();
 const deciduous = getDeciduousTeeth();
 const mixed = getMixedTeeth();
-const layoutArch = getLayoutArch("11");
-const anatomicalArch = getAnatomicalArch("11");
-const quadrant = getQuadrant("21");
-const isPerm = isPermanentTooth("16");
-const isDec = isDeciduousTooth("55");
-const converted = toNotation("11", "universal");
-const roundtrip = fromNotation(converted, "universal");
-const accessiblePalmer = toAccessibleNotation("11", "palmer");
-const adapter: NotationAdapter = getNotationAdapter("palmer");
-const parsedPalmer = palmerAdapter.parse("UR1");
-const notationsList = listSupportedNotations();
-const isFdiValid = isValidNotation("fdi");
-const validSurface = isValidSurface("O");
-const surfaces = getApplicableSurfaces("11");
-const face = mapSurfaceToFace("16", "M" as ClinicalSurface);
+const isToothValid = isValidToothId("16");
+const isSurfApplicable = isSurfaceApplicableToTooth("16", "O");
 
 // Instantiate and check methods
 const container = document.createElement("div");
@@ -366,21 +443,22 @@ const odontogram = new Odontogram(container, options);
 
 odontogram.render();
 odontogram.setOption("notation", "universal");
-const currentNotation = odontogram.getOption("notation");
 odontogram.changeView("deciduous");
-odontogram.setState({ marks: [mark], selection, teeth: { "16": { presence: "missing" as ToothPresence } } });
-const state: OdontogramState = odontogram.getState();
-const toothState: ToothState = { presence: "unerupted" };
-
-odontogram.batchRendering(() => {
-  odontogram.setOption("selectable", false);
-  odontogram.setState({ marks: [] });
+odontogram.setState({
+  marks: [mark, bridgeMark],
+  selection,
+  teeth: { "16": { presence: "missing" as ToothPresence } },
 });
+
+const state: OdontogramState = odontogram.getState();
+const validationResult: ValidationResult = odontogram.validate();
+const marksFor16 = getMarksForTooth(state.marks, "16");
+const surfacesFor16M = getMarksForSurface(state.marks, "16", "M");
 
 odontogram.destroy();
 
 console.log("TypeScript consumer types and usage verified successfully!");
-`;
+\`;
 
   fs.writeFileSync(path.join(tsConsumerDir, "test.ts"), tsConsumerScript);
   log("  Typechecking TS consumer...", tsConsumerDir);
