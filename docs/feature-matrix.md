@@ -84,6 +84,9 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Mark type incompatibility matrix |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | Configurable validator rules     |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | Custom validation rules          |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Typed error codes & field paths  |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Atomic state rollback/rejection  |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Unknown mark type preservation   |  ✅  |     —     | ✅  |    —    |    —     | 02    |
 
 ## Integration
 

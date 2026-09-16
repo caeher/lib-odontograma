@@ -162,63 +162,88 @@ export interface OdontographicMark<TMetadata = Record<string, unknown>> {
 
 ---
 
-## Validation API
+## Validation & Error Handling API
 
-The library includes a configurable validation engine to enforce structural coexistence rules and prevent incompatible mark combinations:
+The library includes a configurable validation engine with typed diagnostic codes and precise field paths to enforce structural integrity, anatomical applicability, and clinical coexistence rules.
+
+### Atomic State Updates & Rejection Guarantee
+
+`Odontogram.prototype.setState` applies updates atomically:
+
+- Prospective candidate state is validated before modifying internal instance state.
+- If candidate state contains **structural validation errors** (such as malformed targets, duplicate IDs, invalid surfaces, or invalid presence values) or if configured validator rules fail, `setState()` throws an `OdontogramValidationError` and rejects the update.
+- The previous state remains **100% intact and unmutated**.
+- No hooks, callbacks (`marksSet`), or re-renders are triggered for rejected operations.
+- Consumer input objects and returned snapshots are defensively deep-cloned to insulate internal state from subsequent external mutation.
+
+### Error Classes
 
 ```ts
-import {
-  validateOdontogramState,
-  validateMarks,
-  createValidator,
-  RULE_MARK_ID_UNIQUE,
-  RULE_TARGET_INTEGRITY,
-  RULE_SURFACE_APPLICABILITY,
-  RULE_TOOTH_PRESENCE_COEXISTENCE,
-  RULE_MARK_COEXISTENCE,
-} from "@odontogram/core";
+import { OdontogramError, OdontogramValidationError } from "@odontogram/core";
 
-const result = validateOdontogramState(state, {
-  strict: false,
-  incompatibleTypes: [["implant", "natural-root"]],
-  allowMissingToothMarks: false,
-  rules: {
-    [RULE_SURFACE_APPLICABILITY]: true,
-  },
-  customRules: [
-    (state, ctx) => {
-      // Custom business rule
-      return null;
-    },
-  ],
-});
-
-if (!result.valid) {
-  console.error("Validation errors:", result.errors);
+try {
+  odontogram.setState({
+    marks: [{ id: "m1", tooth: "11", surfaces: ["O"], type: "caries" }],
+  });
+} catch (err) {
+  if (err instanceof OdontogramValidationError) {
+    console.error(`Validation failed with code: ${err.code}`);
+    for (const issue of err.errors) {
+      console.error(`[${issue.code}] at ${issue.path}: ${issue.message}`);
+    }
+  }
 }
 ```
+
+- **`OdontogramError`**: Base error class with `code: string`.
+- **`OdontogramValidationError`**: Thrown when state or option validation fails. Contains:
+  - `code: string` (e.g. `"ERR_INVALID_STATE"`, `"ERR_INVALID_OPTION"`)
+  - `issues: ValidationIssue[]` (all issues)
+  - `errors: ValidationIssue[]` (issues with severity `"error"`)
+  - `warnings: ValidationIssue[]` (issues with severity `"warning"`)
+
+### Validation Codes (`VALIDATION_CODES`)
+
+| Code                       | Severity  | Description                                                     | Sample Field Path             |
+| -------------------------- | --------- | --------------------------------------------------------------- | ----------------------------- |
+| `ERR_DUPLICATE_MARK_ID`    | `error`   | Duplicate mark identifier across the odontogram                 | `marks[1].id`                 |
+| `ERR_INVALID_MARK_ID`      | `error`   | Mark identifier is empty, missing, or whitespace                | `marks[0].id`                 |
+| `ERR_MISSING_TARGET`       | `error`   | Mark target object is missing or undefined                      | `marks[0].target`             |
+| `ERR_INVALID_TARGET`       | `error`   | Mark target structure is malformed                              | `marks[0].target`             |
+| `ERR_INVALID_TOOTH_ID`     | `error`   | Tooth identifier is empty, whitespace, or invalid string        | `marks[0].target.tooth`       |
+| `ERR_INVALID_SURFACE`      | `error`   | Invalid clinical surface code (not M, O, I, D, B, L)            | `marks[0].target.surfaces[0]` |
+| `ERR_DUPLICATE_SURFACE`    | `error`   | Duplicate surface code within a single target                   | `marks[0].target.surfaces[2]` |
+| `ERR_INAPPLICABLE_SURFACE` | `error`   | Surface is clinically inapplicable (e.g. Occlusal on anterior)  | `marks[0].target.surfaces[0]` |
+| `ERR_EMPTY_SURFACES`       | `error`   | Surface mark target has an empty surfaces array                 | `marks[0].target.surfaces`    |
+| `ERR_EMPTY_TEETH`          | `error`   | Multi-tooth mark target has an empty teeth array                | `marks[0].target.teeth`       |
+| `ERR_DUPLICATE_TOOTH`      | `error`   | Duplicate tooth in multi-tooth mark target                      | `marks[0].target.teeth[1]`    |
+| `ERR_EMPTY_ELEMENTS`       | `error`   | Complex mark target has an empty elements array                 | `marks[0].target.elements`    |
+| `ERR_INVALID_PRESENCE`     | `error`   | Invalid tooth presence overlay (not present/missing/unerupted)  | `teeth.16.presence`           |
+| `ERR_PRESENCE_CONFLICT`    | `error`   | Surface mark on missing tooth or restoration on unerupted tooth | `teeth.16.presence`           |
+| `ERR_INVALID_SELECTION`    | `error`   | Malformed selection or duplicate selection entry                | `selection.teeth[1]`          |
+| `ERR_INVALID_OPTION`       | `error`   | Invalid option value or type in options configuration           | `options.notation`            |
+| `WARN_UNKNOWN_OPTION`      | `warning` | Unknown configuration option passed to options bag              | `options.unknownProp`         |
+| `WARN_INCOMPATIBLE_MARKS`  | `warning` | Configured incompatible concurrent marks on a single tooth      | `marks`                       |
+| `WARN_UNRECOGNIZED_TOOTH`  | `warning` | Tooth identifier not recognized in active tooth catalog         | `marks[0]`                    |
 
 ### Built-in Validation Rules
 
-| Rule ID                      | Name                  | Default Severity | Description                                                                               |
-| ---------------------------- | --------------------- | ---------------- | ----------------------------------------------------------------------------------------- |
-| `mark-id-unique`             | Mark ID Uniqueness    | `error`          | Ensures all mark IDs are non-empty and unique across the state.                           |
-| `target-integrity`           | Target Integrity      | `error`          | Enforces valid tooth identifiers and surfaces; prevents duplicate surfaces in one target. |
-| `surface-applicability`      | Surface Applicability | `error`          | Verifies anatomical validity (e.g. Incisal on anterior only, Occlusal on posterior only). |
-| `tooth-presence-coexistence` | Presence Coexistence  | `error`          | Prevents surface marks on missing teeth or restorations on unerupted teeth.               |
-| `mark-coexistence`           | Mark Coexistence      | `warning`        | Detects configured incompatible concurrent mark types (e.g. implant + natural root).      |
-| `tooth-catalog-validity`     | Catalog Validity      | `warning`        | Verifies tooth identifiers against active dentition catalog.                              |
+| Rule ID                      | Name                    | Default Severity    | Description                                                                               |
+| ---------------------------- | ----------------------- | ------------------- | ----------------------------------------------------------------------------------------- |
+| `mark-id-unique`             | Mark ID Uniqueness      | `error`             | Ensures all mark IDs are non-empty and unique across the state.                           |
+| `target-integrity`           | Target Integrity        | `error`             | Enforces valid tooth identifiers and surfaces; prevents duplicate surfaces in one target. |
+| `surface-applicability`      | Surface Applicability   | `error`             | Verifies anatomical validity (e.g. Incisal on anterior only, Occlusal on posterior only). |
+| `tooth-presence-coexistence` | Presence Coexistence    | `error`             | Prevents surface marks on missing teeth or restorations on unerupted teeth.               |
+| `mark-coexistence`           | Mark Coexistence        | `warning`           | Detects configured incompatible concurrent mark types (e.g. implant + natural root).      |
+| `tooth-catalog-validity`     | Catalog Validity        | `warning`           | Verifies tooth identifiers against active dentition catalog.                              |
+| `teeth-overlay-integrity`    | Teeth Overlay Integrity | `error`             | Ensures tooth presence overlay entries use valid presence states.                         |
+| `selection-integrity`        | Selection Integrity     | `error`             | Validates selection state teeth and surfaces without duplicates or malformed records.     |
+| `options-validity`           | Options Validity        | `error` / `warning` | Enforces option types and warns on unknown option keys.                                   |
 
----
+### Unknown Mark & Option Types Policy
 
-## SelectionState
-
-```ts
-interface SelectionState {
-  teeth: ToothId[];
-  surfaces: Array<{ tooth: ToothId; surface: SurfaceId }>;
-}
-```
+- **Unknown Mark Types**: Odontogram supports extensible mark types. Custom mark types imported into the odontogram are **preserved intact** with all their properties (`id`, `type`, `target`, `status`, `text`, `metadata`, `style`, and custom attributes). Core does not strip or drop unknown mark types. Renderers fall back gracefully without crashing.
+- **Unknown Options**: Options are validated against the known option schema. Unknown options generate diagnostic warnings (`WARN_UNKNOWN_OPTION`) to catch typos while preserving options in the bag.
 
 ---
 
