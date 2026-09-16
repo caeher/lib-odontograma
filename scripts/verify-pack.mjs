@@ -195,14 +195,53 @@ for (const [key, ex] of Object.entries(SERIALIZATION_EXAMPLES)) {
   if (!v.valid) throw new Error("Serialization example " + key + " is invalid");
 }
 
-// Test batch rendering
-odontogram.batchRendering(() => {
+// Test CRUD operations
+const addedMark = odontogram.addMark({
+  tooth: "26",
+  surfaces: ["O"],
+  type: "caries",
+  text: "Occlusal pit",
+});
+if (!odontogram.hasMark(addedMark.id)) throw new Error("addMark failed");
+
+const updatedMark = odontogram.updateMark(addedMark.id, {
+  surfaces: ["O", "B"],
+  text: "OB caries",
+});
+if (updatedMark.id !== addedMark.id || updatedMark.surfaces.length !== 2) {
+  throw new Error("updateMark failed or altered mark ID");
+}
+
+odontogram.setToothState("18", "missing");
+if (odontogram.getToothPresence("18") !== "missing") {
+  throw new Error("setToothState failed");
+}
+
+odontogram.selectTooth("26");
+if (!odontogram.isToothSelected("26")) {
+  throw new Error("selectTooth failed");
+}
+
+const revisionBeforeBatch = odontogram.getRevision();
+// Test transactional batching
+odontogram.batch(() => {
   odontogram.setOption("notation", "universal");
+  odontogram.addMark({ tooth: "11", surfaces: ["M"], type: "caries" });
   odontogram.changeView("deciduous");
 });
 
+if (odontogram.getRevision() !== revisionBeforeBatch + 1) {
+  throw new Error("batch should increment revision once");
+}
+
 if (odontogram.getState().view !== "deciduous") {
-  throw new Error("changeView inside batchRendering failed");
+  throw new Error("changeView inside batch failed");
+}
+
+// Test reset
+odontogram.reset();
+if (odontogram.getMarks().length !== 0 || Object.keys(odontogram.getTeethState()).length !== 0) {
+  throw new Error("reset() failed");
 }
 
 odontogram.destroy();
@@ -437,23 +476,38 @@ const mixed = getMixedTeeth();
 const isToothValid = isValidToothId("16");
 const isSurfApplicable = isSurfaceApplicableToTooth("16", "O");
 
-// Instantiate and check methods
-const container = document.createElement("div");
-const odontogram = new Odontogram(container, options);
+// Instantiate Odontogram headlessly
+const odontogram = new Odontogram(null, options);
 
-odontogram.render();
-odontogram.setOption("notation", "universal");
-odontogram.changeView("deciduous");
-odontogram.setState({
-  marks: [mark, bridgeMark],
-  selection,
-  teeth: { "16": { presence: "missing" as ToothPresence } },
+// Test Stage 02 CRUD, Batch, Mode, and Reset methods with strict TS type checking
+const createdMark: OdontographicMark = odontogram.addMark({
+  tooth: "26",
+  surfaces: ["O"],
+  type: "caries",
+  text: "Occlusal fissure caries",
 });
 
-const state: OdontogramState = odontogram.getState();
-const validationResult: ValidationResult = odontogram.validate();
-const marksFor16 = getMarksForTooth(state.marks, "16");
-const surfacesFor16M = getMarksForSurface(state.marks, "16", "M");
+const updatedMark: OdontographicMark = odontogram.updateMark(createdMark.id, {
+  surfaces: ["O", "B"],
+  text: "Updated note",
+});
+
+odontogram.setToothState("18", "missing", { pruneMarks: true });
+odontogram.selectTooth("26", "add");
+odontogram.selectSurface("26", "O", "toggle");
+
+const currentMode = odontogram.getMode();
+const currentRev = odontogram.getRevision();
+
+odontogram.batch(() => {
+  odontogram.addMarks([
+    { tooth: "11", surfaces: ["M"], type: "caries" },
+    { tooth: "21", surfaces: ["D"], type: "restoration" },
+  ]);
+  odontogram.setToothState("48", "unerupted");
+});
+
+odontogram.reset({ keepView: true });
 
 odontogram.destroy();
 
