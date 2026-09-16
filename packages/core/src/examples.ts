@@ -293,6 +293,40 @@ export const UNKNOWN_MARK_PRESERVATION_EXAMPLE: OdontogramState = {
   ],
 };
 
+/** Programmatic operations sample state for demonstrating CRUD methods. */
+export const PROGRAMMATIC_OPERATIONS_EXAMPLE: OdontogramState = {
+  view: "permanent",
+  selection: {
+    teeth: ["16"],
+    surfaces: [{ tooth: "16", surface: "O" }],
+  },
+  teeth: {
+    "18": { presence: "missing" },
+    "28": { presence: "unerupted" },
+  },
+  marks: [
+    {
+      id: "demo-mark-1",
+      type: "caries",
+      status: "existing",
+      target: { tooth: "16", surfaces: ["O"] },
+      text: "Occlusal fissure caries",
+      metadata: { score: 2 },
+      tooth: "16",
+      surfaces: ["O"],
+    },
+    {
+      id: "demo-mark-2",
+      type: "restoration",
+      status: "completed",
+      target: { tooth: "26", surfaces: ["M", "O", "D"] },
+      text: "MOD composite",
+      tooth: "26",
+      surfaces: ["M", "O", "D"],
+    },
+  ],
+};
+
 /** Standard dictionary of all Stage 02 serialization examples. */
 export const SERIALIZATION_EXAMPLES = {
   multiSurfaceRestorations: MULTI_SURFACE_RESTORATIONS_EXAMPLE,
@@ -300,4 +334,5 @@ export const SERIALIZATION_EXAMPLES = {
   multiToothAnnotations: MULTI_TOOTH_ANNOTATIONS_EXAMPLE,
   multiMarkCoexistence: MULTI_MARK_COEXISTENCE_EXAMPLE,
   unknownMarkPreservation: UNKNOWN_MARK_PRESERVATION_EXAMPLE,
+  programmaticOperations: PROGRAMMATIC_OPERATIONS_EXAMPLE,
 } as const;
