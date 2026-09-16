@@ -86,4 +86,16 @@ describe("tooth catalog", () => {
     const ids = getAllToothRecords().map((r) => r.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
+
+  it("isValidToothId and isSurfaceApplicableToTooth check catalog validity", async () => {
+    const { isValidToothId, isSurfaceApplicableToTooth } = await import("./catalog.js");
+    expect(isValidToothId("16")).toBe(true);
+    expect(isValidToothId("55")).toBe(true);
+    expect(isValidToothId("99")).toBe(false);
+
+    expect(isSurfaceApplicableToTooth("11", "I")).toBe(true);
+    expect(isSurfaceApplicableToTooth("11", "O")).toBe(false);
+    expect(isSurfaceApplicableToTooth("16", "O")).toBe(true);
+    expect(isSurfaceApplicableToTooth("16", "I")).toBe(false);
+  });
 });

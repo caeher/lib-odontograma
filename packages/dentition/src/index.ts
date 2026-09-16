@@ -16,6 +16,8 @@ export {
   isDeciduousTooth,
   isPermanentTooth,
   isPrimaryTooth,
+  isSurfaceApplicableToTooth,
+  isValidToothId,
   listTeeth,
   type DentitionView,
   type ListTeethOptions,

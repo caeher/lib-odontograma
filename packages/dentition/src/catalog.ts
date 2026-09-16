@@ -229,6 +229,20 @@ export function isDeciduousTooth(id: ToothId): boolean {
   return isPrimaryTooth(id);
 }
 
+/** Check if a string is a recognized canonical ToothId in the catalog. */
+export function isValidToothId(id: string): id is ToothId {
+  return CATALOG.has(id);
+}
+
+/** Check if a clinical surface is applicable to a specific tooth. */
+export function isSurfaceApplicableToTooth(
+  toothId: ToothId,
+  surface: ClinicalSurface | string,
+): boolean {
+  const surfaces = getApplicableSurfaces(toothId);
+  return (surfaces as readonly string[]).includes(surface);
+}
+
 /** Export full catalog for fixtures and tests. */
 export function getAllToothRecords(): readonly ToothRecord[] {
   return [...CATALOG.values()];
