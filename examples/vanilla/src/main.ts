@@ -48,21 +48,17 @@ const odontogram = new Odontogram(container, {
 odontogram.render();
 
 function setPresenceForSelection(presence: ToothPresence): void {
-  const state = odontogram.getState();
-  if (state.selection.teeth.length === 0) {
+  const selection = odontogram.getSelection();
+  if (selection.teeth.length === 0) {
     log("Select one or more teeth first");
     return;
   }
-  const teeth = { ...state.teeth };
-  for (const tooth of state.selection.teeth) {
-    if (presence === "present") {
-      delete teeth[tooth];
-    } else {
-      teeth[tooth] = { presence };
+  odontogram.batch(() => {
+    for (const tooth of selection.teeth) {
+      odontogram.setToothState(tooth, presence, { pruneMarks: true });
     }
-  }
-  odontogram.setState({ teeth });
-  log(`Set ${state.selection.teeth.join(", ")} → ${presence}`);
+  });
+  log(`Set ${selection.teeth.join(", ")} → ${presence}`);
 }
 
 // View buttons
@@ -76,11 +72,9 @@ for (const view of views) {
     document.getElementById(`btn-${view}`)!.classList.add("active");
     log(`View changed to: ${view}`);
     if (view === "mixed") {
-      odontogram.setState({
-        teeth: {
-          "55": { presence: "present" },
-          "15": { presence: "unerupted" },
-        },
+      odontogram.setTeethState({
+        "55": "present",
+        "15": "unerupted",
       });
       log("Mixed demo: 55 present, 15 unerupted (both coexist in catalog)");
     }
@@ -110,47 +104,44 @@ document.getElementById("btn-unerupted")!.addEventListener("click", () => {
 
 // Add mark on current selection
 document.getElementById("btn-add-mark")!.addEventListener("click", () => {
-  const state = odontogram.getState();
-  const newMarks: OdontographicMark[] = [...state.marks];
-
-  for (const { tooth, surface } of state.selection.surfaces) {
-    markCounter++;
-    newMarks.push({
-      id: `mark-${markCounter}`,
-      tooth,
-      surfaces: [surface],
-      type: markCounter % 2 === 0 ? "caries" : "restoration",
-    });
-  }
-
-  if (state.selection.teeth.length > 0 && state.selection.surfaces.length === 0) {
+  const selection = odontogram.getSelection();
+  if (selection.surfaces.length === 0) {
     log("Select surfaces to add marks; use presence buttons for missing/unerupted teeth");
     return;
   }
 
-  odontogram.setState({ marks: newMarks });
+  const marksToAdd: Array<OdontographicMark> = [];
+  for (const { tooth, surface } of selection.surfaces) {
+    markCounter++;
+    marksToAdd.push({
+      id: `mark-${markCounter}`,
+      tooth,
+      surfaces: [surface],
+      type: markCounter % 2 === 0 ? "caries" : "restoration",
+      target: { tooth, surfaces: [surface] },
+    });
+  }
+
+  odontogram.addMarks(marksToAdd);
+  log(`Added ${marksToAdd.length} mark(s)`);
 });
 
 // Clear marks
 document.getElementById("btn-clear-marks")!.addEventListener("click", () => {
-  odontogram.setState({ marks: [] });
-  log("Marks cleared");
+  const cleared = odontogram.clearMarks();
+  log(`Cleared ${cleared} marks`);
 });
 
 // Batch rendering demo
 document.getElementById("btn-batch")!.addEventListener("click", () => {
-  odontogram.batchRendering(() => {
+  odontogram.batch(() => {
     odontogram.setOption("selectionColor", "#ff9800");
-    odontogram.setState({
-      marks: [
-        { id: "batch-1", tooth: "16", surfaces: ["O", "M"], type: "caries" },
-        { id: "batch-2", tooth: "26", surfaces: ["D"], type: "restoration" },
-        { id: "batch-3", tooth: "36", surfaces: ["B"], type: "caries" },
-      ],
-      teeth: {
-        "48": { presence: "missing" },
-      },
-    });
+    odontogram.addMarks([
+      { id: "batch-1", tooth: "16", surfaces: ["O", "M"], type: "caries" },
+      { id: "batch-2", tooth: "26", surfaces: ["D"], type: "restoration" },
+      { id: "batch-3", tooth: "36", surfaces: ["B"], type: "caries" },
+    ]);
+    odontogram.setToothState("48", "missing", { pruneMarks: true });
   });
-  log("Batch update applied (single re-render)");
+  log(`Batch update applied (revision: ${odontogram.getRevision()}, single re-render)`);
 });
