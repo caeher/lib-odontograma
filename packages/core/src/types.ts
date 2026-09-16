@@ -26,13 +26,148 @@ export interface MarkStyle {
   opacity?: number;
 }
 
-/** An odontographic mark recorded on one or more surfaces of a tooth. */
-export interface OdontographicMark {
-  id: string;
+/** Semantic lifecycle status of a finding or procedure. */
+export type MarkStatus =
+  | "existing"
+  | "planned"
+  | "completed"
+  | "proposed"
+  | "referred"
+  | (string & {});
+
+/** Target specifying one or more clinical surfaces on a single tooth. */
+export interface ToothSurfaceTarget {
+  kind?: "surface" | "surfaces";
   tooth: ToothId;
   surfaces: SurfaceId[];
+}
+
+/** Target specifying an entire single tooth (e.g. crown, extraction, implant). */
+export interface WholeToothTarget {
+  kind?: "tooth";
+  tooth: ToothId;
+  surfaces?: never;
+}
+
+/** Target specifying a group or range of teeth (e.g. bridge, archwire, splint). */
+export interface MultiToothTarget {
+  kind?: "teeth" | "group";
+  teeth: ToothId[];
+  surfaces?: never;
+}
+
+/** Target specifying multiple teeth with optional per-tooth surface specifications. */
+export interface ComplexTarget {
+  kind?: "complex" | "elements";
+  elements: Array<{ tooth: ToothId; surfaces?: SurfaceId[] }>;
+}
+
+/** Target scope descriptor for an odontographic mark or annotation. */
+export type MarkTarget =
+  | ToothSurfaceTarget
+  | WholeToothTarget
+  | MultiToothTarget
+  | ComplexTarget;
+
+/** An odontographic mark recorded on a tooth, surfaces, or a group of teeth. */
+export interface OdontographicMark<TMetadata = Record<string, unknown>> {
+  /** Unique persistent identifier for the mark. */
+  id: string;
+  /** Extensible semantic type of finding or procedure (e.g. "caries", "restoration", "crown", "bridge"). */
   type: string;
+  /** Semantic lifecycle status of the finding or procedure. */
+  status?: MarkStatus;
+  /** Target scope: surfaces on a tooth, a whole tooth, or a multi-tooth group. */
+  target: MarkTarget;
+  /** Optional clinician observation, notes, or description. */
+  text?: string;
+  /** Arbitrary consumer/application metadata (e.g. material, fee code, lab info, date). */
+  metadata?: TMetadata;
+  /** Visual styling overrides (renderer-agnostic presentation hints). */
   style?: MarkStyle;
+
+  /** Convenience/legacy getter for single-tooth target. */
+  tooth?: ToothId;
+  /** Convenience/legacy getter for surface targets. */
+  surfaces?: SurfaceId[];
+}
+
+/** Flexible input format for creating or setting marks. */
+export type MarkInput<TMetadata = Record<string, unknown>> =
+  | OdontographicMark<TMetadata>
+  | {
+      id: string;
+      type: string;
+      status?: MarkStatus;
+      target?: MarkTarget;
+      tooth?: ToothId;
+      teeth?: ToothId[];
+      surfaces?: SurfaceId[];
+      text?: string;
+      metadata?: TMetadata;
+      style?: MarkStyle;
+    };
+
+/** Validation issue severity level. */
+export type ValidationSeverity = "error" | "warning";
+
+/** A single validation diagnostic issue. */
+export interface ValidationIssue {
+  ruleId: string;
+  severity: ValidationSeverity;
+  message: string;
+  markId?: string;
+  toothId?: ToothId;
+  surface?: SurfaceId;
+  details?: Record<string, unknown>;
+}
+
+/** Aggregated validation result. */
+export interface ValidationResult {
+  /** True if there are zero issues with severity 'error'. */
+  valid: boolean;
+  /** All issues (both errors and warnings). */
+  issues: ValidationIssue[];
+  /** Issues with severity 'error'. */
+  errors: ValidationIssue[];
+  /** Issues with severity 'warning'. */
+  warnings: ValidationIssue[];
+}
+
+/** Context provided to custom validation rules. */
+export interface ValidationContext {
+  state: OdontogramState;
+  teeth: Record<ToothId, ToothState>;
+  marks: OdontographicMark[];
+}
+
+/** A custom validation rule function. */
+export type CustomValidationRule = (
+  state: OdontogramState,
+  context: ValidationContext,
+) => ValidationIssue[] | ValidationIssue | null | undefined;
+
+/** Configuration options for the odontogram validator. */
+export interface ValidatorConfig {
+  /** Enable/disable specific rules by ID or configure their severity. */
+  rules?: Record<
+    string,
+    boolean | { severity?: ValidationSeverity; enabled?: boolean }
+  >;
+  /** Whether to allow marks on missing teeth (default: false). */
+  allowMissingToothMarks?: boolean;
+  /** Whether to allow marks on unerupted teeth (default: false). */
+  allowUneruptedToothMarks?: boolean;
+  /** Known incompatible mark type pairs on the same tooth/surface. */
+  incompatibleTypes?: Array<[string, string]>;
+  /** Custom validation rules. */
+  customRules?: CustomValidationRule[];
+  /** Custom surface applicability predicate. */
+  isSurfaceApplicable?: (tooth: ToothId, surface: SurfaceId) => boolean;
+  /** Custom tooth identifier predicate. */
+  isValidTooth?: (tooth: ToothId) => boolean;
+  /** Strict mode: elevate all warnings to errors. */
+  strict?: boolean;
 }
 
 /** Current selection state. */
@@ -71,6 +206,11 @@ export interface SelectionChangeArg {
 /** Callback argument for marks change events. */
 export interface MarksSetArg {
   marks: OdontographicMark[];
+}
+
+/** Callback argument for validation result changes. */
+export interface ValidationChangeArg {
+  result: ValidationResult;
 }
 
 /** Hook argument for tooth mount/unmount. */
@@ -113,11 +253,18 @@ export interface OdontogramOptions {
   surfaceColor?: string;
   selectionColor?: string;
   markColors?: Record<string, string>;
+  statusColors?: Record<string, string>;
+
+  validator?:
+    | boolean
+    | ValidatorConfig
+    | ((state: OdontogramState) => ValidationResult);
 
   toothClick?: (arg: ToothClickArg) => void;
   surfaceClick?: (arg: SurfaceClickArg) => void;
   selectionDidChange?: (arg: SelectionChangeArg) => void;
   marksSet?: (arg: MarksSetArg) => void;
+  validationDidChange?: (arg: ValidationChangeArg) => void;
 
   toothClassNames?: (arg: ToothClassNamesArg) => string | string[];
   markClassNames?: (arg: MarkClassNamesArg) => string | string[];

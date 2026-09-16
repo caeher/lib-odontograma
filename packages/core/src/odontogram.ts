@@ -1,4 +1,6 @@
 import { createDefaultState, DEFAULT_OPTIONS } from "./defaults.js";
+import { normalizeMarks } from "./marks.js";
+import { validateOdontogramState } from "./validation.js";
 import type {
   OdontogramOptions,
   OdontogramPlugin,
@@ -6,6 +8,8 @@ import type {
   SelectionState,
   SurfaceId,
   ToothId,
+  ValidationResult,
+  ValidatorConfig,
   ViewDefinition,
   ViewRenderContext,
   ViewType,
@@ -93,7 +97,13 @@ export class Odontogram {
   getState(): OdontogramState {
     return {
       view: this.state.view,
-      marks: [...this.state.marks],
+      marks: this.state.marks.map((m) => ({
+        ...m,
+        target: { ...m.target },
+        ...(m.surfaces ? { surfaces: [...m.surfaces] } : {}),
+        ...(m.metadata ? { metadata: { ...m.metadata } } : {}),
+        ...(m.style ? { style: { ...m.style } } : {}),
+      })),
       selection: {
         teeth: [...this.state.selection.teeth],
         surfaces: [...this.state.selection.surfaces],
@@ -104,7 +114,7 @@ export class Odontogram {
 
   setState(state: OdontogramState | Partial<OdontogramState>): void {
     const nextView = state.view ?? this.state.view;
-    const nextMarks = state.marks ?? this.state.marks;
+    const nextMarks = state.marks !== undefined ? normalizeMarks(state.marks) : this.state.marks;
     const nextSelection = state.selection ?? this.state.selection;
     const nextTeeth = state.teeth ?? this.state.teeth;
 
@@ -121,12 +131,30 @@ export class Odontogram {
 
     this.getOption("marksSet")?.({ marks: this.state.marks });
 
+    const validatorOpt = this.getOption("validator");
+    const validationCallback = this.getOption("validationDidChange");
+    if (validatorOpt || validationCallback) {
+      const result = this.validate();
+      validationCallback?.({ result });
+    }
+
     if (viewChanged && this.rendered) {
       this.unmountView();
       this.mountView();
     } else {
       this.requestRender();
     }
+  }
+
+  /** Run validation against the current state. */
+  validate(config?: ValidatorConfig): ValidationResult {
+    const validatorOpt = this.getOption("validator");
+    if (typeof validatorOpt === "function") {
+      return validatorOpt(this.getState());
+    }
+    const baseConfig = typeof validatorOpt === "object" ? validatorOpt : {};
+    const mergedConfig = config ? { ...baseConfig, ...config } : baseConfig;
+    return validateOdontogramState(this.getState(), mergedConfig);
   }
 
   batchRendering(fn: () => void): void {

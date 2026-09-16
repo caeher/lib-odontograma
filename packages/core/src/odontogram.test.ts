@@ -259,4 +259,66 @@ describe("Odontogram", () => {
     capturedCtx!.selectTooth("16");
     expect((selectedState as SelectionState | null)?.teeth).toContain("16");
   });
+
+  it("normalizes marks with target structure in setState and getState", () => {
+    const odontogram = new Odontogram(container, { initialView: "permanent" });
+
+    odontogram.setState({
+      marks: [
+        {
+          id: "m1",
+          tooth: "16",
+          surfaces: ["M", "O", "D"],
+          type: "restoration",
+          status: "completed",
+          text: "MOD composite",
+          metadata: { shade: "A2" },
+        },
+        {
+          id: "m2",
+          type: "bridge",
+          status: "planned",
+          teeth: ["14", "15", "16"],
+        },
+      ],
+    });
+
+    const state = odontogram.getState();
+    expect(state.marks).toHaveLength(2);
+    expect(state.marks[0].target).toEqual({
+      kind: "surface",
+      tooth: "16",
+      surfaces: ["M", "O", "D"],
+    });
+    expect(state.marks[0].status).toBe("completed");
+    expect(state.marks[0].metadata).toEqual({ shade: "A2" });
+    expect(state.marks[1].target).toEqual({
+      kind: "teeth",
+      teeth: ["14", "15", "16"],
+    });
+  });
+
+  it("runs validate() on the odontogram instance and emits validationDidChange callback", () => {
+    let validationResults: any = null;
+    const odontogram = new Odontogram(container, {
+      initialView: "permanent",
+      validator: true,
+      validationDidChange: (arg) => {
+        validationResults = arg.result;
+      },
+    });
+
+    // Set invalid state (caries on incisal anterior tooth)
+    odontogram.setState({
+      marks: [{ id: "m-invalid", tooth: "11", surfaces: ["O"], type: "caries" }],
+    });
+
+    expect(validationResults).toBeTruthy();
+    expect(validationResults.valid).toBe(false);
+    expect(validationResults.errors.length).toBeGreaterThan(0);
+
+    const directResult = odontogram.validate();
+    expect(directResult.valid).toBe(false);
+  });
 });
+

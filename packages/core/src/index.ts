@@ -1,11 +1,53 @@
 export { createDefaultState, getToothPresence } from "./defaults.js";
+export {
+  createMark,
+  getMarksForSurface,
+  getMarksForTooth,
+  getMarkTargetSurfaces,
+  getMarkTargetTeeth,
+  isComplexTarget,
+  isMultiToothMark,
+  isMultiToothTarget,
+  isSurfaceMark,
+  isSurfaceTarget,
+  isWholeToothMark,
+  isWholeToothTarget,
+  normalizeMark,
+  normalizeMarks,
+  normalizeTarget,
+} from "./marks.js";
+export {
+  createValidator,
+  RULE_MARK_COEXISTENCE,
+  RULE_MARK_ID_UNIQUE,
+  RULE_SURFACE_APPLICABILITY,
+  RULE_TARGET_INTEGRITY,
+  RULE_TOOTH_CATALOG_VALIDITY,
+  RULE_TOOTH_PRESENCE_COEXISTENCE,
+  validateMark,
+  validateMarks,
+  validateOdontogramState,
+} from "./validation.js";
+export {
+  MULTI_MARK_COEXISTENCE_EXAMPLE,
+  MULTI_SURFACE_RESTORATIONS_EXAMPLE,
+  MULTI_TOOTH_ANNOTATIONS_EXAMPLE,
+  SERIALIZATION_EXAMPLES,
+  WHOLE_TOOTH_MARKS_EXAMPLE,
+} from "./examples.js";
 export { Odontogram } from "./odontogram.js";
 export { createPlugin } from "./plugin.js";
 export type {
+  ComplexTarget,
+  CustomValidationRule,
   MarkClassNamesArg,
+  MarkInput,
   MarkMountArg,
+  MarkStatus,
   MarkStyle,
+  MarkTarget,
   MarksSetArg,
+  MultiToothTarget,
   Notation,
   OdontographicMark,
   OdontogramOptions,
@@ -22,8 +64,17 @@ export type {
   ToothMountArg,
   ToothPresence,
   ToothState,
+  ToothSurfaceTarget,
+  ValidationChangeArg,
+  ValidationContext,
+  ValidationIssue,
+  ValidationResult,
+  ValidationSeverity,
+  ValidatorConfig,
   ViewDefinition,
   ViewMountArg,
   ViewRenderContext,
   ViewType,
+  WholeToothTarget,
 } from "./types.js";
+
