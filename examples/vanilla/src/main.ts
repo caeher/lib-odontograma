@@ -94,7 +94,7 @@ document.getElementById("btn-notation")!.addEventListener("click", () => {
   odontogram.setOption("notation", notation);
   (document.getElementById("btn-notation") as HTMLButtonElement).textContent =
     `Notation: ${notation.toUpperCase()}`;
-  log(`Notation: ${notation}`);
+  log(`Notation: ${notation} (presentation only; canonical state preserved)`);
 });
 
 // Presence controls
