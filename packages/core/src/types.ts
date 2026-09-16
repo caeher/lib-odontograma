@@ -252,9 +252,76 @@ export interface MarkClassNamesArg {
   mark: OdontographicMark;
 }
 
+/** Operating mode of the odontogram instance. */
+export type OdontogramMode = "internal" | "controlled";
+
+/** Source of a state change event. */
+export type StateChangeSource = "internal" | "external" | "batch" | "reset" | "interaction";
+
+/** Criteria for filtering or querying marks. */
+export interface MarkFilter {
+  tooth?: ToothId;
+  type?: string;
+  status?: MarkStatus;
+}
+
+/** Options for state reset operations. */
+export interface ResetOptions {
+  /** If true, preserves the current active view; otherwise resets to initialView. */
+  keepView?: boolean;
+  /** If true, preserves the current selection; otherwise clears selection. */
+  keepSelection?: boolean;
+  /** Specific view to reset to (overrides initialView). */
+  initialView?: ViewType;
+}
+
+/** Options for per-tooth state mutations. */
+export interface SetToothStateOptions {
+  /** If true, automatically prunes marks that become invalid under the new tooth presence. */
+  pruneMarks?: boolean;
+}
+
+/** Options for setState operations. */
+export interface SetStateOptions {
+  /** Explicit revision identifier to synchronize with host state. */
+  revision?: number;
+  /** If true, suppresses callback dispatch (render is still queued unless batched). */
+  silent?: boolean;
+  /** Source tag for the state update. */
+  source?: StateChangeSource;
+}
+
+/** Options for batch execution. */
+export interface BatchOptions {
+  /** If true (default), automatically rolls back state if an error is thrown inside the batch. */
+  transactional?: boolean;
+}
+
+/** Callback argument for general state change events. */
+export interface StateChangeArg {
+  /** Current state snapshot after the update. */
+  state: OdontogramState;
+  /** Snapshot of state before the update. */
+  previousState: OdontogramState;
+  /** Current revision counter. */
+  revision: number;
+  /** Origin source of the state change. */
+  source: StateChangeSource;
+  /** Root state properties that were modified. */
+  changedProperties: Array<keyof OdontogramState>;
+}
+
+/** Callback argument for individual tooth presence change events. */
+export interface ToothStateChangeArg {
+  toothId: ToothId;
+  state: ToothState;
+  previousState: ToothState;
+}
+
 /** Odontogram configuration options. */
 export interface OdontogramOptions {
   plugins?: OdontogramPlugin[];
+  mode?: OdontogramMode;
   initialView?: ViewType;
   notation?: Notation;
   height?: number | string;
@@ -272,6 +339,8 @@ export interface OdontogramOptions {
   selectionDidChange?: (arg: SelectionChangeArg) => void;
   marksSet?: (arg: MarksSetArg) => void;
   validationDidChange?: (arg: ValidationChangeArg) => void;
+  stateDidChange?: (arg: StateChangeArg) => void;
+  toothStateDidChange?: (arg: ToothStateChangeArg) => void;
 
   toothClassNames?: (arg: ToothClassNamesArg) => string | string[];
   markClassNames?: (arg: MarkClassNamesArg) => string | string[];

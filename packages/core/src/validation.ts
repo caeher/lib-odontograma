@@ -36,9 +36,11 @@ export const RULE_OPTIONS_VALIDITY = "options-validity";
 const VALID_SURFACES = new Set<SurfaceId>(["M", "O", "I", "D", "B", "L"]);
 const VALID_PRESENCE_VALUES = new Set(["present", "missing", "unerupted"]);
 const VALID_NOTATIONS = new Set(["fdi", "universal", "palmer"]);
+const VALID_MODES = new Set(["internal", "controlled"]);
 
 const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "plugins",
+  "mode",
   "initialView",
   "notation",
   "height",
@@ -54,6 +56,8 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "selectionDidChange",
   "marksSet",
   "validationDidChange",
+  "stateDidChange",
+  "toothStateDidChange",
   "toothClassNames",
   "markClassNames",
   "toothDidMount",
@@ -77,6 +81,32 @@ export function deepClone<T>(val: T): T {
     copy[key] = deepClone((val as Record<string, unknown>)[key]);
   }
   return copy as T;
+}
+
+/** Deep equality check for state snapshots and objects. */
+export function isDeepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  if (a === null || typeof a !== "object" || b === null || typeof b !== "object") {
+    return false;
+  }
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    for (let i = 0; i < a.length; i++) {
+      if (!isDeepEqual(a[i], b[i])) return false;
+    }
+    return true;
+  }
+  const keysA = Object.keys(a as Record<string, unknown>);
+  const keysB = Object.keys(b as Record<string, unknown>);
+  if (keysA.length !== keysB.length) return false;
+  for (const key of keysA) {
+    if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+    if (!isDeepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /** Default FDI anterior/posterior surface applicability checker */
@@ -164,6 +194,16 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
   }
 
   // Validate specific option types
+  if (options.mode !== undefined && !VALID_MODES.has(options.mode)) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Invalid mode "${options.mode}". Must be "internal" or "controlled".`,
+      path: "options.mode",
+    });
+  }
+
   if (options.notation !== undefined && !VALID_NOTATIONS.has(options.notation)) {
     issues.push({
       ruleId: RULE_OPTIONS_VALIDITY,

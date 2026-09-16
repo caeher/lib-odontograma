@@ -3,6 +3,7 @@ import type { OdontogramOptions, OdontogramState, ToothId, ToothPresence } from 
 export const DEFAULT_OPTIONS: Required<
   Pick<
     OdontogramOptions,
+    | "mode"
     | "initialView"
     | "notation"
     | "height"
@@ -12,6 +13,7 @@ export const DEFAULT_OPTIONS: Required<
     | "selectionColor"
   >
 > = {
+  mode: "internal",
   initialView: "permanent",
   notation: "fdi",
   height: 400,
