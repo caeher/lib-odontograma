@@ -211,7 +211,7 @@ if (container.querySelector(".odontogram-host")) {
 }
 
 console.log("JS consumer verified successfully!");
-\`;
+`;
 
   fs.writeFileSync(path.join(jsConsumerDir, "test.mjs"), jsConsumerScript);
   log("  Executing JS consumer test...", jsConsumerDir);
@@ -231,9 +231,9 @@ console.log("JS consumer verified successfully!");
     private: true,
     type: "module",
     dependencies: {
-      "@odontogram/core": \`file:\${tarballs.core}\`,
-      "@odontogram/dentition": \`file:\${tarballs.dentition}\`,
-      "@odontogram/svg": \`file:\${tarballs.svg}\`,
+      "@odontogram/core": `file:${tarballs.core}`,
+      "@odontogram/dentition": `file:${tarballs.dentition}`,
+      "@odontogram/svg": `file:${tarballs.svg}`,
       typescript: "^5.7.2",
       "@types/node": "^22.10.2",
       jsdom: "^25.0.1",
@@ -262,7 +262,7 @@ console.log("JS consumer verified successfully!");
   log("  Installing tarballs in TS consumer...", tsConsumerDir);
   run("npm install --no-audit --no-fund", tsConsumerDir);
 
-  const tsConsumerScript = \`
+  const tsConsumerScript = `
 import {
   Odontogram,
   createPlugin,
@@ -424,7 +424,7 @@ const options: OdontogramOptions = {
   marksSet: ({ marks }: { marks: OdontographicMark[] }) => {
     console.log("Marks count:", marks.length);
   },
-  toothClassNames: ({ tooth, isSelected }) => (isSelected ? "selected" : \`tooth-\${tooth}\`),
+  toothClassNames: ({ tooth, isSelected }) => (isSelected ? "selected" : "tooth-" + tooth),
   viewDidMount: (arg: ViewMountArg) => {
     console.log("View mounted:", arg.view);
   },
@@ -458,7 +458,7 @@ const surfacesFor16M = getMarksForSurface(state.marks, "16", "M");
 odontogram.destroy();
 
 console.log("TypeScript consumer types and usage verified successfully!");
-\`;
+`;
 
   fs.writeFileSync(path.join(tsConsumerDir, "test.ts"), tsConsumerScript);
   log("  Typechecking TS consumer...", tsConsumerDir);
