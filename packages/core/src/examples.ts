@@ -293,6 +293,48 @@ export const UNKNOWN_MARK_PRESERVATION_EXAMPLE: OdontogramState = {
   ],
 };
 
+/** Initial host-owned state for controlled-mode integrations. */
+export const CONTROLLED_MODE_INITIAL_STATE: OdontogramState = {
+  view: "permanent",
+  selection: { teeth: [], surfaces: [] },
+  teeth: {},
+  marks: [
+    {
+      id: "host-mark-16",
+      type: "caries",
+      target: { kind: "surface", tooth: "16", surfaces: ["O"] },
+      tooth: "16",
+      surfaces: ["O"],
+    },
+  ],
+};
+
+/** Example state after the host applies a tooth click (revision 3). */
+export const CONTROLLED_MODE_AFTER_CLICK_STATE: OdontogramState = {
+  view: "permanent",
+  selection: { teeth: ["16"], surfaces: [] },
+  teeth: {},
+  marks: [
+    {
+      id: "host-mark-16",
+      type: "caries",
+      target: { kind: "surface", tooth: "16", surfaces: ["O"] },
+      tooth: "16",
+      surfaces: ["O"],
+    },
+  ],
+};
+
+/**
+ * Controlled-mode integration sample: host-owned state with explicit revisions.
+ * The host applies clicks by calling setState with `source: "external"`.
+ */
+export const CONTROLLED_MODE_EXAMPLE = {
+  initialState: CONTROLLED_MODE_INITIAL_STATE,
+  afterToothClickRevision: 3,
+  afterToothClickState: CONTROLLED_MODE_AFTER_CLICK_STATE,
+};
+
 /** Programmatic operations sample state for demonstrating CRUD methods. */
 export const PROGRAMMATIC_OPERATIONS_EXAMPLE: OdontogramState = {
   view: "permanent",
@@ -335,4 +377,5 @@ export const SERIALIZATION_EXAMPLES = {
   multiMarkCoexistence: MULTI_MARK_COEXISTENCE_EXAMPLE,
   unknownMarkPreservation: UNKNOWN_MARK_PRESERVATION_EXAMPLE,
   programmaticOperations: PROGRAMMATIC_OPERATIONS_EXAMPLE,
+  controlledMode: CONTROLLED_MODE_EXAMPLE,
 } as const;

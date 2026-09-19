@@ -1,10 +1,12 @@
 import { createDefaultState, DEFAULT_OPTIONS, getToothPresence as resolvePresence } from "./defaults.js";
 import { OdontogramError, OdontogramValidationError, VALIDATION_CODES } from "./errors.js";
 import {
+  filterMarks,
   getMarksForSurface as filterMarksForSurface,
   getMarksForTooth as filterMarksForTooth,
   getMarkTargetSurfaces,
   getMarkTargetTeeth,
+  markMatchesFilter,
   normalizeMark,
   normalizeMarks,
 } from "./marks.js";
@@ -198,6 +200,7 @@ export class Odontogram {
       );
     }
 
+    this.assertMutable("change view");
     if (this.state.view === view) return;
     this.setState({ view }, { source: "internal" });
   }
@@ -253,6 +256,13 @@ export class Odontogram {
     };
 
     // Idempotency check: if candidate state is deeply equal to current state
+    if (options?.revision !== undefined && options.revision < this.revision) {
+      throw new OdontogramError(
+        `Revision regression: incoming revision ${options.revision} is less than current revision ${this.revision}.`,
+        VALIDATION_CODES.ERR_REVISION_REGRESSION,
+      );
+    }
+
     if (isDeepEqual(candidateState, this.state)) {
       if (options?.revision !== undefined) {
         this.revision = options.revision;
@@ -378,9 +388,9 @@ export class Odontogram {
   // Marks CRUD & Query Operations
   // ==========================================================================
 
-  /** Get all marks in the odontogram. */
-  getMarks(): OdontographicMark[] {
-    return deepClone(this.state.marks);
+  /** Get all marks in the odontogram, optionally filtered. */
+  getMarks(filter?: MarkFilter): OdontographicMark[] {
+    return deepClone(filterMarks(this.state.marks, filter));
   }
 
   /** Get a single mark by unique persistent ID. */
@@ -411,6 +421,7 @@ export class Odontogram {
   addMark<TMeta extends Record<string, unknown> = Record<string, unknown>>(
     input: MarkInput<TMeta>,
   ): OdontographicMark<TMeta> {
+    this.assertMutable("add mark");
     const newMark = normalizeMark(input);
     this.setState(
       { marks: [...this.state.marks, newMark as OdontographicMark] },
@@ -426,6 +437,7 @@ export class Odontogram {
   addMarks<TMeta extends Record<string, unknown> = Record<string, unknown>>(
     inputs: Array<MarkInput<TMeta>>,
   ): Array<OdontographicMark<TMeta>> {
+    this.assertMutable("add marks");
     const newMarks = normalizeMarks(inputs);
     this.setState(
       { marks: [...this.state.marks, ...(newMarks as OdontographicMark[])] },
@@ -444,6 +456,7 @@ export class Odontogram {
       | Partial<MarkInput<TMeta>>
       | ((prev: OdontographicMark<TMeta>) => Partial<MarkInput<TMeta>> | OdontographicMark<TMeta>),
   ): OdontographicMark<TMeta> {
+    this.assertMutable("update mark");
     const existing = this.getMark<TMeta>(id);
     if (!existing) {
       throw new OdontogramError(
@@ -473,6 +486,7 @@ export class Odontogram {
    * Returns true if removed, false if not found.
    */
   removeMark(id: string): boolean {
+    this.assertMutable("remove mark");
     if (!this.hasMark(id)) return false;
     this.setState(
       { marks: this.state.marks.filter((m) => m.id !== id) },
@@ -486,6 +500,7 @@ export class Odontogram {
    * Returns the count of removed marks.
    */
   removeMarks(ids: string[]): number {
+    this.assertMutable("remove marks");
     const targetIds = new Set(ids);
     const initialCount = this.state.marks.length;
     const remaining = this.state.marks.filter((m) => !targetIds.has(m.id));
@@ -501,6 +516,7 @@ export class Odontogram {
    * Returns the count of removed marks.
    */
   removeMarksForTooth(toothId: ToothId): number {
+    this.assertMutable("remove marks for tooth");
     const initialCount = this.state.marks.length;
     const remaining = this.state.marks.filter((m) => !getMarkTargetTeeth(m).includes(toothId));
     const removedCount = initialCount - remaining.length;
@@ -515,6 +531,7 @@ export class Odontogram {
    * Returns the count of cleared marks.
    */
   clearMarks(filter?: MarkFilter): number {
+    this.assertMutable("clear marks");
     if (!filter) {
       const count = this.state.marks.length;
       if (count > 0) {
@@ -524,12 +541,7 @@ export class Odontogram {
     }
 
     const initialCount = this.state.marks.length;
-    const remaining = this.state.marks.filter((m) => {
-      if (filter.tooth && getMarkTargetTeeth(m).includes(filter.tooth)) return false;
-      if (filter.type && m.type === filter.type) return false;
-      if (filter.status && m.status === filter.status) return false;
-      return true;
-    });
+    const remaining = this.state.marks.filter((m) => !markMatchesFilter(m, filter));
 
     const removedCount = initialCount - remaining.length;
     if (removedCount > 0) {
@@ -575,6 +587,7 @@ export class Odontogram {
     toothState: ToothState | ToothPresence | null | undefined,
     options?: SetToothStateOptions,
   ): void {
+    this.assertMutable("set tooth state");
     const nextTeeth = { ...this.state.teeth };
     let nextMarks = this.state.marks;
 
@@ -615,8 +628,14 @@ export class Odontogram {
   }
 
   /** Bulk update teeth presence overlay. */
-  setTeethState(teeth: Record<ToothId, ToothState | ToothPresence | null | undefined>): void {
+  setTeethState(
+    teeth: Record<ToothId, ToothState | ToothPresence | null | undefined>,
+    options?: SetToothStateOptions,
+  ): void {
+    this.assertMutable("set teeth state");
     const nextTeeth = { ...this.state.teeth };
+    let nextMarks = this.state.marks;
+
     for (const [toothId, val] of Object.entries(teeth)) {
       if (
         val === null ||
@@ -628,13 +647,34 @@ export class Odontogram {
       } else {
         const presence: ToothPresence = typeof val === "string" ? val : val.presence;
         nextTeeth[toothId] = { presence };
+
+        if (options?.pruneMarks) {
+          if (presence === "missing") {
+            nextMarks = nextMarks.filter((m) => {
+              const targetTeeth = getMarkTargetTeeth(m);
+              if (!targetTeeth.includes(toothId)) return true;
+              return getMarkTargetSurfaces(m, toothId).length === 0;
+            });
+          } else if (presence === "unerupted") {
+            nextMarks = nextMarks.filter((m) => {
+              const targetTeeth = getMarkTargetTeeth(m);
+              if (!targetTeeth.includes(toothId)) return true;
+              const surfaces = getMarkTargetSurfaces(m, toothId);
+              if (surfaces.length > 0 && (m.type === "caries" || m.type === "restoration")) {
+                return false;
+              }
+              return true;
+            });
+          }
+        }
       }
     }
-    this.setState({ teeth: nextTeeth }, { source: "internal" });
+    this.setState({ teeth: nextTeeth, marks: nextMarks }, { source: "internal" });
   }
 
   /** Reset a single tooth's presence overlay back to default (present). */
   resetToothState(toothId: ToothId): void {
+    this.assertMutable("reset tooth state");
     if (toothId in this.state.teeth) {
       const nextTeeth = { ...this.state.teeth };
       delete nextTeeth[toothId];
@@ -644,6 +684,7 @@ export class Odontogram {
 
   /** Reset all tooth presence overlays back to default (all present). */
   resetTeethState(): void {
+    this.assertMutable("reset teeth state");
     if (Object.keys(this.state.teeth).length > 0) {
       this.setState({ teeth: {} }, { source: "internal" });
     }
@@ -664,6 +705,7 @@ export class Odontogram {
       | SelectionState
       | { teeth?: ToothId[]; surfaces?: Array<{ tooth: ToothId; surface: SurfaceId }> },
   ): void {
+    this.assertMutable("set selection");
     this.setState(
       {
         selection: {
@@ -677,6 +719,7 @@ export class Odontogram {
 
   /** Programmatically select a tooth. */
   selectTooth(tooth: ToothId, mode: "replace" | "toggle" | "add" = "replace"): void {
+    this.assertMutable("select tooth");
     if (!this.getOption("selectable")) return;
 
     let teeth: ToothId[];
@@ -705,6 +748,7 @@ export class Odontogram {
     surface: SurfaceId,
     mode: "replace" | "toggle" | "add" = "replace",
   ): void {
+    this.assertMutable("select surface");
     if (!this.getOption("selectable")) return;
 
     let teeth = this.state.selection.teeth;
@@ -733,9 +777,15 @@ export class Odontogram {
 
   /** Clear all tooth and surface selection. */
   clearSelection(): void {
+    this.assertMutable("clear selection");
     if (this.state.selection.teeth.length > 0 || this.state.selection.surfaces.length > 0) {
       this.setState({ selection: { teeth: [], surfaces: [] } }, { source: "interaction" });
     }
+  }
+
+  /** Alias for {@link clearSelection}. */
+  resetSelection(): void {
+    this.clearSelection();
   }
 
   /** Check if a tooth is selected. */
@@ -757,7 +807,8 @@ export class Odontogram {
    * If any error occurs inside the batch, changes are rolled back completely.
    * When successful, callbacks and re-render execute exactly once.
    */
-  batch(fn: () => void, options: BatchOptions = { transactional: true }): void {
+  batch<T>(fn: () => T, options: BatchOptions = { transactional: true }): T {
+    this.assertMutable("execute batch");
     if (this.batchDepth === 0) {
       this.preBatchState = deepClone(this.state);
       this.preBatchRevision = this.revision;
@@ -766,8 +817,9 @@ export class Odontogram {
 
     this.batchDepth++;
 
+    let result: T;
     try {
-      fn();
+      result = fn();
     } catch (err) {
       if (options.transactional !== false && this.preBatchState) {
         this.state = this.preBatchState;
@@ -840,6 +892,8 @@ export class Odontogram {
         }
       }
     }
+
+    return result!;
   }
 
   /** Backwards-compatible alias for batch(). */
@@ -875,11 +929,13 @@ export class Odontogram {
 
   /** Reset all marks. */
   resetMarks(): void {
+    this.assertMutable("reset marks");
     this.clearMarks();
   }
 
   /** Reset all teeth overlay entries. */
   resetTeeth(): void {
+    this.assertMutable("reset teeth");
     this.resetTeethState();
   }
 
@@ -889,6 +945,7 @@ export class Odontogram {
    * Returns count of pruned marks.
    */
   pruneOrphanedMarks(): number {
+    this.assertMutable("prune orphaned marks");
     const initialCount = this.state.marks.length;
     const validMarks = this.state.marks.filter((m) => {
       const teeth = getMarkTargetTeeth(m);
@@ -968,17 +1025,39 @@ export class Odontogram {
 
   private createViewContext(): ViewRenderContext {
     const el = this.hostEl!;
+    const controlled = this.getMode() === "controlled";
     return {
       el,
       options: this.options,
-      state: this.state,
+      state: deepClone(this.state),
       requestRender: () => this.requestRender(),
-      selectTooth: (tooth) => this.selectTooth(tooth, "replace"),
-      selectSurface: (tooth, surface) => this.selectSurface(tooth, surface, "replace"),
-      toggleSurfaceSelection: (tooth, surface) => this.selectSurface(tooth, surface, "toggle"),
+      selectTooth: controlled
+        ? () => {
+            /* selection is host-driven in controlled mode */
+          }
+        : (tooth) => this.selectTooth(tooth, "replace"),
+      selectSurface: controlled
+        ? () => {
+            /* selection is host-driven in controlled mode */
+          }
+        : (tooth, surface) => this.selectSurface(tooth, surface, "replace"),
+      toggleSurfaceSelection: controlled
+        ? () => {
+            /* selection is host-driven in controlled mode */
+          }
+        : (tooth, surface) => this.selectSurface(tooth, surface, "toggle"),
       emitToothClick: (tooth, jsEvent) => this.emitToothClick(tooth, jsEvent),
       emitSurfaceClick: (tooth, surface, jsEvent) => this.emitSurfaceClick(tooth, surface, jsEvent),
     };
+  }
+
+  private assertMutable(operation: string): void {
+    if (this.getMode() === "controlled") {
+      throw new OdontogramError(
+        `Cannot ${operation} while mode is "controlled". Apply updates with setState() or reset() from the host.`,
+        VALIDATION_CODES.ERR_CONTROLLED_MUTATION,
+      );
+    }
   }
 
   private requestRender(): void {
@@ -995,7 +1074,7 @@ export class Odontogram {
   private performRender(): void {
     if (!this.activeView || !this.viewContext || !this.hostEl) return;
 
-    this.viewContext.state = this.state;
+    this.viewContext.state = deepClone(this.state);
     this.viewContext.options = this.options;
     this.activeView.destroy?.(this.viewContext);
     this.hostEl.innerHTML = "";

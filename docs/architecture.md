@@ -199,12 +199,17 @@ The transactional execution engine guarantees:
 ```
 
 - **`mode: "internal"`**: The instance manages its own state lifecycle. User interactions (e.g. clicking surfaces) directly update internal state, and consumer calls to CRUD methods apply immediately.
-- **`mode: "controlled"`**: Used for declarative integrations (such as React or Vue state stores). In controlled mode, internal mutation operations that would cause state drift without host awareness are intercepted, ensuring the host application maintains absolute control over the single source of truth.
+- **`mode: "controlled"`**: Used for declarative integrations (such as React or Vue state stores). In controlled mode, internal mutation operations that would cause state drift without host awareness are intercepted (`ERR_CONTROLLED_MUTATION`), ensuring the host application maintains absolute control over the single source of truth. The host pushes snapshots via `setState(..., { source: "external", revision })` and may call `reset()`. View plugins receive a deep-cloned `state` on `ViewRenderContext` and must not mutate selection directly—clicks emit callbacks only.
+
+### Revision contract (controlled)
+
+- `getRevision()` reflects the last applied revision (explicit `SetStateOptions.revision` or auto-increment in internal mode).
+- If `setState` is called with `revision` strictly less than the current revision, the update is rejected with `ERR_REVISION_REGRESSION` and state is unchanged.
 
 ## Data flow
 
 ```
-User click on surface
+User click on surface (internal mode)
   → svg view handler
   → ctx.toggleSurfaceSelection()
   → core updates state.selection
@@ -212,6 +217,16 @@ User click on surface
   → core calls stateDidChange callback (source: "interaction")
   → core calls requestRender()
   → svg view re-renders with updated selection highlight
+```
+
+```
+User click on surface (controlled mode)
+  → svg view handler
+  → ctx.emitSurfaceClick() only (selection helpers are no-ops)
+  → host handles surfaceClick callback
+  → host calls setState({ selection: ... }, { source: "external", revision })
+  → core calls selectionDidChange / stateDidChange
+  → requestRender() → svg re-renders host-driven selection
 ```
 
 ```

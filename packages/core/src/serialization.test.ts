@@ -119,7 +119,13 @@ describe("Serialization Examples & Data Round-trip", () => {
 
   it("all SERIALIZATION_EXAMPLES pass state validation", () => {
     for (const [name, example] of Object.entries(SERIALIZATION_EXAMPLES)) {
-      const result = validateOdontogramState(example);
+      if (name === "controlledMode") {
+        const controlled = example as typeof SERIALIZATION_EXAMPLES.controlledMode;
+        expect(validateOdontogramState(controlled.initialState).valid).toBe(true);
+        expect(validateOdontogramState(controlled.afterToothClickState).valid).toBe(true);
+        continue;
+      }
+      const result = validateOdontogramState(example as OdontogramState);
       expect(
         result.valid,
         `Example "${name}" should be valid, but had errors: ${JSON.stringify(result.errors)}`,

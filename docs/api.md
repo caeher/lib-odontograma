@@ -61,6 +61,18 @@ Returns the operational mode: `"internal"` (default: instance manages its own st
 
 Returns the monotonic integer revision number representing the count of successful state mutations since initialization.
 
+#### Internal vs controlled mode
+
+| Concern | `mode: "internal"` (default) | `mode: "controlled"` |
+| ------- | ---------------------------- | -------------------- |
+| Source of truth | Odontogram instance | Host application |
+| Imperative APIs (`addMark`, `selectTooth`, `batch`, …) | Allowed | Throws `ERR_CONTROLLED_MUTATION` |
+| Host updates | Optional via `setState` | Required via `setState` / `reset` with `source: "external"` |
+| UI clicks | Update selection internally (when `selectable`) | Fire `toothClick` / `surfaceClick` only; host updates `selection` via `setState` |
+| Revision sync | Auto-increment on change | Pass `revision` in `SetStateOptions`; regressions (`revision` &lt; current) throw `ERR_REVISION_REGRESSION` |
+
+In controlled mode, compound host updates should use a **single** `setState` call (not `batch`).
+
 #### Marks CRUD Operations
 
 ##### `getMarks(filter?: MarkFilter): OdontographicMark[]`
@@ -99,17 +111,17 @@ Update an existing mark by ID with partial properties. **Mark ID is strictly imm
 
 Remove a mark by ID. Returns `true` if removed, `false` if not found.
 
-##### `removeMarks(ids: string[]): string[]`
+##### `removeMarks(ids: string[]): number`
 
-Remove multiple marks by their IDs. Returns array of successfully removed mark IDs.
+Remove multiple marks by their IDs. Returns the count of removed marks.
 
-##### `removeMarksForTooth(toothId: ToothId): OdontographicMark[]`
+##### `removeMarksForTooth(toothId: ToothId): number`
 
-Remove all marks referencing a specific tooth. Returns the array of removed marks.
+Remove all marks referencing a specific tooth. Returns the count of removed marks.
 
-##### `clearMarks(): void`
+##### `clearMarks(filter?: MarkFilter): number`
 
-Remove all marks from the state.
+Remove all marks, or only marks matching the optional filter. Returns the count of cleared marks.
 
 #### Tooth State & Biological Presence
 
@@ -167,6 +179,10 @@ Select, append, or toggle surface selection programmatically.
 
 Clear all selected teeth and surfaces.
 
+##### `resetSelection(): void`
+
+Alias for `clearSelection()`.
+
 ##### `isToothSelected(toothId: ToothId): boolean`
 
 Returns `true` if the specified tooth is selected.
@@ -190,7 +206,7 @@ Legacy alias: execute `fn` with rendering deferred until completion.
 
 ##### `reset(options?: ResetOptions): void`
 
-Reset marks, tooth overlays, and selection to empty state. Supports `options.keepView` and `options.keepOptions`.
+Reset marks, tooth overlays, and selection to empty state. Supports `options.keepView`, `options.keepSelection`, and `options.initialView`. Allowed in controlled mode.
 
 ##### `resetMarks(): void`
 
@@ -200,9 +216,9 @@ Remove all marks and increment revision.
 
 Reset all tooth presence overlays to default present.
 
-##### `pruneOrphanedMarks(): OdontographicMark[]`
+##### `pruneOrphanedMarks(): number`
 
-Remove surface marks targeting teeth that are currently `"missing"` or `"unerupted"`. Returns array of pruned marks.
+Remove surface marks targeting teeth that are currently `"missing"` or `"unerupted"`. Returns the count of pruned marks.
 
 ##### `validate(config?: ValidatorConfig): ValidationResult`
 
@@ -376,6 +392,8 @@ try {
 | `ERR_INVALID_PRESENCE`     | `error`   | Invalid tooth presence overlay (not present/missing/unerupted)  | `teeth.16.presence`           |
 | `ERR_PRESENCE_CONFLICT`    | `error`   | Surface mark on missing tooth or restoration on unerupted tooth | `teeth.16.presence`           |
 | `ERR_INVALID_SELECTION`    | `error`   | Malformed selection or duplicate selection entry                | `selection.teeth[1]`          |
+| `ERR_CONTROLLED_MUTATION`  | `error`   | Imperative API called while `mode` is `"controlled"`            | —                             |
+| `ERR_REVISION_REGRESSION`  | `error`   | `setState` `revision` is lower than the current revision        | `options.revision`            |
 | `ERR_INVALID_OPTION`       | `error`   | Invalid option value or type in options configuration           | `options.notation`            |
 | `WARN_UNKNOWN_OPTION`      | `warning` | Unknown configuration option passed to options bag              | `options.unknownProp`         |
 | `WARN_INCOMPATIBLE_MARKS`  | `warning` | Configured incompatible concurrent marks on a single tooth      | `marks`                       |
@@ -431,7 +449,7 @@ Passed to view `render` and `destroy` functions:
 | ------------------------------------------- | --------------------------- |
 | `el`                                        | Host HTMLElement            |
 | `options`                                   | Current options             |
-| `state`                                     | Current state               |
+| `state`                                     | Defensive deep clone of current state (mutations do not affect the store) |
 | `requestRender()`                           | Request a re-render         |
 | `selectTooth(tooth)`                        | Select a tooth              |
 | `selectSurface(tooth, surface)`             | Select a single surface     |
