@@ -529,3 +529,31 @@ interface NotationAdapter {
 - **`palmerAdapter`** (`"palmer"`): Palmer Notation Method. Quadrant grid symbols (`8┘`, `└1`, `┌1`, `1┐` for permanent; `E┘`, `└A`, `┌A`, `A┐` for primary) and accessible quadrant codes (`UR8`, `UL1`, `LL1`, `LR1` / `URA`, `ULA`, `LLA`, `LRA`). Ambiguous inputs without quadrant context (e.g. `"1"`, `"A"`) or out-of-catalog values are rejected (`null`).
 
 Fixtures: `packages/dentition/fixtures/*.json` (including `notations.json`). Review process: [`dental-review.md`](dental-review.md).
+
+## `@odontogram/svg/contract`
+
+Normative tooth SVG resource API (Stage 03). Full spec: [`svg-contract.md`](svg-contract.md). Authoring: [`svg-resource-authoring.md`](svg-resource-authoring.md).
+
+```ts
+import {
+  SVG_CONTRACT_VERSION,
+  validateToothSvg,
+  parseToothSvgMetadataJson,
+  prefixElementIds,
+  expectedSurfacesForToothClass,
+} from "@odontogram/svg/contract";
+```
+
+| Export | Description |
+| ------ | ----------- |
+| `SVG_CONTRACT_VERSION` | Contract semver string (`1.0.0`) |
+| `validateToothSvg(svg, options?)` | Validate markup; optional metadata sidecar |
+| `parseToothSvgMetadata` / `parseToothSvgMetadataJson` | Parse JSON sidecar |
+| `prefixElementIds(svg, { prefix })` | Prefix ids for multi-instance charts |
+| `expectedSurfacesForToothClass` | Delegates to `@odontogram/dentition` |
+| `DEFAULT_TOOTH_VIEWBOX`, `CONTRACT_LAYER_IDS`, … | Constants from [`svg-contract.md`](svg-contract.md) |
+
+CLI (monorepo root): `npm run validate:svg -- [--metadata sidecar.json] file.svg`
+
+JSON schema: `packages/svg/schema/tooth-svg-metadata.schema.json`. Template: `packages/svg/resources/template/`.
+

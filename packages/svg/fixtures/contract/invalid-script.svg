@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 52">
+  <script>alert(1)</script>
+  <g id="layer-anatomy">
+    <rect id="tooth-outline" width="44" height="52"/>
+    <circle id="anchor-center" cx="22" cy="26" r="1"/>
+    <circle id="anchor-mesial" cx="8" cy="26" r="1"/>
+    <circle id="anchor-distal" cx="36" cy="26" r="1"/>
+  </g>
+  <g id="layer-interaction">
+    <g id="surface-O" data-surface="O" data-face="center"><path d="M 6 6 L 38 46 Z"/></g>
+  </g>
+  <g id="layer-focus"/>
+  <g id="layer-marks"/>
+  <g id="layer-labels"/>
+</svg>

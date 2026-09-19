@@ -10,6 +10,7 @@ export default defineConfig({
       "@odontogram/core": path.resolve(rootDir, "packages/core/src/index.ts"),
       "@odontogram/dentition": path.resolve(rootDir, "packages/dentition/src/index.ts"),
       "@odontogram/svg": path.resolve(rootDir, "packages/svg/src/index.ts"),
+      "@odontogram/svg/contract": path.resolve(rootDir, "packages/svg/src/contract/index.ts"),
     },
   },
   test: {

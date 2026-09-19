@@ -67,11 +67,11 @@ A recorded mark is a record of clinical observation, historical finding, or plan
 
 ### SVG renderer (`@odontogram/svg`)
 
-**Responsibility:** Schematic SVG view plugin registering `permanent`, `deciduous`, and `mixed` views. Renders geometric tooth shapes with five clickable surface regions and mark overlays.
+**Responsibility:** Schematic SVG view plugin registering `permanent`, `deciduous`, and `mixed` views. Renders geometric tooth shapes with five clickable surface regions and mark overlays. Owns the **tooth SVG resource contract** ([`svg-contract.md`](svg-contract.md)) via `@odontogram/svg/contract`.
 
-**Depends on:** `@odontogram/core` (plugin API, view context), `@odontogram/dentition` (tooth lists, notation labels).
+**Depends on:** `@odontogram/core` (plugin API, view context), `@odontogram/dentition` (tooth lists, notation labels, surface mapping).
 
-**Does not:** Manage state — reads from `ViewRenderContext.state` and calls context methods for interactions.
+**Does not:** Manage state — reads from `ViewRenderContext.state` and calls context methods for interactions. Full anatomical art catalogs (#9) and rendering engine rewrite (#10) are out of scope for the contract stage.
 
 ### Plugins
 
@@ -107,6 +107,7 @@ Each package explicitly defines public entry points in `package.json` `exports`:
 
 - **JavaScript & Types:** ESM bundle (`dist/index.js`) and TypeScript declarations (`dist/index.d.ts`).
 - **Styles:** Distributable CSS is exposed via `@odontogram/core/style.css` and `@odontogram/svg/style.css`.
+- **Contract:** Tooth SVG validation and types via `@odontogram/svg/contract` (see [`svg-contract.md`](svg-contract.md)).
 - **Tree-shaking:** `sideEffects` is declared explicitly (`false` for dentition; `["dist/style.css"]` for packages distributing CSS).
 
 ## Dependency rules

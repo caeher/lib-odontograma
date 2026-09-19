@@ -58,6 +58,8 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Feature                | Core | Dentition | SVG | Plugins | Adapters | Stage |
 | ---------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
 | Schematic SVG renderer |  —   |     —     | ✅  |    —    |    —     | 01    |
+| SVG resource contract  |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Tooth SVG validator    |  —   |     —     | ✅  |    —    |    —     | 03    |
 | Permanent view         |  —   |     —     | ✅  |    —    |    —     | 01    |
 | Deciduous view         |  —   |     —     | ✅  |    —    |    —     | 01    |
 | Mixed view             |  —   |     —     | ✅  |    —    |    —     | 01    |
