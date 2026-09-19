@@ -1,5 +1,6 @@
 import type {
   ComplexTarget,
+  MarkFilter,
   MarkInput,
   MarkTarget,
   MultiToothTarget,
@@ -220,6 +221,31 @@ export function createMark<TMetadata = Record<string, unknown>>(
   input: MarkInput<TMetadata>,
 ): OdontographicMark<TMetadata> {
   return normalizeMark(input);
+}
+
+/** Returns true when a mark satisfies all criteria specified on the filter (AND semantics). */
+export function markMatchesFilter(mark: OdontographicMark, filter: MarkFilter): boolean {
+  if (filter.tooth !== undefined && !getMarkTargetTeeth(mark).includes(filter.tooth)) {
+    return false;
+  }
+  if (filter.type !== undefined && mark.type !== filter.type) {
+    return false;
+  }
+  if (filter.status !== undefined && mark.status !== filter.status) {
+    return false;
+  }
+  return true;
+}
+
+/** Return marks from an array that match the optional filter. */
+export function filterMarks(
+  marks: OdontographicMark[],
+  filter?: MarkFilter,
+): OdontographicMark[] {
+  if (!filter) {
+    return marks;
+  }
+  return marks.filter((m) => markMatchesFilter(m, filter));
 }
 
 /** Find all marks that involve a specific tooth (via whole-tooth, surface, or multi-tooth target). */

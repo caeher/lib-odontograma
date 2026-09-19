@@ -7,8 +7,10 @@ export {
 } from "./errors.js";
 export {
   createMark,
+  filterMarks,
   getMarksForSurface,
   getMarksForTooth,
+  markMatchesFilter,
   getMarkTargetSurfaces,
   getMarkTargetTeeth,
   isComplexTarget,
@@ -42,6 +44,7 @@ export {
   validateOptions,
 } from "./validation.js";
 export {
+  CONTROLLED_MODE_EXAMPLE,
   MULTI_MARK_COEXISTENCE_EXAMPLE,
   MULTI_SURFACE_RESTORATIONS_EXAMPLE,
   MULTI_TOOTH_ANNOTATIONS_EXAMPLE,

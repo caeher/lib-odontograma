@@ -2,9 +2,13 @@
 
 Framework-independent JavaScript/TypeScript library for rendering and interacting with dental odontograms.
 
+## Stage 02 · State, CRUD & controlled mode
+
+Stage 02 adds typed marks and tooth-state CRUD, atomic `batch` transactions, revision tracking, **internal vs controlled** operating modes, referential prune helpers, and multi-instance-safe state isolation. See [API reference](docs/api.md#internal-vs-controlled-mode) and `CONTROLLED_MODE_EXAMPLE` in `@odontogram/core`.
+
 ## Stage 01 · Foundations
 
-This release provides the typed core API, dental numbering resources, a schematic SVG renderer plugin, distributable CSS, and documentation. It is strictly limited to the odontogram domain — no patients, scheduling, billing, or backend.
+Stage 01 provides the typed core API, dental numbering resources, a schematic SVG renderer plugin, distributable CSS, and documentation. The library is strictly limited to the odontogram domain — no patients, scheduling, billing, or backend.
 
 ## Requirements
 
