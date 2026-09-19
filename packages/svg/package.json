@@ -12,10 +12,17 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./contract": {
+      "types": "./dist/contract/index.d.ts",
+      "import": "./dist/contract/index.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "files": [
-    "dist"
+    "dist",
+    "resources",
+    "schema",
+    "fixtures/contract"
   ],
   "sideEffects": [
     "dist/style.css"
@@ -25,14 +32,17 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts --format esm --dts --clean && node --input-type=module -e \"import fs from 'node:fs'; fs.copyFileSync('src/style.css', 'dist/style.css')\"",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "build": "tsup src/index.ts src/contract/index.ts src/contract/cli/validate-svg.ts --format esm --dts --clean && node --input-type=module -e \"import fs from 'node:fs'; fs.copyFileSync('src/style.css', 'dist/style.css')\"",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "validate:svg": "node dist/contract/cli/validate-svg.js resources/template/tooth-occlusal-schematic.template.svg fixtures/contract/valid-molar-occlusal.svg"
   },
   "dependencies": {
     "@odontogram/core": "0.1.0",
-    "@odontogram/dentition": "0.1.0"
+    "@odontogram/dentition": "0.1.0",
+    "jsdom": "^25.0.1"
   },
   "devDependencies": {
+    "@types/jsdom": "^21.1.7",
     "tsup": "^8.3.5",
     "typescript": "^5.7.2"
   }

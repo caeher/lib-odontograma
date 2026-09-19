@@ -1,0 +1,8 @@
+{
+  "contractVersion": "1.0.0",
+  "resourceId": "valid-molar-occlusal",
+  "title": "Valid molar fixture",
+  "toothClass": "molar",
+  "projection": "occlusal",
+  "viewBox": { "width": 44, "height": 52 }
+}

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 52" role="img" aria-label="Molar occlusal schematic template">
+  <title>Molar occlusal schematic (template)</title>
+  <desc>Contract v1 tooth resource template. Posterior teeth use occlusal (O) in the center face; incisor templates swap O for incisal (I).</desc>
+  <g id="layer-anatomy" data-role="anatomy">
+    <rect id="tooth-outline" x="0" y="0" width="44" height="52" rx="4" fill="#f5f5f5" stroke="#999" stroke-width="1"/>
+    <circle id="anchor-center" cx="22" cy="26" r="1.5" fill="#666" opacity="0.35"/>
+    <circle id="anchor-mesial" cx="8" cy="26" r="1.5" fill="#666" opacity="0.35"/>
+    <circle id="anchor-distal" cx="36" cy="26" r="1.5" fill="#666" opacity="0.35"/>
+  </g>
+  <g id="layer-interaction" data-role="interaction">
+    <g id="surface-M" data-surface="M" data-face="right" role="button" tabindex="-1" aria-label="Mesial">
+      <path d="M 0 6 L 6 6 L 6 46 L 0 46 Z" fill="#e8e8e8" stroke="#bbb" stroke-width="0.5"/>
+    </g>
+    <g id="surface-D" data-surface="D" data-face="left" role="button" tabindex="-1" aria-label="Distal">
+      <path d="M 38 6 L 44 6 L 44 46 L 38 46 Z" fill="#e8e8e8" stroke="#bbb" stroke-width="0.5"/>
+    </g>
+    <g id="surface-B" data-surface="B" data-face="top" role="button" tabindex="-1" aria-label="Buccal">
+      <path d="M 6 0 L 38 0 L 38 6 L 6 6 Z" fill="#e8e8e8" stroke="#bbb" stroke-width="0.5"/>
+    </g>
+    <g id="surface-L" data-surface="L" data-face="bottom" role="button" tabindex="-1" aria-label="Lingual">
+      <path d="M 6 46 L 38 46 L 38 52 L 6 52 Z" fill="#e8e8e8" stroke="#bbb" stroke-width="0.5"/>
+    </g>
+    <g id="surface-O" data-surface="O" data-face="center" role="button" tabindex="-1" aria-label="Occlusal">
+      <path d="M 6 6 L 38 6 L 38 46 L 6 46 Z" fill="#e0e0e0" stroke="#bbb" stroke-width="0.5"/>
+    </g>
+  </g>
+  <g id="layer-focus" data-role="focus" aria-hidden="true"/>
+  <g id="layer-marks" data-role="marks" aria-hidden="true"/>
+  <g id="layer-labels" data-role="labels">
+    <text id="label-notation" x="22" y="50" text-anchor="middle" font-size="8" fill="#333" aria-hidden="true">16</text>
+  </g>
+</svg>

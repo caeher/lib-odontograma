@@ -1,0 +1,27 @@
+{
+  "contractVersion": "1.0.0",
+  "resourceId": "tooth-occlusal-schematic.template",
+  "title": "Occlusal schematic tooth template (molar)",
+  "toothClass": "molar",
+  "projection": "occlusal",
+  "viewBox": {
+    "minX": 0,
+    "minY": 0,
+    "width": 44,
+    "height": 52
+  },
+  "anchors": {
+    "anchor-center": { "x": 22, "y": 26 },
+    "anchor-mesial": { "x": 8, "y": 26 },
+    "anchor-distal": { "x": 36, "y": 26 }
+  },
+  "attribution": {
+    "author": "lib-odontograma contributors",
+    "license": "Apache-2.0",
+    "notice": "Template geometry aligned with schematic renderer cell (44×52). Incisor/canines: duplicate template and replace surface-O with surface-I (incisal center)."
+  },
+  "editor": {
+    "tool": "hand-authored",
+    "template": "tooth-occlusal-schematic.template.svg"
+  }
+}

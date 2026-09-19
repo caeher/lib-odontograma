@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lib-odontograma.dev/schemas/tooth-svg-metadata.schema.json",
+  "title": "ToothSvgMetadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "resourceId",
+    "title",
+    "toothClass",
+    "projection",
+    "viewBox"
+  ],
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "Must match @odontogram/svg contract package version"
+    },
+    "resourceId": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9.-]*$"
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "toothClass": {
+      "type": "string",
+      "enum": ["incisor", "canine", "premolar", "molar"]
+    },
+    "projection": {
+      "type": "string",
+      "enum": ["occlusal"]
+    },
+    "viewBox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "attribution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "author": { "type": "string" },
+        "license": { "type": "string" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "notice": { "type": "string" }
+      }
+    },
+    "anchors": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "anchor-center": { "$ref": "#/$defs/point" },
+        "anchor-mesial": { "$ref": "#/$defs/point" },
+        "anchor-distal": { "$ref": "#/$defs/point" }
+      }
+    },
+    "editor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "tool": { "type": "string" },
+        "template": { "type": "string" }
+      }
+    }
+  },
+  "$defs": {
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
+      }
+    }
+  }
+}

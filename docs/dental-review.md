@@ -99,6 +99,8 @@ Patient faces the viewer; patient's right appears on screen left.
 
 API: `mapSurfaceToFace(toothId, surface)` in `@odontogram/dentition`.
 
+Authoring and validation of vector tooth assets (layers, surface binding, security rules) are specified in [`svg-contract.md`](svg-contract.md) and [`svg-resource-authoring.md`](svg-resource-authoring.md). Clinical surface lists remain authoritative in this document and in `@odontogram/dentition` — not duplicated in SVG sources.
+
 ## Presence model
 
 Tooth presence is stored in `OdontogramState.teeth` as a sparse overlay:
