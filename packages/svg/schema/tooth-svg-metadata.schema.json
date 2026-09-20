@@ -69,6 +69,15 @@
         "tool": { "type": "string" },
         "template": { "type": "string" }
       }
+    },
+    "referenceToothId": {
+      "type": "string",
+      "pattern": "^\\d{2}$",
+      "description": "FDI tooth used to assign data-face values for this catalog family"
+    },
+    "orientationKey": {
+      "type": "string",
+      "pattern": "^patient-(right|left)\\.(maxillary|mandibular)$"
     }
   },
   "$defs": {

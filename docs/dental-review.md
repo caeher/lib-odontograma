@@ -147,6 +147,8 @@ The odontogram model enforces clinical and structural coexistence gates via conf
 - [ ] Numbering systems conversion tables (FDI, Universal, Palmer) verified
 - [ ] Palmer quadrant glyph orientation and ASCII accessible representations approved
 - [ ] Out-of-catalog rejection contract reviewed
+- [ ] SVG catalog families (16) and 52-tooth manifest reviewed ([svg-catalog.md](svg-catalog.md))
+- [ ] Occlusal schematic surface labels verified in review gallery (`npm run gallery`)
 - [ ] Terminology (primary vs deciduous, vestibular/buccal, palatal/lingual) approved
 - [ ] Reviewer name, credentials, and date recorded below
 

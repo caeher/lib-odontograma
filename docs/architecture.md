@@ -71,7 +71,7 @@ A recorded mark is a record of clinical observation, historical finding, or plan
 
 **Depends on:** `@odontogram/core` (plugin API, view context), `@odontogram/dentition` (tooth lists, notation labels, surface mapping).
 
-**Does not:** Manage state — reads from `ViewRenderContext.state` and calls context methods for interactions. Full anatomical art catalogs (#9) and rendering engine rewrite (#10) are out of scope for the contract stage.
+**Does not:** Manage state — reads from `ViewRenderContext.state` and calls context methods for interactions. The default view still uses the procedural schematic renderer (#10); shipped **catalog art** (#9) is resolved via `@odontogram/svg/catalog` for composition and review tooling, not as a replacement renderer.
 
 ### Plugins
 
@@ -108,6 +108,7 @@ Each package explicitly defines public entry points in `package.json` `exports`:
 - **JavaScript & Types:** ESM bundle (`dist/index.js`) and TypeScript declarations (`dist/index.d.ts`).
 - **Styles:** Distributable CSS is exposed via `@odontogram/core/style.css` and `@odontogram/svg/style.css`.
 - **Contract:** Tooth SVG validation and types via `@odontogram/svg/contract` (see [`svg-contract.md`](svg-contract.md)).
+- **Catalog:** Manifest + resolver via `@odontogram/svg/catalog` (see [`svg-catalog.md`](svg-catalog.md)); assets under `packages/svg/resources/catalog/`.
 - **Tree-shaking:** `sideEffects` is declared explicitly (`false` for dentition; `["dist/style.css"]` for packages distributing CSS).
 
 ## Dependency rules

@@ -57,12 +57,14 @@ Workflow for creating tooth vector resources that conform to the [SVG contract](
 - Third-party anatomy must include compatible license text in the sidecar and [attributions.md](attributions.md).
 - Do not embed stock assets with conflicting “no derivative” terms without legal review.
 
-## Catalog placement (future)
+## Catalog placement
 
-Full tooth art catalogs are tracked in issue **#9**. This stage only defines contract, template, and validator stubs — drop validated assets under `packages/svg/resources/` following the template layout until the catalog pipeline lands.
+Validated catalog assets live under `packages/svg/resources/catalog/` (16 orientation families, 52-tooth manifest). See [svg-catalog.md](svg-catalog.md) and the [catalog README](../packages/svg/resources/catalog/README.md).
 
 ## See also
 
+- [SVG catalog](svg-catalog.md)
 - [Architecture — SVG renderer](architecture.md#svg-renderer-odontogramsvg)
 - [Feature matrix — Stage 03](feature-matrix.md)
 - [API — `@odontogram/svg/contract`](api.md#odontogramsvgcontract)
+- [API — `@odontogram/svg/catalog`](api.md#odontogramsvgcatalog)

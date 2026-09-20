@@ -23,6 +23,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "validate:svg": "npm run build -w @odontogram/core -w @odontogram/dentition -w @odontogram/svg && npm run validate:svg -w @odontogram/svg",
+    "gallery": "npm run build -w @odontogram/dentition -w @odontogram/svg && npm run dev -w odontogram-svg-gallery",
     "verify:pack": "node scripts/verify-pack.mjs"
   },
   "devDependencies": {

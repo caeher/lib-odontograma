@@ -557,3 +557,29 @@ CLI (monorepo root): `npm run validate:svg -- [--metadata sidecar.json] file.svg
 
 JSON schema: `packages/svg/schema/tooth-svg-metadata.schema.json`. Template: `packages/svg/resources/template/`.
 
+## `@odontogram/svg/catalog`
+
+Occlusal schematic tooth art catalog (Stage 03, issue #9). Overview: [`svg-catalog.md`](svg-catalog.md).
+
+```ts
+import {
+  getManifest,
+  getOrientationKey,
+  listCatalogFamilies,
+  resolveToothSvgResource,
+} from "@odontogram/svg/catalog";
+```
+
+| Export | Description |
+| ------ | ----------- |
+| `getManifest()` | `families` (16) + `teeth` (52 FDI bindings) |
+| `getOrientationKey(toothId)` | Patient side + arch key for catalog lookup |
+| `resolveToothSvgResource(toothId)` | `resourceId`, paths under `resources/`, manifest fields |
+| `listCatalogFamilies()` / `listCatalogResourceIds()` | Enumerate shared art families |
+| `listTeethForCatalogResource(resourceId)` | FDI ids sharing one SVG family |
+| `assertManifestCoversCatalog(toothIds)` | Test helper — manifest vs dentition |
+
+Node disk loader: `import { loadCatalogSvgMarkup } from "@odontogram/svg/catalog/node"`.
+
+Review gallery: `npm run gallery` (`examples/svg-gallery`).
+

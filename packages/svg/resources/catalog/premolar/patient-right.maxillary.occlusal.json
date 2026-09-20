@@ -1,0 +1,38 @@
+{
+  "contractVersion": "1.0.0",
+  "resourceId": "premolar.patient-right.maxillary.occlusal",
+  "title": "premolar · patient right · maxillary (occlusal)",
+  "toothClass": "premolar",
+  "projection": "occlusal",
+  "orientationKey": "patient-right.maxillary",
+  "referenceToothId": "14",
+  "viewBox": {
+    "minX": 0,
+    "minY": 0,
+    "width": 44,
+    "height": 52
+  },
+  "anchors": {
+    "anchor-center": {
+      "x": 22,
+      "y": 26
+    },
+    "anchor-mesial": {
+      "x": 8,
+      "y": 26
+    },
+    "anchor-distal": {
+      "x": 36,
+      "y": 26
+    }
+  },
+  "attribution": {
+    "author": "lib-odontograma contributors",
+    "license": "Apache-2.0",
+    "notice": "Schematic occlusal catalog geometry derived from tooth-occlusal-schematic.template (#8). Surface faces aligned to mapSurfaceToFace for referenceToothId."
+  },
+  "editor": {
+    "tool": "generate-catalog.mts",
+    "template": "tooth-occlusal-schematic.template.svg"
+  }
+}

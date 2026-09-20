@@ -16,6 +16,14 @@
       "types": "./dist/contract/index.d.ts",
       "import": "./dist/contract/index.js"
     },
+    "./catalog": {
+      "types": "./dist/catalog/index.d.ts",
+      "import": "./dist/catalog/index.js"
+    },
+    "./catalog/node": {
+      "types": "./dist/catalog/load-node.d.ts",
+      "import": "./dist/catalog/load-node.js"
+    },
     "./style.css": "./dist/style.css"
   },
   "files": [
@@ -32,9 +40,10 @@
     "npm": ">=9.0.0"
   },
   "scripts": {
-    "build": "tsup src/index.ts src/contract/index.ts src/contract/cli/validate-svg.ts --format esm --dts --clean && node --input-type=module -e \"import fs from 'node:fs'; fs.copyFileSync('src/style.css', 'dist/style.css')\"",
+    "build": "tsup src/index.ts src/catalog/index.ts src/catalog/load-node.ts src/contract/index.ts src/contract/cli/validate-svg.ts src/contract/cli/validate-catalog-svg.ts --format esm --dts --clean && node --input-type=module -e \"import fs from 'node:fs'; fs.copyFileSync('src/style.css', 'dist/style.css')\"",
+    "generate:catalog": "npm run build -w @odontogram/dentition && node --experimental-strip-types scripts/generate-catalog.mts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "validate:svg": "node dist/contract/cli/validate-svg.js resources/template/tooth-occlusal-schematic.template.svg fixtures/contract/valid-molar-occlusal.svg"
+    "validate:svg": "node dist/contract/cli/validate-catalog-svg.js"
   },
   "dependencies": {
     "@odontogram/core": "0.1.0",

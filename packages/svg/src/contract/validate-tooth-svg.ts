@@ -4,6 +4,7 @@ import {
   extractSurfaceBindings,
   expectedSurfacesForToothClass,
   validateSurfaceSetForClass,
+  verifySurfaceFaceBinding,
 } from "./surface-binding.js";
 import type {
   ToothSvgRuleId,
@@ -329,6 +330,23 @@ function validateSurfaces(
         issues.push({
           ruleId: "contract.surfaces.match-class",
           message: `Interaction layer missing element for surface ${surface}`,
+          severity: "error",
+        });
+      }
+    }
+  }
+
+  const referenceToothId = options.metadata?.referenceToothId;
+  if (referenceToothId) {
+    for (const binding of bindings) {
+      if (
+        binding.face &&
+        !verifySurfaceFaceBinding(referenceToothId, binding.surface, binding.face)
+      ) {
+        issues.push({
+          ruleId: "contract.surfaces.orientation",
+          message: `Surface ${binding.surface} data-face="${binding.face}" does not match mapSurfaceToFace for reference tooth ${referenceToothId}`,
+          elementId: binding.elementId,
           severity: "error",
         });
       }
