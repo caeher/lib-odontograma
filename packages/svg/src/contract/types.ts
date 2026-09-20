@@ -36,6 +36,10 @@ export interface ToothSvgMetadata {
     tool?: string;
     template?: string;
   };
+  /** FDI tooth used to assign data-face values in this catalog family. */
+  referenceToothId?: string;
+  /** Catalog orientation family (patient side + arch). */
+  orientationKey?: string;
 }
 
 export interface ToothSvgValidationOptions {
@@ -59,7 +63,8 @@ export type ToothSvgRuleId =
   | "contract.anchors.present"
   | "contract.surfaces.match-class"
   | "contract.surfaces.binding"
-  | "contract.geometry.surface-regions";
+  | "contract.geometry.surface-regions"
+  | "contract.surfaces.orientation";
 
 export interface ToothSvgValidationIssue {
   ruleId: ToothSvgRuleId;

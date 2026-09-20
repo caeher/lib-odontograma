@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odontogram SVG catalog gallery</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <header class="app-header">
+      <h1>SVG catalog review</h1>
+      <p class="lede">
+        Occlusal schematic resources (16 families) and per-tooth manifest bindings (52 FDI teeth).
+      </p>
+    </header>
+    <main class="layout">
+      <section class="panel" aria-labelledby="families-heading">
+        <h2 id="families-heading">Catalog families</h2>
+        <div id="family-grid" class="card-grid"></div>
+      </section>
+      <section class="panel" aria-labelledby="teeth-heading">
+        <h2 id="teeth-heading">Tooth browser</h2>
+        <div class="controls">
+          <label>
+            Scale
+            <select id="scale-select" aria-label="Display scale">
+              <option value="24">24 px</option>
+              <option value="32" selected>32 px</option>
+              <option value="44">44 px</option>
+            </select>
+          </label>
+        </div>
+        <div id="tooth-grid" class="tooth-grid"></div>
+      </section>
+    </main>
+    <aside id="detail" class="detail" hidden>
+      <h3 id="detail-title">Surface</h3>
+      <dl id="detail-meta"></dl>
+    </aside>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

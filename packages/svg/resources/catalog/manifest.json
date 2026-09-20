@@ -1,0 +1,450 @@
+{
+  "contractVersion": "1.0.0",
+  "catalogVersion": "1.0.0",
+  "projection": "occlusal",
+  "familyCount": 16,
+  "families": [
+    {
+      "resourceId": "incisor.patient-right.maxillary.occlusal",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.maxillary",
+      "referenceToothId": "11",
+      "relativeSvgPath": "catalog/incisor/patient-right.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/incisor/patient-right.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "incisor.patient-left.maxillary.occlusal",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.maxillary",
+      "referenceToothId": "21",
+      "relativeSvgPath": "catalog/incisor/patient-left.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/incisor/patient-left.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "incisor.patient-right.mandibular.occlusal",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.mandibular",
+      "referenceToothId": "41",
+      "relativeSvgPath": "catalog/incisor/patient-right.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/incisor/patient-right.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "incisor.patient-left.mandibular.occlusal",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.mandibular",
+      "referenceToothId": "31",
+      "relativeSvgPath": "catalog/incisor/patient-left.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/incisor/patient-left.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "canine.patient-right.maxillary.occlusal",
+      "toothClass": "canine",
+      "orientationKey": "patient-right.maxillary",
+      "referenceToothId": "13",
+      "relativeSvgPath": "catalog/canine/patient-right.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/canine/patient-right.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "canine.patient-left.maxillary.occlusal",
+      "toothClass": "canine",
+      "orientationKey": "patient-left.maxillary",
+      "referenceToothId": "23",
+      "relativeSvgPath": "catalog/canine/patient-left.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/canine/patient-left.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "canine.patient-right.mandibular.occlusal",
+      "toothClass": "canine",
+      "orientationKey": "patient-right.mandibular",
+      "referenceToothId": "43",
+      "relativeSvgPath": "catalog/canine/patient-right.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/canine/patient-right.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "canine.patient-left.mandibular.occlusal",
+      "toothClass": "canine",
+      "orientationKey": "patient-left.mandibular",
+      "referenceToothId": "33",
+      "relativeSvgPath": "catalog/canine/patient-left.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/canine/patient-left.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "premolar.patient-right.maxillary.occlusal",
+      "toothClass": "premolar",
+      "orientationKey": "patient-right.maxillary",
+      "referenceToothId": "14",
+      "relativeSvgPath": "catalog/premolar/patient-right.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/premolar/patient-right.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "premolar.patient-left.maxillary.occlusal",
+      "toothClass": "premolar",
+      "orientationKey": "patient-left.maxillary",
+      "referenceToothId": "24",
+      "relativeSvgPath": "catalog/premolar/patient-left.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/premolar/patient-left.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "premolar.patient-right.mandibular.occlusal",
+      "toothClass": "premolar",
+      "orientationKey": "patient-right.mandibular",
+      "referenceToothId": "44",
+      "relativeSvgPath": "catalog/premolar/patient-right.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/premolar/patient-right.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "premolar.patient-left.mandibular.occlusal",
+      "toothClass": "premolar",
+      "orientationKey": "patient-left.mandibular",
+      "referenceToothId": "34",
+      "relativeSvgPath": "catalog/premolar/patient-left.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/premolar/patient-left.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "molar.patient-right.maxillary.occlusal",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.maxillary",
+      "referenceToothId": "16",
+      "relativeSvgPath": "catalog/molar/patient-right.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/molar/patient-right.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "molar.patient-left.maxillary.occlusal",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.maxillary",
+      "referenceToothId": "26",
+      "relativeSvgPath": "catalog/molar/patient-left.maxillary.occlusal.svg",
+      "relativeMetadataPath": "catalog/molar/patient-left.maxillary.occlusal.json"
+    },
+    {
+      "resourceId": "molar.patient-right.mandibular.occlusal",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.mandibular",
+      "referenceToothId": "46",
+      "relativeSvgPath": "catalog/molar/patient-right.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/molar/patient-right.mandibular.occlusal.json"
+    },
+    {
+      "resourceId": "molar.patient-left.mandibular.occlusal",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.mandibular",
+      "referenceToothId": "36",
+      "relativeSvgPath": "catalog/molar/patient-left.mandibular.occlusal.svg",
+      "relativeMetadataPath": "catalog/molar/patient-left.mandibular.occlusal.json"
+    }
+  ],
+  "teeth": {
+    "11": {
+      "resourceId": "incisor.patient-right.maxillary.occlusal",
+      "referenceToothId": "11",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "12": {
+      "resourceId": "incisor.patient-right.maxillary.occlusal",
+      "referenceToothId": "12",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "13": {
+      "resourceId": "canine.patient-right.maxillary.occlusal",
+      "referenceToothId": "13",
+      "toothClass": "canine",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "14": {
+      "resourceId": "premolar.patient-right.maxillary.occlusal",
+      "referenceToothId": "14",
+      "toothClass": "premolar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "15": {
+      "resourceId": "premolar.patient-right.maxillary.occlusal",
+      "referenceToothId": "15",
+      "toothClass": "premolar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "16": {
+      "resourceId": "molar.patient-right.maxillary.occlusal",
+      "referenceToothId": "16",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "17": {
+      "resourceId": "molar.patient-right.maxillary.occlusal",
+      "referenceToothId": "17",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "18": {
+      "resourceId": "molar.patient-right.maxillary.occlusal",
+      "referenceToothId": "18",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "21": {
+      "resourceId": "incisor.patient-left.maxillary.occlusal",
+      "referenceToothId": "21",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "22": {
+      "resourceId": "incisor.patient-left.maxillary.occlusal",
+      "referenceToothId": "22",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "23": {
+      "resourceId": "canine.patient-left.maxillary.occlusal",
+      "referenceToothId": "23",
+      "toothClass": "canine",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "24": {
+      "resourceId": "premolar.patient-left.maxillary.occlusal",
+      "referenceToothId": "24",
+      "toothClass": "premolar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "25": {
+      "resourceId": "premolar.patient-left.maxillary.occlusal",
+      "referenceToothId": "25",
+      "toothClass": "premolar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "26": {
+      "resourceId": "molar.patient-left.maxillary.occlusal",
+      "referenceToothId": "26",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "27": {
+      "resourceId": "molar.patient-left.maxillary.occlusal",
+      "referenceToothId": "27",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "28": {
+      "resourceId": "molar.patient-left.maxillary.occlusal",
+      "referenceToothId": "28",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "31": {
+      "resourceId": "incisor.patient-left.mandibular.occlusal",
+      "referenceToothId": "31",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "32": {
+      "resourceId": "incisor.patient-left.mandibular.occlusal",
+      "referenceToothId": "32",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "33": {
+      "resourceId": "canine.patient-left.mandibular.occlusal",
+      "referenceToothId": "33",
+      "toothClass": "canine",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "34": {
+      "resourceId": "premolar.patient-left.mandibular.occlusal",
+      "referenceToothId": "34",
+      "toothClass": "premolar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "35": {
+      "resourceId": "premolar.patient-left.mandibular.occlusal",
+      "referenceToothId": "35",
+      "toothClass": "premolar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "36": {
+      "resourceId": "molar.patient-left.mandibular.occlusal",
+      "referenceToothId": "36",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "37": {
+      "resourceId": "molar.patient-left.mandibular.occlusal",
+      "referenceToothId": "37",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "38": {
+      "resourceId": "molar.patient-left.mandibular.occlusal",
+      "referenceToothId": "38",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "41": {
+      "resourceId": "incisor.patient-right.mandibular.occlusal",
+      "referenceToothId": "41",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "42": {
+      "resourceId": "incisor.patient-right.mandibular.occlusal",
+      "referenceToothId": "42",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "43": {
+      "resourceId": "canine.patient-right.mandibular.occlusal",
+      "referenceToothId": "43",
+      "toothClass": "canine",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "44": {
+      "resourceId": "premolar.patient-right.mandibular.occlusal",
+      "referenceToothId": "44",
+      "toothClass": "premolar",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "45": {
+      "resourceId": "premolar.patient-right.mandibular.occlusal",
+      "referenceToothId": "45",
+      "toothClass": "premolar",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "46": {
+      "resourceId": "molar.patient-right.mandibular.occlusal",
+      "referenceToothId": "46",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "47": {
+      "resourceId": "molar.patient-right.mandibular.occlusal",
+      "referenceToothId": "47",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "48": {
+      "resourceId": "molar.patient-right.mandibular.occlusal",
+      "referenceToothId": "48",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "51": {
+      "resourceId": "incisor.patient-right.maxillary.occlusal",
+      "referenceToothId": "51",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "52": {
+      "resourceId": "incisor.patient-right.maxillary.occlusal",
+      "referenceToothId": "52",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "53": {
+      "resourceId": "canine.patient-right.maxillary.occlusal",
+      "referenceToothId": "53",
+      "toothClass": "canine",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "54": {
+      "resourceId": "molar.patient-right.maxillary.occlusal",
+      "referenceToothId": "54",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "55": {
+      "resourceId": "molar.patient-right.maxillary.occlusal",
+      "referenceToothId": "55",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.maxillary"
+    },
+    "61": {
+      "resourceId": "incisor.patient-left.maxillary.occlusal",
+      "referenceToothId": "61",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "62": {
+      "resourceId": "incisor.patient-left.maxillary.occlusal",
+      "referenceToothId": "62",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "63": {
+      "resourceId": "canine.patient-left.maxillary.occlusal",
+      "referenceToothId": "63",
+      "toothClass": "canine",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "64": {
+      "resourceId": "molar.patient-left.maxillary.occlusal",
+      "referenceToothId": "64",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "65": {
+      "resourceId": "molar.patient-left.maxillary.occlusal",
+      "referenceToothId": "65",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.maxillary"
+    },
+    "71": {
+      "resourceId": "incisor.patient-left.mandibular.occlusal",
+      "referenceToothId": "71",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "72": {
+      "resourceId": "incisor.patient-left.mandibular.occlusal",
+      "referenceToothId": "72",
+      "toothClass": "incisor",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "73": {
+      "resourceId": "canine.patient-left.mandibular.occlusal",
+      "referenceToothId": "73",
+      "toothClass": "canine",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "74": {
+      "resourceId": "molar.patient-left.mandibular.occlusal",
+      "referenceToothId": "74",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "75": {
+      "resourceId": "molar.patient-left.mandibular.occlusal",
+      "referenceToothId": "75",
+      "toothClass": "molar",
+      "orientationKey": "patient-left.mandibular"
+    },
+    "81": {
+      "resourceId": "incisor.patient-right.mandibular.occlusal",
+      "referenceToothId": "81",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "82": {
+      "resourceId": "incisor.patient-right.mandibular.occlusal",
+      "referenceToothId": "82",
+      "toothClass": "incisor",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "83": {
+      "resourceId": "canine.patient-right.mandibular.occlusal",
+      "referenceToothId": "83",
+      "toothClass": "canine",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "84": {
+      "resourceId": "molar.patient-right.mandibular.occlusal",
+      "referenceToothId": "84",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.mandibular"
+    },
+    "85": {
+      "resourceId": "molar.patient-right.mandibular.occlusal",
+      "referenceToothId": "85",
+      "toothClass": "molar",
+      "orientationKey": "patient-right.mandibular"
+    }
+  }
+}

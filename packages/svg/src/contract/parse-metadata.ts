@@ -40,6 +40,12 @@ export function parseToothSvgMetadata(raw: unknown): ToothSvgMetadata {
   if (obj.editor !== undefined) {
     metadata.editor = readEditor(obj.editor);
   }
+  if (obj.referenceToothId !== undefined) {
+    metadata.referenceToothId = readString(obj, "referenceToothId");
+  }
+  if (obj.orientationKey !== undefined) {
+    metadata.orientationKey = readString(obj, "orientationKey");
+  }
 
   return metadata;
 }

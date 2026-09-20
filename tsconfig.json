@@ -11,7 +11,8 @@
       "@odontogram/core": ["./packages/core/src/index.ts"],
       "@odontogram/dentition": ["./packages/dentition/src/index.ts"],
       "@odontogram/svg": ["./packages/svg/src/index.ts"],
-      "@odontogram/svg/contract": ["./packages/svg/src/contract/index.ts"]
+      "@odontogram/svg/contract": ["./packages/svg/src/contract/index.ts"],
+      "@odontogram/svg/catalog": ["./packages/svg/src/catalog/index.ts"]
     }
   },
   "include": ["packages/**/*.ts", "vitest.config.ts"],

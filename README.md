@@ -61,7 +61,7 @@ odontogram.setState({
 | ----------------------- | ------- | -------------------------------------------------------------------------------- |
 | `@odontogram/core`      | `0.1.0` | Instance API, options, state, plugins, hooks, host styles                        |
 | `@odontogram/dentition` | `0.1.0` | Canonical tooth catalog, clinical surfaces, notation labels, orientation mapping |
-| `@odontogram/svg`       | `0.1.0` | Schematic SVG view plugin (permanent, deciduous, mixed) and SVG styles           |
+| `@odontogram/svg`       | `0.1.0` | Schematic SVG view plugin, contract validator, occlusal catalog (`/catalog`)     |
 
 ## Documentation
 
@@ -71,6 +71,7 @@ odontogram.setState({
 - [API reference](docs/api.md) — constructor, methods, options, state, hooks
 - [Dental model review](docs/dental-review.md) — catalog fixtures, terminology, professional review gate
 - [Attributions & References](docs/attributions.md) — dental standards and architectural patterns
+- [SVG catalog](docs/svg-catalog.md) — occlusal schematic art, manifest API, review gallery
 
 ## Development & Verification
 
@@ -82,6 +83,8 @@ npm run typecheck    # Strict TypeScript type check
 npm run lint         # Run ESLint across codebase
 npm run format:check # Verify code formatting with Prettier
 npm run verify:pack  # Pack packages into tarballs and verify JS + TS consumers
+npm run validate:svg # Contract validation (template, fixtures, catalog)
+npm run gallery      # SVG catalog review UI (Vite)
 ```
 
 Run vanilla example locally:

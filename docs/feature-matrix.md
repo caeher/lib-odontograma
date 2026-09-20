@@ -60,6 +60,9 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Schematic SVG renderer |  —   |     —     | ✅  |    —    |    —     | 01    |
 | SVG resource contract  |  —   |     —     | ✅  |    —    |    —     | 03    |
 | Tooth SVG validator    |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Occlusal SVG catalog (52) | — |     —     | ✅  |    —    |    —     | 03    |
+| Catalog manifest API   |  —   |     —     | ✅  |    —    |    —     | 03    |
+| SVG review gallery     |  —   |     —     | ✅  |    —    |    —     | 03    |
 | Permanent view         |  —   |     —     | ✅  |    —    |    —     | 01    |
 | Deciduous view         |  —   |     —     | ✅  |    —    |    —     | 01    |
 | Mixed view             |  —   |     —     | ✅  |    —    |    —     | 01    |
