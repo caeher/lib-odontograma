@@ -109,11 +109,9 @@ function buildSvg(toothClass: ToothClass, referenceToothId: ToothId, title: stri
   </g>
   <g id="layer-interaction" data-role="interaction">
 ${surfaceRegions.replace(/fill="#e8e8e8"/g, (match, offset, whole) => {
-      const line = whole.slice(Math.max(0, offset - 80), offset);
-      return line.includes("surface-O") || line.includes("surface-I")
-        ? `fill="${centerFill}"`
-        : match;
-    })}
+  const line = whole.slice(Math.max(0, offset - 80), offset);
+  return line.includes("surface-O") || line.includes("surface-I") ? `fill="${centerFill}"` : match;
+})}
   </g>
   <g id="layer-focus" data-role="focus" aria-hidden="true"/>
   <g id="layer-marks" data-role="marks" aria-hidden="true"/>
@@ -198,13 +196,22 @@ for (const toothClass of TOOTH_CLASSES) {
     const title = meta.title as string;
     const svg = buildSvg(toothClass, ref, title);
     fs.writeFileSync(path.join(classDir, `${stem}.svg`), svg, "utf8");
-    fs.writeFileSync(path.join(classDir, `${stem}.json`), `${JSON.stringify(meta, null, 2)}\n`, "utf8");
+    fs.writeFileSync(
+      path.join(classDir, `${stem}.json`),
+      `${JSON.stringify(meta, null, 2)}\n`,
+      "utf8",
+    );
   }
 }
 
 const manifestTeeth: Record<
   string,
-  { resourceId: string; referenceToothId: string; toothClass: ToothClass; orientationKey: OrientationKey }
+  {
+    resourceId: string;
+    referenceToothId: string;
+    toothClass: ToothClass;
+    orientationKey: OrientationKey;
+  }
 > = {};
 
 for (const record of getAllToothRecords()) {
@@ -250,5 +257,9 @@ const manifest = {
   teeth: manifestTeeth,
 };
 
-fs.writeFileSync(path.join(catalogRoot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+fs.writeFileSync(
+  path.join(catalogRoot, "manifest.json"),
+  `${JSON.stringify(manifest, null, 2)}\n`,
+  "utf8",
+);
 console.log(`Wrote catalog under ${catalogRoot} (${Object.keys(manifestTeeth).length} teeth).`);

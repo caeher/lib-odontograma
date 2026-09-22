@@ -11,14 +11,14 @@ Related documents:
 
 ## Terms
 
-| Term | Definition |
-| ---- | ---------- |
-| **Tooth resource** | One SVG file describing a single tooth projection (e.g. occlusal schematic). |
-| **Metadata sidecar** | JSON file paired with the SVG (`*.json`) validated by `parseToothSvgMetadata`. |
-| **Clinical surface** | Code `M`, `O`, `I`, `D`, `B`, `L` from `@odontogram/dentition`. |
-| **Graphic face** | Schematic region `left`, `right`, `top`, `bottom`, `center` — not a clinical surface. |
-| **Instance prefix** | String prepended to every `id` when composing multiple teeth (see Instance IDs). |
-| **Layer** | Top-level `<g>` group with a contract layer id. |
+| Term                 | Definition                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------- |
+| **Tooth resource**   | One SVG file describing a single tooth projection (e.g. occlusal schematic).          |
+| **Metadata sidecar** | JSON file paired with the SVG (`*.json`) validated by `parseToothSvgMetadata`.        |
+| **Clinical surface** | Code `M`, `O`, `I`, `D`, `B`, `L` from `@odontogram/dentition`.                       |
+| **Graphic face**     | Schematic region `left`, `right`, `top`, `bottom`, `center` — not a clinical surface. |
+| **Instance prefix**  | String prepended to every `id` when composing multiple teeth (see Instance IDs).      |
+| **Layer**            | Top-level `<g>` group with a contract layer id.                                       |
 
 **Source of truth:** Applicable surfaces and clinical→graphic mapping live in `@odontogram/dentition`. The SVG package validates binding but does not duplicate surface rules.
 
@@ -53,10 +53,10 @@ Every interactive surface region in `#layer-interaction` must:
 
 ### Tooth class applicability
 
-| Tooth class | Required `data-surface` codes |
-| ----------- | ------------------------------- |
-| Incisor, canine | `M`, `I`, `D`, `B`, `L` |
-| Premolar, molar | `M`, `O`, `D`, `B`, `L` |
+| Tooth class     | Required `data-surface` codes |
+| --------------- | ----------------------------- |
+| Incisor, canine | `M`, `I`, `D`, `B`, `L`       |
+| Premolar, molar | `M`, `O`, `D`, `B`, `L`       |
 
 Incisors use **incisal (`I`)** on the center face; posteriors use **occlusal (`O`)**. The shipped molar template demonstrates `O`; incisor assets swap `surface-O` → `surface-I`.
 
@@ -142,21 +142,21 @@ npm run validate:svg -- --metadata path/to/meta.json path/to/tooth.svg
 
 Stable **`ruleId`** values include:
 
-| ruleId | Meaning |
-| ------ | ------- |
-| `contract.root-element` | Parseable SVG root |
-| `contract.viewbox` | viewBox matches metadata / default |
-| `contract.metadata.version` | Sidecar version mismatch |
-| `contract.security.no-script` | Scripts or event handlers |
-| `contract.security.no-external-refs` | External URLs |
-| `contract.layers.present` | Required layers exist |
-| `contract.layers.order` | Layer order on root |
-| `contract.ids.unique` | Duplicate ids |
-| `contract.outline.present` | `#tooth-outline` geometry |
-| `contract.anchors.present` | Required anchors |
-| `contract.surfaces.match-class` | Surfaces vs `toothClass` |
-| `contract.surfaces.binding` | Missing `data-face` |
-| `contract.geometry.surface-regions` | Empty or missing paths |
+| ruleId                               | Meaning                            |
+| ------------------------------------ | ---------------------------------- |
+| `contract.root-element`              | Parseable SVG root                 |
+| `contract.viewbox`                   | viewBox matches metadata / default |
+| `contract.metadata.version`          | Sidecar version mismatch           |
+| `contract.security.no-script`        | Scripts or event handlers          |
+| `contract.security.no-external-refs` | External URLs                      |
+| `contract.layers.present`            | Required layers exist              |
+| `contract.layers.order`              | Layer order on root                |
+| `contract.ids.unique`                | Duplicate ids                      |
+| `contract.outline.present`           | `#tooth-outline` geometry          |
+| `contract.anchors.present`           | Required anchors                   |
+| `contract.surfaces.match-class`      | Surfaces vs `toothClass`           |
+| `contract.surfaces.binding`          | Missing `data-face`                |
+| `contract.geometry.surface-regions`  | Empty or missing paths             |
 
 Fixtures: [`packages/svg/fixtures/contract/`](../packages/svg/fixtures/contract/).
 

@@ -1,4 +1,8 @@
-import { createDefaultState, DEFAULT_OPTIONS, getToothPresence as resolvePresence } from "./defaults.js";
+import {
+  createDefaultState,
+  DEFAULT_OPTIONS,
+  getToothPresence as resolvePresence,
+} from "./defaults.js";
 import { OdontogramError, OdontogramValidationError, VALIDATION_CODES } from "./errors.js";
 import {
   filterMarks,
@@ -33,6 +37,7 @@ import type {
   ValidationResult,
   ValidatorConfig,
   ViewDefinition,
+  ViewOptions,
   ViewRenderContext,
   ViewType,
 } from "./types.js";
@@ -183,7 +188,7 @@ export class Odontogram {
     this.requestRender();
   }
 
-  changeView(view: ViewType): void {
+  changeView(view: ViewType, viewOptions?: ViewOptions): void {
     if (typeof view !== "string" || view.trim() === "") {
       throw new OdontogramValidationError(
         "View must be a non-empty string.",
@@ -201,7 +206,30 @@ export class Odontogram {
     }
 
     this.assertMutable("change view");
-    if (this.state.view === view) return;
+
+    const mergedViewOptions: ViewOptions = {
+      ...(this.options.viewOptions ?? {}),
+      ...(viewOptions ?? {}),
+    };
+
+    if (view.startsWith("quadrant-")) {
+      const qNum = parseInt(view.slice("quadrant-".length), 10);
+      if (!isNaN(qNum)) mergedViewOptions.quadrant = qNum;
+    } else if (view.startsWith("tooth-")) {
+      const toothId = view.slice("tooth-".length);
+      if (toothId) mergedViewOptions.tooth = toothId;
+    } else if (view === "maxillary" || view === "upper") {
+      mergedViewOptions.arch = "upper";
+    } else if (view === "mandibular" || view === "lower") {
+      mergedViewOptions.arch = "lower";
+    }
+
+    this.options.viewOptions = mergedViewOptions;
+
+    if (this.state.view === view) {
+      this.requestRender();
+      return;
+    }
     this.setState({ view }, { source: "internal" });
   }
 
@@ -488,10 +516,7 @@ export class Odontogram {
   removeMark(id: string): boolean {
     this.assertMutable("remove mark");
     if (!this.hasMark(id)) return false;
-    this.setState(
-      { marks: this.state.marks.filter((m) => m.id !== id) },
-      { source: "internal" },
-    );
+    this.setState({ marks: this.state.marks.filter((m) => m.id !== id) }, { source: "internal" });
     return true;
   }
 
@@ -863,7 +888,11 @@ export class Odontogram {
                 const prev = preState.teeth[toothId] ?? { presence: "present" };
                 const curr = this.state.teeth[toothId] ?? { presence: "present" };
                 if (!isDeepEqual(prev, curr)) {
-                  toothCallback({ toothId, state: deepClone(curr), previousState: deepClone(prev) });
+                  toothCallback({
+                    toothId,
+                    state: deepClone(curr),
+                    previousState: deepClone(prev),
+                  });
                 }
               }
             }
@@ -911,7 +940,9 @@ export class Odontogram {
   reset(options?: ResetOptions): void {
     const targetView =
       options?.initialView ??
-      (options?.keepView ? this.state.view : (this.getOption("initialView") ?? DEFAULT_OPTIONS.initialView));
+      (options?.keepView
+        ? this.state.view
+        : (this.getOption("initialView") ?? DEFAULT_OPTIONS.initialView));
     const targetSelection: SelectionState = options?.keepSelection
       ? deepClone(this.state.selection)
       : { teeth: [], surfaces: [] };
@@ -984,8 +1015,39 @@ export class Odontogram {
     }
   }
 
+  private resolveViewDefinition(viewType: string): ViewDefinition | undefined {
+    if (this.viewMap.has(viewType)) {
+      return this.viewMap.get(viewType);
+    }
+    if (viewType === "primary" && this.viewMap.has("deciduous")) {
+      return this.viewMap.get("deciduous");
+    }
+    if (viewType === "deciduous" && this.viewMap.has("primary")) {
+      return this.viewMap.get("primary");
+    }
+    if (
+      (viewType === "upper" ||
+        viewType === "lower" ||
+        viewType === "maxillary" ||
+        viewType === "mandibular") &&
+      this.viewMap.has("arch")
+    ) {
+      return this.viewMap.get("arch");
+    }
+    if (viewType.startsWith("quadrant-") && this.viewMap.has("quadrant")) {
+      return this.viewMap.get("quadrant");
+    }
+    if (
+      viewType.startsWith("tooth-") &&
+      (this.viewMap.has("tooth") || this.viewMap.has("tooth-detail"))
+    ) {
+      return this.viewMap.get("tooth") ?? this.viewMap.get("tooth-detail");
+    }
+    return undefined;
+  }
+
   private mountView(): void {
-    const viewDef = this.viewMap.get(this.state.view);
+    const viewDef = this.resolveViewDefinition(this.state.view);
     if (!viewDef) {
       console.warn(
         `[Odontogram] No view implementation registered for "${this.state.view}". Add a view plugin (e.g. @odontogram/svg) to render.`,
@@ -1030,6 +1092,7 @@ export class Odontogram {
       el,
       options: this.options,
       state: deepClone(this.state),
+      viewOptions: deepClone(this.options.viewOptions),
       requestRender: () => this.requestRender(),
       selectTooth: controlled
         ? () => {
@@ -1076,9 +1139,14 @@ export class Odontogram {
 
     this.viewContext.state = deepClone(this.state);
     this.viewContext.options = this.options;
-    this.activeView.destroy?.(this.viewContext);
-    this.hostEl.innerHTML = "";
-    this.activeView.render(this.viewContext);
+
+    if (typeof this.activeView.update === "function") {
+      this.activeView.update(this.viewContext);
+    } else {
+      this.activeView.destroy?.(this.viewContext);
+      this.hostEl.innerHTML = "";
+      this.activeView.render(this.viewContext);
+    }
   }
 
   private emitToothClick(tooth: ToothId, jsEvent: MouseEvent): void {

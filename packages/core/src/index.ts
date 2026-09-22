@@ -99,6 +99,7 @@ export type {
   ValidatorConfig,
   ViewDefinition,
   ViewMountArg,
+  ViewOptions,
   ViewRenderContext,
   ViewType,
   WholeToothTarget,

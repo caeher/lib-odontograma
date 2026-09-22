@@ -4,16 +4,13 @@ import {
   mapFaceToSurface,
   type ClinicalSurface,
 } from "@odontogram/dentition";
-import {
-  getManifest,
-  listCatalogFamilies,
-  resolveToothSvgResource,
-} from "@odontogram/svg/catalog";
+import { getManifest, listCatalogFamilies, resolveToothSvgResource } from "@odontogram/svg/catalog";
 
-const catalogSvgModules = import.meta.glob(
-  "../../../packages/svg/resources/catalog/**/*.svg",
-  { query: "?raw", import: "default", eager: true },
-) as Record<string, string>;
+const catalogSvgModules = import.meta.glob("../../../packages/svg/resources/catalog/**/*.svg", {
+  query: "?raw",
+  import: "default",
+  eager: true,
+}) as Record<string, string>;
 
 function catalogSvgByRelativePath(relativeSvgPath: string): string {
   const suffix = relativeSvgPath.replace(/^catalog\//, "catalog/");
@@ -69,9 +66,7 @@ function updateHighlights(): void {
     const surface = el.getAttribute("data-surface");
     const tooth = el.closest("[data-tooth-id]")?.getAttribute("data-tooth-id");
     const on =
-      highlightedSurface !== null &&
-      surface === highlightedSurface &&
-      tooth === activeToothId;
+      highlightedSurface !== null && surface === highlightedSurface && tooth === activeToothId;
     el.classList.toggle("is-highlighted", on);
   }
 }

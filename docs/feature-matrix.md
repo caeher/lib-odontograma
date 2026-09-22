@@ -20,19 +20,19 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 
 ## Model & Data Operations
 
-| Feature                          | Core | Dentition | SVG | Plugins | Adapters | Stage |
-| -------------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
-| Typed marks CRUD operations      |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Immutable mark IDs               |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Tooth state & presence CRUD      |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| DOM-independent selection        |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Atomic batch transaction rollback|  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Controlled & internal modes      |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Monotonic revision tracking      |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Reset operations                 |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Orphaned mark pruning            |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Multi-instance isolation         |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| Defensive cloning / immutability |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Feature                           | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| --------------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Typed marks CRUD operations       |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Immutable mark IDs                |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Tooth state & presence CRUD       |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| DOM-independent selection         |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Atomic batch transaction rollback |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Controlled & internal modes       |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Monotonic revision tracking       |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Reset operations                  |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Orphaned mark pruning             |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Multi-instance isolation          |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Defensive cloning / immutability  |  ✅  |     —     |  —  |    —    |    —     | 02    |
 
 ## Dentition
 
@@ -55,20 +55,31 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 
 ## Rendering
 
-| Feature                | Core | Dentition | SVG | Plugins | Adapters | Stage |
-| ---------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
-| Schematic SVG renderer |  —   |     —     | ✅  |    —    |    —     | 01    |
-| SVG resource contract  |  —   |     —     | ✅  |    —    |    —     | 03    |
-| Tooth SVG validator    |  —   |     —     | ✅  |    —    |    —     | 03    |
-| Occlusal SVG catalog (52) | — |     —     | ✅  |    —    |    —     | 03    |
-| Catalog manifest API   |  —   |     —     | ✅  |    —    |    —     | 03    |
-| SVG review gallery     |  —   |     —     | ✅  |    —    |    —     | 03    |
-| Permanent view         |  —   |     —     | ✅  |    —    |    —     | 01    |
-| Deciduous view         |  —   |     —     | ✅  |    —    |    —     | 01    |
-| Mixed view             |  —   |     —     | ✅  |    —    |    —     | 01    |
-| Anatomical tooth paths |  —   |     —     |  —  |    —    |    —     | later |
-| Canvas renderer        |  —   |     —     |  —  |    —    |    —     | later |
-| Custom renderer plugin |  ✅  |     —     |  —  |   ✅    |    —     | 01    |
+| Feature                        | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| ------------------------------ | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Schematic SVG renderer         |  —   |     —     | ✅  |    —    |    —     | 01    |
+| Fine-grained incremental SVG   |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Multi-instance defs isolation  |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Multi-tooth annotation layer   |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Focus & selection preservation |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Hidden container resilience    |  —   |     —     | ✅  |    —    |    —     | 03    |
+| SVG resource contract          |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Tooth SVG validator            |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Occlusal SVG catalog (52)      |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Catalog manifest API           |  —   |     —     | ✅  |    —    |    —     | 03    |
+| SVG review gallery             |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Permanent view                 |  —   |     —     | ✅  |    —    |    —     | 01    |
+| Deciduous / Primary view       |  —   |     —     | ✅  |    —    |    —     | 01    |
+| Mixed view (4-row layout)      |  —   |     —     | ✅  |    —    |    —     | 03    |
+| Arch views (upper / lower)     |  ✅  |    ✅     | ✅  |    —    |    —     | 03    |
+| Quadrant views (1..8)          |  ✅  |    ✅     | ✅  |    —    |    —     | 03    |
+| Single tooth detail view       |  ✅  |    ✅     | ✅  |    —    |    —     | 03    |
+| Patient orientation (R / L)    |  ✅  |    ✅     | ✅  |    —    |    —     | 03    |
+| Central midline divider        |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Visible teeth filtering        |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Anatomical tooth paths         |  —   |     —     |  —  |    —    |    —     | later |
+| Canvas renderer                |  —   |     —     |  —  |    —    |    —     | later |
+| Custom renderer plugin         |  ✅  |     —     |  —  |   ✅    |    —     | 01    |
 
 ## Interaction
 

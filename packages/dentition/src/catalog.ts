@@ -198,6 +198,22 @@ export function getMixedTeeth(): readonly ToothId[] {
   return [...getPermanentTeeth(), ...getPrimaryTeeth()];
 }
 
+export function getQuadrantTeeth(quadrant: QuadrantId): readonly ToothId[] {
+  return listTeeth({ quadrant }).map((r) => r.id);
+}
+
+export function getArchTeethForDentition(
+  dentition: DentitionId | "mixed" | "deciduous",
+  arch: ArchId | "upper" | "lower",
+): readonly ToothId[] {
+  const anatomicalArch = arch === "upper" ? "maxillary" : arch === "lower" ? "mandibular" : arch;
+  const targetDentition = dentition === "deciduous" ? "primary" : dentition;
+  if (targetDentition === "mixed") {
+    return listTeeth({ arch: anatomicalArch }).map((r) => r.id);
+  }
+  return listTeeth({ dentition: targetDentition, arch: anatomicalArch }).map((r) => r.id);
+}
+
 export type DentitionView = "permanent" | "deciduous" | "primary" | "mixed";
 
 export function getTeethForView(view: DentitionView): readonly ToothId[] {

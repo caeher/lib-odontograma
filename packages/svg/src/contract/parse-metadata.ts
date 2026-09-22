@@ -85,13 +85,12 @@ function readToothClass(obj: Record<string, unknown>, key: string): ToothSvgMeta
   return value;
 }
 
-function readProjection(
-  obj: Record<string, unknown>,
-  key: string,
-): ToothSvgMetadata["projection"] {
+function readProjection(obj: Record<string, unknown>, key: string): ToothSvgMetadata["projection"] {
   const value = obj[key];
   if (value !== "occlusal") {
-    throw new ToothSvgMetadataError(`Metadata field "${key}" must be "occlusal" (only projection in v1)`);
+    throw new ToothSvgMetadataError(
+      `Metadata field "${key}" must be "occlusal" (only projection in v1)`,
+    );
   }
   return value;
 }

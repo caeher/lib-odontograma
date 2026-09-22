@@ -4,10 +4,10 @@ Authoring starter for [`docs/svg-contract.md`](../../../docs/svg-contract.md) co
 
 ## Files
 
-| File | Purpose |
-| ---- | ------- |
-| `tooth-occlusal-schematic.template.svg` | Molar/posterior occlusal schematic with full layer stack |
-| `tooth-occlusal-schematic.template.json` | Metadata sidecar validated by `parseToothSvgMetadata` |
+| File                                     | Purpose                                                  |
+| ---------------------------------------- | -------------------------------------------------------- |
+| `tooth-occlusal-schematic.template.svg`  | Molar/posterior occlusal schematic with full layer stack |
+| `tooth-occlusal-schematic.template.json` | Metadata sidecar validated by `parseToothSvgMetadata`    |
 
 ## Incisor / canine variant
 

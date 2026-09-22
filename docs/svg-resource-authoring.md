@@ -24,15 +24,17 @@ Workflow for creating tooth vector resources that conform to the [SVG contract](
 4. **Preserve layers**  
    Do not flatten the five layer groups. Put new anatomy only in `#layer-anatomy`, hit targets in `#layer-interaction`.
 
-5. **Name resources**  
-   - SVG: `{resource-id}.svg` (lowercase, dots/hyphens)  
-   - Sidecar: same stem + `.json`  
+5. **Name resources**
+   - SVG: `{resource-id}.svg` (lowercase, dots/hyphens)
+   - Sidecar: same stem + `.json`
    - `resourceId` in JSON must match the stem.
 
-6. **Validate**  
+6. **Validate**
+
    ```bash
    npm run validate:svg -- packages/svg/resources/template/tooth-occlusal-schematic.template.svg
    ```
+
    Auto-discovers a sibling `.json` sidecar when `--metadata` is omitted.
 
 7. **Optimize safely**  
@@ -43,12 +45,12 @@ Workflow for creating tooth vector resources that conform to the [SVG contract](
 
 ## Naming conventions
 
-| Artifact | Convention |
-| -------- | ------------ |
-| Layer groups | Fixed ids `layer-anatomy`, … |
-| Surfaces | `surface-M`, `surface-O` or `surface-I`, … |
-| Anchors | `anchor-center`, `anchor-mesial`, `anchor-distal` |
-| Outline | `tooth-outline` |
+| Artifact        | Convention                                          |
+| --------------- | --------------------------------------------------- |
+| Layer groups    | Fixed ids `layer-anatomy`, …                        |
+| Surfaces        | `surface-M`, `surface-O` or `surface-I`, …          |
+| Anchors         | `anchor-center`, `anchor-mesial`, `anchor-distal`   |
+| Outline         | `tooth-outline`                                     |
 | Instance prefix | `{fdi}-` or `{instanceId}-` applied at compose time |
 
 ## Licensing

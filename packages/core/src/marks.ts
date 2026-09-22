@@ -238,10 +238,7 @@ export function markMatchesFilter(mark: OdontographicMark, filter: MarkFilter): 
 }
 
 /** Return marks from an array that match the optional filter. */
-export function filterMarks(
-  marks: OdontographicMark[],
-  filter?: MarkFilter,
-): OdontographicMark[] {
+export function filterMarks(marks: OdontographicMark[], filter?: MarkFilter): OdontographicMark[] {
   if (!filter) {
     return marks;
   }

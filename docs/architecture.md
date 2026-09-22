@@ -67,11 +67,21 @@ A recorded mark is a record of clinical observation, historical finding, or plan
 
 ### SVG renderer (`@odontogram/svg`)
 
-**Responsibility:** Schematic SVG view plugin registering `permanent`, `deciduous`, and `mixed` views. Renders geometric tooth shapes with five clickable surface regions and mark overlays. Owns the **tooth SVG resource contract** ([`svg-contract.md`](svg-contract.md)) via `@odontogram/svg/contract`.
+**Responsibility:** Interactive incremental SVG view plugin registering `permanent`, `deciduous` (`primary`), `mixed`, `arch`, `quadrant`, and `tooth-detail` views. Renders geometric tooth shapes structured into arch groups, quadrant groups, orientation badges, midline divider, a multi-tooth annotation layer, and per-tooth contract layers (`#layer-anatomy`, `#layer-interaction`, `#layer-focus`, `#layer-marks`, `#layer-labels`). Owns the **tooth SVG resource contract** ([`svg-contract.md`](svg-contract.md)) via `@odontogram/svg/contract`.
+
+**Key Capabilities (Stage 03):**
+
+- **Multi-View Navigation & Zero Data Loss:** Seamless transitions between full dentitions (permanent, deciduous, mixed), single arches (upper/lower), quadrants (1–8), and enlarged single-tooth detail views without losing state, biological overlays, annotations, or selections.
+- **Mixed Dentition 4-Row Anatomical Layout:** Arranges 52 teeth across 4 rows (Permanent Upper, Deciduous Upper, Deciduous Lower, Permanent Lower) with exact successor/predecessor horizontal alignment and zero bounding-box overlaps.
+- **Orientation & Midline Guides:** Displays clinical patient right (`R` / screen left) and patient left (`L` / screen right) badges and central midline divider across all arch and quadrant configurations.
+- **Fine-Grained Incremental Diffing:** `update()` modifies only affected elements in place, preserving DOM nodes and active keyboard/pointer focus during live mutations.
+- **Multi-Instance Defs Isolation:** All `<defs>`, clip paths, patterns, and element IDs use instance-scoped prefixes to ensure zero ID collisions when multiple charts are mounted concurrently.
+- **Multi-Tooth Annotation Layer:** Dedicated layer rendering connected spans (e.g. bridges across abutments and pontics) with stable mark identity across partial and full views.
+- **Container Resilience:** Purely coordinate-based vector layout ensuring flawless rendering in initially hidden containers (`display: none`), responsive resizing, and clean listener/observer teardown on `destroy()`.
 
 **Depends on:** `@odontogram/core` (plugin API, view context), `@odontogram/dentition` (tooth lists, notation labels, surface mapping).
 
-**Does not:** Manage state — reads from `ViewRenderContext.state` and calls context methods for interactions. The default view still uses the procedural schematic renderer (#10); shipped **catalog art** (#9) is resolved via `@odontogram/svg/catalog` for composition and review tooling, not as a replacement renderer.
+**Does not:** Manage state — reads from `ViewRenderContext.state` and calls context methods for interactions. The default view uses the procedural schematic renderer with incremental updates; shipped **catalog art** is resolved via `@odontogram/svg/catalog` for review tooling and resource validation.
 
 ### Plugins
 
@@ -156,6 +166,7 @@ The goal is API familiarity for developers who know FullCalendar, without any ru
 ### Defensive Immutability & Stable IDs
 
 To protect internal state integrity across arbitrary consumer access:
+
 - **Defensive Clones**: All state query methods (`getState()`, `getMarks()`, `getMark()`, `getToothState()`, `getSelection()`, `getTeethState()`) return deep-cloned copies. External mutations to returned objects cannot compromise instance state.
 - **Input Isolation**: Candidate mark and state payloads passed to `addMark()`, `updateMark()`, `setState()`, or `setToothState()` are cloned before insertion.
 - **ID Immutability**: Mark identifiers (`id`) are stable and immutable. Attempting to modify `id` during `updateMark()` or `patch` is ignored or rejected; IDs remain permanent for life of the mark.
@@ -173,6 +184,7 @@ odontogram.batch(() => {
 ```
 
 The transactional execution engine guarantees:
+
 1. **Atomic Snapshot**: A deep clone of state, options, and revision is captured prior to entering `batch(fn)`.
 2. **Transactional Rollback**: If any operation or callback throws an exception or fails validation within `fn`, the entire transaction aborts and state rolls back to the initial snapshot immediately.
 3. **Single Revision Increment**: Successful batch transactions increment `revision` exactly once for the whole transaction.
@@ -239,4 +251,3 @@ Host app calls addMark(...) or batch(...)
   → core calls requestRender() (or defers until batch end)
   → svg view re-renders with mark colors
 ```
-

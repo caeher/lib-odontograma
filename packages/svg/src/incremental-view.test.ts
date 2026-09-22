@@ -1,0 +1,506 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { Odontogram } from "@odontogram/core";
+import { svgPlugin } from "./index.js";
+import notationsFixture from "../../dentition/fixtures/notations.json";
+import orientationFixture from "../../dentition/fixtures/orientation.json";
+
+describe("Stage 03 · Incremental SVG View & Representation", () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    container.id = "odontogram-test-container";
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
+  });
+
+  // ==========================================================================
+  // 1. Arches, Quadrants, Teeth, Surfaces, Labels & Annotation Layers
+  // ==========================================================================
+  describe("DOM Hierarchy, Contract Layers & Stable Identity", () => {
+    it("renders arches, quadrants, and contract layers with stable identity", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        instanceId: "test-chart-1",
+      });
+      odontogram.render();
+
+      const svg = container.querySelector("svg.odontogram-svg");
+      expect(svg).toBeTruthy();
+      expect(svg?.getAttribute("data-instance-id")).toBe("test-chart-1-");
+      expect(svg?.getAttribute("role")).toBe("img");
+
+      // Defs
+      const defs = svg?.querySelector("defs#test-chart-1-defs");
+      expect(defs).toBeTruthy();
+      expect(defs?.querySelector("#test-chart-1-pattern-hatch")).toBeTruthy();
+
+      // Multi-tooth Annotation Layer
+      const annotationsLayer = svg?.querySelector(".odontogram-layer-annotations");
+      expect(annotationsLayer).toBeTruthy();
+      expect(annotationsLayer?.getAttribute("id")).toBe("test-chart-1-layer-annotations");
+
+      // Arches
+      const upperArch = svg?.querySelector(".odontogram-arch-upper");
+      const lowerArch = svg?.querySelector(".odontogram-arch-lower");
+      expect(upperArch).toBeTruthy();
+      expect(lowerArch).toBeTruthy();
+      expect(upperArch?.getAttribute("data-arch")).toBe("upper");
+      expect(lowerArch?.getAttribute("data-arch")).toBe("lower");
+
+      // Quadrants
+      expect(svg?.querySelector(".odontogram-quadrant-1")).toBeTruthy();
+      expect(svg?.querySelector(".odontogram-quadrant-2")).toBeTruthy();
+      expect(svg?.querySelector(".odontogram-quadrant-3")).toBeTruthy();
+      expect(svg?.querySelector(".odontogram-quadrant-4")).toBeTruthy();
+
+      // Tooth contract layers for FDI 16
+      const tooth16 = svg?.querySelector('.odontogram-tooth[data-tooth="16"]');
+      expect(tooth16).toBeTruthy();
+      expect(tooth16?.getAttribute("id")).toBe("test-chart-1-tooth-16");
+      expect(tooth16?.getAttribute("data-quadrant")).toBe("1");
+      expect(tooth16?.getAttribute("data-arch")).toBe("upper");
+      expect(tooth16?.getAttribute("tabindex")).toBe("0");
+
+      expect(tooth16?.querySelector(".odontogram-layer-anatomy")).toBeTruthy();
+      expect(tooth16?.querySelector(".odontogram-layer-interaction")).toBeTruthy();
+      expect(tooth16?.querySelector(".odontogram-layer-focus")).toBeTruthy();
+      expect(tooth16?.querySelector(".odontogram-layer-marks")).toBeTruthy();
+      expect(tooth16?.querySelector(".odontogram-layer-labels")).toBeTruthy();
+
+      // Surface element
+      const occlusal16 = tooth16?.querySelector('.odontogram-surface[data-surface="O"]');
+      expect(occlusal16).toBeTruthy();
+      expect(occlusal16?.getAttribute("id")).toBe("test-chart-1-tooth-16-surface-O");
+      expect(occlusal16?.getAttribute("data-face")).toBe("center");
+      expect(occlusal16?.getAttribute("role")).toBe("button");
+
+      odontogram.destroy();
+    });
+
+    it("renders multi-tooth annotations (e.g. bridge) in annotation layer", () => {
+      const markDidMount = vi.fn();
+      const markWillUnmount = vi.fn();
+
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        instanceId: "inst-bridge",
+        markDidMount,
+        markWillUnmount,
+      });
+      odontogram.render();
+
+      odontogram.addMark({
+        id: "bridge-14-16",
+        type: "bridge",
+        status: "planned",
+        target: { teeth: ["14", "15", "16"] },
+        style: { stroke: "#1e88e5", strokeWidth: 4 },
+      });
+
+      const bridgeEl = container.querySelector(
+        ".odontogram-layer-annotations .odontogram-annotation-bridge",
+      );
+      expect(bridgeEl).toBeTruthy();
+      expect(bridgeEl?.getAttribute("data-mark-id")).toBe("bridge-14-16");
+      expect(bridgeEl?.getAttribute("data-target-teeth")).toBe("14 15 16");
+      expect(bridgeEl?.querySelector("path")).toBeTruthy();
+      expect(bridgeEl?.querySelectorAll("circle").length).toBe(3);
+      expect(markDidMount).toHaveBeenCalledWith(
+        expect.objectContaining({ mark: expect.objectContaining({ id: "bridge-14-16" }) }),
+      );
+
+      // Remove bridge mark
+      odontogram.removeMark("bridge-14-16");
+      expect(container.querySelector(".odontogram-annotation-bridge")).toBeNull();
+      expect(markWillUnmount).toHaveBeenCalledWith(
+        expect.objectContaining({ mark: expect.objectContaining({ id: "bridge-14-16" }) }),
+      );
+
+      odontogram.destroy();
+    });
+  });
+
+  // ==========================================================================
+  // 2. Incremental Updates & Preservation of Focus and Selection
+  // ==========================================================================
+  describe("Incremental DOM Updates & Focus Preservation", () => {
+    it("updates only affected elements in place without destroying DOM nodes", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        instanceId: "inst-incr",
+      });
+      odontogram.render();
+
+      const tooth16Before = container.querySelector('.odontogram-tooth[data-tooth="16"]');
+      const tooth26Before = container.querySelector('.odontogram-tooth[data-tooth="26"]');
+      const surface16OBefore = container.querySelector(
+        '.odontogram-surface[data-tooth="16"][data-surface="O"]',
+      );
+
+      expect(tooth16Before).toBeTruthy();
+      expect(tooth26Before).toBeTruthy();
+
+      // 1. Mutate tooth 16 state by adding a mark on 16/O
+      odontogram.addMark({
+        id: "m-16-o",
+        tooth: "16",
+        surfaces: ["O"],
+        type: "caries",
+        style: { fill: "#f44336" },
+      });
+
+      const tooth16After = container.querySelector('.odontogram-tooth[data-tooth="16"]');
+      const tooth26After = container.querySelector('.odontogram-tooth[data-tooth="26"]');
+      const surface16OAfter = container.querySelector(
+        '.odontogram-surface[data-tooth="16"][data-surface="O"]',
+      );
+
+      // Unaffected elements maintain strict reference equality
+      expect(tooth16After).toBe(tooth16Before);
+      expect(tooth26After).toBe(tooth26Before);
+      expect(surface16OAfter).toBe(surface16OBefore);
+
+      // Verify visual style update in place
+      const path = surface16OAfter?.querySelector("path");
+      expect(path?.getAttribute("fill")).toBe("#f44336");
+      expect(surface16OAfter?.getAttribute("data-mark-ids")).toBe("m-16-o");
+
+      // 2. Programmatically select tooth 26
+      odontogram.selectTooth("26");
+
+      expect(tooth26After?.getAttribute("aria-selected")).toBe("true");
+      expect(tooth16After?.getAttribute("aria-selected")).toBeNull();
+      expect(container.querySelector('.odontogram-tooth[data-tooth="26"]')).toBe(tooth26Before);
+
+      odontogram.destroy();
+    });
+
+    it("preserves active DOM focus during state mutations", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        instanceId: "inst-focus",
+      });
+      odontogram.render();
+
+      const tooth16 = container.querySelector<SVGGElement>('.odontogram-tooth[data-tooth="16"]')!;
+      tooth16.focus();
+      expect(document.activeElement).toBe(tooth16);
+
+      // Add mark on another tooth
+      odontogram.addMark({
+        id: "m-26",
+        tooth: "26",
+        surfaces: ["O"],
+        type: "restoration",
+      });
+
+      // Focus on tooth 16 must not be lost!
+      expect(document.activeElement).toBe(tooth16);
+
+      // Update tooth presence on tooth 36
+      odontogram.setToothState("36", "unerupted");
+      expect(document.activeElement).toBe(tooth16);
+
+      // Update notation
+      odontogram.setOption("notation", "universal");
+      expect(document.activeElement).toBe(tooth16);
+
+      odontogram.destroy();
+    });
+
+    it("triggers markDidMount and markWillUnmount ONLY for affected marks", () => {
+      const markDidMount = vi.fn();
+      const markWillUnmount = vi.fn();
+
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        markDidMount,
+        markWillUnmount,
+      });
+      odontogram.render();
+
+      // Add Mark 1
+      const mark1 = odontogram.addMark({
+        id: "m1",
+        tooth: "16",
+        surfaces: ["O"],
+        type: "caries",
+      });
+
+      expect(markDidMount).toHaveBeenCalledTimes(1);
+      expect(markDidMount).toHaveBeenCalledWith(
+        expect.objectContaining({ mark: expect.objectContaining({ id: "m1" }) }),
+      );
+      expect(markWillUnmount).not.toHaveBeenCalled();
+
+      markDidMount.mockClear();
+
+      // Add Mark 2 on another tooth
+      odontogram.addMark({
+        id: "m2",
+        tooth: "26",
+        surfaces: ["M"],
+        type: "restoration",
+      });
+
+      expect(markDidMount).toHaveBeenCalledTimes(1);
+      expect(markDidMount).toHaveBeenCalledWith(
+        expect.objectContaining({ mark: expect.objectContaining({ id: "m2" }) }),
+      );
+      expect(markWillUnmount).not.toHaveBeenCalled();
+
+      // Remove Mark 1
+      odontogram.removeMark(mark1.id);
+      expect(markWillUnmount).toHaveBeenCalledTimes(1);
+      expect(markWillUnmount).toHaveBeenCalledWith(
+        expect.objectContaining({ mark: expect.objectContaining({ id: "m1" }) }),
+      );
+
+      odontogram.destroy();
+    });
+  });
+
+  // ==========================================================================
+  // 3. Multi-Instance Isolation & Cleanup
+  // ==========================================================================
+  describe("Multi-Instance Isolation & Resource Teardown", () => {
+    it("isolates defs, clips, patterns, and element IDs across concurrent instances", () => {
+      const container1 = document.createElement("div");
+      const container2 = document.createElement("div");
+      document.body.appendChild(container1);
+      document.body.appendChild(container2);
+
+      const inst1 = new Odontogram(container1, {
+        plugins: [svgPlugin],
+        instanceId: "chart-alpha",
+        toothColor: "#e3f2fd",
+      });
+      const inst2 = new Odontogram(container2, {
+        plugins: [svgPlugin],
+        instanceId: "chart-beta",
+        toothColor: "#fff3e0",
+      });
+
+      inst1.render();
+      inst2.render();
+
+      const svg1 = container1.querySelector("svg.odontogram-svg");
+      const svg2 = container2.querySelector("svg.odontogram-svg");
+
+      expect(svg1?.getAttribute("data-instance-id")).toBe("chart-alpha-");
+      expect(svg2?.getAttribute("data-instance-id")).toBe("chart-beta-");
+
+      expect(svg1?.querySelector("#chart-alpha-defs")).toBeTruthy();
+      expect(svg2?.querySelector("#chart-beta-defs")).toBeTruthy();
+
+      expect(svg1?.querySelector("#chart-alpha-tooth-16")).toBeTruthy();
+      expect(svg2?.querySelector("#chart-beta-tooth-16")).toBeTruthy();
+
+      // Destroy instance 1 only
+      inst1.destroy();
+      expect(container1.querySelector("svg")).toBeNull();
+
+      // Instance 2 remains healthy and interactive
+      expect(container2.querySelector("svg")).toBeTruthy();
+      inst2.selectTooth("16");
+      expect(svg2?.querySelector("#chart-beta-tooth-16")?.getAttribute("aria-selected")).toBe(
+        "true",
+      );
+
+      inst2.destroy();
+      expect(container2.querySelector("svg")).toBeNull();
+    });
+
+    it("completely removes event listeners, observers, and DOM nodes on destroy", () => {
+      const toothWillUnmount = vi.fn();
+      const markWillUnmount = vi.fn();
+
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        toothWillUnmount,
+        markWillUnmount,
+      });
+      odontogram.render();
+
+      odontogram.addMark({
+        id: "m-test",
+        tooth: "16",
+        surfaces: ["O"],
+        type: "caries",
+      });
+
+      odontogram.destroy();
+
+      expect(toothWillUnmount).toHaveBeenCalled();
+      expect(markWillUnmount).toHaveBeenCalledWith(
+        expect.objectContaining({ mark: expect.objectContaining({ id: "m-test" }) }),
+      );
+      expect(container.querySelector(".odontogram-host")).toBeNull();
+      expect(container.innerHTML).toBe("");
+    });
+  });
+
+  // ==========================================================================
+  // 4. Hidden Containers, Resizing & Repeated Mount/Unmount Cycles
+  // ==========================================================================
+  describe("Container Lifecycle & Resizing Resilience", () => {
+    it("renders properly when mounted inside initially hidden (display: none) containers", () => {
+      container.style.display = "none";
+
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+      });
+      odontogram.render();
+
+      const svg = container.querySelector("svg.odontogram-svg");
+      expect(svg).toBeTruthy();
+      expect(svg?.getAttribute("viewBox")).toBeTruthy();
+
+      // Reveal container
+      container.style.display = "block";
+
+      const tooth16 = container.querySelector('.odontogram-tooth[data-tooth="16"]');
+      expect(tooth16).toBeTruthy();
+      expect(tooth16?.getAttribute("data-notation-label")).toBe("16");
+
+      odontogram.destroy();
+    });
+
+    it("survives 10 consecutive mount and unmount cycles without state corruption", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+      });
+
+      for (let i = 0; i < 10; i++) {
+        odontogram.render();
+        expect(container.querySelector("svg.odontogram-svg")).toBeTruthy();
+        odontogram.addMark({
+          id: `mark-${i}`,
+          tooth: "16",
+          surfaces: ["O"],
+          type: "caries",
+        });
+        odontogram.destroy();
+        expect(container.innerHTML).toBe("");
+      }
+
+      // Re-mount cleanly after 10 cycles
+      odontogram.render();
+      expect(container.querySelector("svg.odontogram-svg")).toBeTruthy();
+      expect(odontogram.getMarks().length).toBe(10);
+      odontogram.destroy();
+    });
+  });
+
+  // ==========================================================================
+  // 5. Model-to-DOM Correspondence, Fixtures & Unique IDs
+  // ==========================================================================
+  describe("Dental Model Alignment & Fixture Verification", () => {
+    it("renders exactly 32 teeth in permanent view, 20 in deciduous, and 52 in mixed", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+      });
+      odontogram.render();
+      expect(container.querySelectorAll(".odontogram-tooth").length).toBe(32);
+
+      odontogram.changeView("deciduous");
+      expect(container.querySelectorAll(".odontogram-tooth").length).toBe(20);
+
+      odontogram.changeView("mixed");
+      expect(container.querySelectorAll(".odontogram-tooth").length).toBe(52);
+
+      odontogram.destroy();
+    });
+
+    it("guarantees unique IDs for all elements in the SVG DOM tree", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "mixed",
+      });
+      odontogram.render();
+
+      odontogram.addMarks([
+        { id: "m1", tooth: "16", surfaces: ["O"], type: "caries" },
+        { id: "m2", type: "bridge", target: { teeth: ["14", "15", "16"] } },
+      ]);
+
+      const allElementsWithId = Array.from(container.querySelectorAll("[id]"));
+      const ids = allElementsWithId.map((el) => el.id);
+      const uniqueIds = new Set(ids);
+
+      expect(uniqueIds.size).toBe(ids.length);
+      expect(ids.length).toBeGreaterThan(50);
+
+      odontogram.destroy();
+    });
+
+    it("matches all 52 tooth records in notations.json fixture", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "mixed",
+      });
+      odontogram.render();
+
+      for (const entry of notationsFixture) {
+        const toothEl = container.querySelector(`.odontogram-tooth[data-tooth="${entry.fdi}"]`);
+        expect(toothEl).toBeTruthy();
+        expect(toothEl?.getAttribute("data-quadrant")).toBe(String(entry.quadrant));
+        expect(toothEl?.getAttribute("data-arch")).toBe(
+          entry.arch === "maxillary" ? "upper" : "lower",
+        );
+        expect(toothEl?.getAttribute("data-notation-label")).toBe(entry.fdi);
+        expect(toothEl?.getAttribute("aria-label")).toBe(`FDI ${entry.fdi}`);
+      }
+
+      // Test Universal notation
+      odontogram.setOption("notation", "universal");
+      for (const entry of notationsFixture) {
+        const toothEl = container.querySelector(`.odontogram-tooth[data-tooth="${entry.fdi}"]`);
+        expect(toothEl?.getAttribute("data-notation-label")).toBe(entry.universal);
+        expect(toothEl?.getAttribute("aria-label")).toBe(`Universal ${entry.universal}`);
+      }
+
+      // Test Palmer notation
+      odontogram.setOption("notation", "palmer");
+      for (const entry of notationsFixture) {
+        const toothEl = container.querySelector(`.odontogram-tooth[data-tooth="${entry.fdi}"]`);
+        expect(toothEl?.getAttribute("data-notation-label")).toBe(entry.palmerSymbol);
+        expect(toothEl?.getAttribute("aria-label")).toBe(entry.palmerAccessible);
+      }
+
+      odontogram.destroy();
+    });
+
+    it("matches surface-to-face orientation from orientation.json fixture", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+      });
+      odontogram.render();
+
+      for (const sample of orientationFixture.samples) {
+        const surfEl = container.querySelector(
+          `.odontogram-surface[data-tooth="${sample.tooth}"][data-surface="${sample.surface}"]`,
+        );
+        expect(surfEl).toBeTruthy();
+        expect(surfEl?.getAttribute("data-face")).toBe(sample.face);
+      }
+
+      odontogram.destroy();
+    });
+  });
+});

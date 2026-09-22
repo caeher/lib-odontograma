@@ -48,7 +48,9 @@ describe("schematic SVG view", () => {
 
   it("registers permanent, deciduous, and mixed views", () => {
     const views = svgPlugin.pluginDef.views?.map((v) => v.type) ?? [];
-    expect(views).toEqual(["permanent", "deciduous", "mixed"]);
+    expect(views).toEqual(
+      expect.arrayContaining(["permanent", "deciduous", "primary", "mixed", "arch", "quadrant", "tooth"]),
+    );
   });
 
   it("maps mesial to screen-right for patient-right teeth", () => {

@@ -72,19 +72,41 @@
   </head>
   <body>
     <h1>Odontogram Library</h1>
-    <p class="subtitle">Stage 01 · Foundations — schematic SVG renderer demo</p>
+    <p class="subtitle">Stage 03 · SVG & representation — interactive incremental SVG demo</p>
 
-    <div class="toolbar">
-      <button id="btn-permanent" class="active" data-view>Permanent</button>
-      <button id="btn-deciduous" data-view>Deciduous</button>
-      <button id="btn-mixed" data-view>Mixed</button>
+    <div class="toolbar" id="views-toolbar">
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem;">Views:</strong>
+      <button id="btn-permanent" class="active" data-view="permanent">Permanent (32)</button>
+      <button id="btn-deciduous" data-view="deciduous">Deciduous (20)</button>
+      <button id="btn-mixed" data-view="mixed">Mixed (52)</button>
+      <button id="btn-upper" data-view="upper">Upper Arch</button>
+      <button id="btn-lower" data-view="lower">Lower Arch</button>
+      <button id="btn-q1" data-view="quadrant-1">Q1 (Upper R)</button>
+      <button id="btn-q2" data-view="quadrant-2">Q2 (Upper L)</button>
+      <button id="btn-q3" data-view="quadrant-3">Q3 (Lower L)</button>
+      <button id="btn-q4" data-view="quadrant-4">Q4 (Lower R)</button>
+      <button id="btn-t16" data-view="tooth-16">Tooth 16 Detail</button>
+      <button id="btn-t55" data-view="tooth-55">Tooth 55 Detail</button>
+    </div>
+
+    <div class="toolbar" id="options-toolbar">
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem;">Options:</strong>
       <button id="btn-notation">Notation: FDI</button>
-      <button id="btn-present">Set present</button>
-      <button id="btn-missing">Set missing</button>
-      <button id="btn-unerupted">Set unerupted</button>
-      <button id="btn-add-mark">Add mark on selection</button>
-      <button id="btn-clear-marks">Clear marks</button>
-      <button id="btn-batch">Batch demo</button>
+      <button id="btn-toggle-orientation" class="active">Orientation: ON (R/L)</button>
+      <button id="btn-toggle-midline" class="active">Midline: ON</button>
+      <button id="btn-filter-anterior">Filter: Anterior (13..23, 33..43)</button>
+      <button id="btn-filter-all">Filter: Reset (All)</button>
+    </div>
+
+    <div class="toolbar" id="actions-toolbar">
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem;">Actions:</strong>
+      <button id="btn-present">Set Present</button>
+      <button id="btn-missing">Set Missing</button>
+      <button id="btn-unerupted">Set Unerupted</button>
+      <button id="btn-add-mark">Add Mark on Selection</button>
+      <button id="btn-add-bridge">Add Bridge (14-16)</button>
+      <button id="btn-batch">Batch Demo</button>
+      <button id="btn-clear-marks">Clear Marks</button>
     </div>
 
     <div id="odontogram-container"></div>

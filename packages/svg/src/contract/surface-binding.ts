@@ -22,9 +22,7 @@ export function faceElementId(face: GraphicFace): string {
  * Expected clinical surfaces for a tooth class per `@odontogram/dentition`.
  * Incisors/canines use incisal (`I`) in the center face; posteriors use occlusal (`O`).
  */
-export function expectedSurfacesForToothClass(
-  toothClass: ToothClass,
-): readonly ClinicalSurface[] {
+export function expectedSurfacesForToothClass(toothClass: ToothClass): readonly ClinicalSurface[] {
   return getApplicableSurfacesForClass(toothClass);
 }
 

@@ -50,6 +50,11 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "selectionColor",
   "markColors",
   "statusColors",
+  "instanceId",
+  "viewOptions",
+  "showOrientationLabels",
+  "showMidline",
+  "visibleTeeth",
   "validator",
   "toothClick",
   "surfaceClick",
@@ -253,6 +258,19 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
       severity: "error",
       message: `Option "plugins" must be an array of OdontogramPlugin instances.`,
       path: "options.plugins",
+    });
+  }
+
+  if (
+    options.instanceId !== undefined &&
+    (typeof options.instanceId !== "string" || options.instanceId.trim() === "")
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "instanceId" must be a non-empty string.`,
+      path: "options.instanceId",
     });
   }
 

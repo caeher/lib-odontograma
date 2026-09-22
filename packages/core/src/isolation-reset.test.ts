@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Odontogram } from "./odontogram.js";
 import { OdontogramError, VALIDATION_CODES } from "./errors.js";
-import { createPlugin } from "./plugin.js";
-import type { ViewRenderContext } from "./types.js";
 
 describe("Reset, Referential Integrity & Multi-Instance Isolation (Stage 02)", () => {
   let container1: HTMLElement;

@@ -6,12 +6,12 @@ Stage **03** delivers occlusal schematic vector resources for all permanent and 
 
 See [`packages/svg/resources/catalog/README.md`](../packages/svg/resources/catalog/README.md).
 
-| Dimension | Values |
-| --------- | ------ |
-| Tooth class | `incisor`, `canine`, `premolar`, `molar` |
-| Patient side | `patient-right`, `patient-left` |
-| Arch | `maxillary`, `mandibular` |
-| Projection | `occlusal` only (v1) |
+| Dimension    | Values                                   |
+| ------------ | ---------------------------------------- |
+| Tooth class  | `incisor`, `canine`, `premolar`, `molar` |
+| Patient side | `patient-right`, `patient-left`          |
+| Arch         | `maxillary`, `mandibular`                |
+| Projection   | `occlusal` only (v1)                     |
 
 Sixteen SVG families cover every combination. `manifest.json` maps each of the **52** FDI teeth to a `resourceId` and per-tooth `referenceToothId` for orientation checks.
 
@@ -28,14 +28,14 @@ import {
 } from "@odontogram/svg/catalog";
 ```
 
-| Function | Purpose |
-| -------- | ------- |
-| `getManifest()` | Full manifest (`families` + `teeth`) |
-| `getOrientationKey(toothId)` | `patient-{right\|left}.{maxillary\|mandibular}` |
-| `resolveToothSvgResource(toothId)` | Manifest entry + relative `resources/` paths |
-| `listCatalogFamilies()` | Sixteen family descriptors |
-| `listCatalogResourceIds()` | Unique `resourceId` slugs |
-| `listTeethForCatalogResource(id)` | FDI ids sharing one family |
+| Function                           | Purpose                                         |
+| ---------------------------------- | ----------------------------------------------- |
+| `getManifest()`                    | Full manifest (`families` + `teeth`)            |
+| `getOrientationKey(toothId)`       | `patient-{right\|left}.{maxillary\|mandibular}` |
+| `resolveToothSvgResource(toothId)` | Manifest entry + relative `resources/` paths    |
+| `listCatalogFamilies()`            | Sixteen family descriptors                      |
+| `listCatalogResourceIds()`         | Unique `resourceId` slugs                       |
+| `listTeethForCatalogResource(id)`  | FDI ids sharing one family                      |
 
 Node-only disk loader:
 

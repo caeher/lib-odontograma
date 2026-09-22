@@ -17,7 +17,15 @@
     sans-serif;
 }
 
+/* Arches and Quadrants */
+.odontogram-arch,
+.odontogram-quadrant {
+  shape-rendering: geometricPrecision;
+}
+
+/* Tooth Group */
 .odontogram-tooth {
+  outline: none;
   transition:
     transform 0.15s ease,
     filter 0.15s ease;
@@ -27,6 +35,11 @@
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12));
 }
 
+.odontogram-tooth:focus-visible .odontogram-focus-ring {
+  display: block !important;
+}
+
+/* Surface Group */
 .odontogram-surface {
   transition:
     fill 0.15s ease,
@@ -44,8 +57,28 @@
   stroke-width: 1.5;
 }
 
+/* Tooth Labels */
+.odontogram-tooth-label,
 .odontogram-tooth text {
   font-weight: 500;
   user-select: none;
   pointer-events: none;
+}
+
+/* Multi-tooth Annotations (Bridges, Splints) */
+.odontogram-layer-annotations {
+  pointer-events: none;
+}
+
+.odontogram-annotation {
+  transition: opacity 0.2s ease;
+}
+
+.odontogram-annotation path {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+}
+
+/* Missing Tooth Indicator */
+.odontogram-missing-indicator line {
+  stroke-linecap: round;
 }

@@ -62,15 +62,14 @@ function setPresenceForSelection(presence: ToothPresence): void {
 }
 
 // View buttons
-const views = ["permanent", "deciduous", "mixed"] as const;
-for (const view of views) {
-  document.getElementById(`btn-${view}`)!.addEventListener("click", () => {
+const viewButtons = document.querySelectorAll<HTMLButtonElement>("#views-toolbar button[data-view]");
+viewButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const view = btn.dataset.view as any;
     odontogram.changeView(view);
-    document.querySelectorAll(".toolbar button[data-view]").forEach((b) => {
-      b.classList.remove("active");
-    });
-    document.getElementById(`btn-${view}`)!.classList.add("active");
-    log(`View changed to: ${view}`);
+    viewButtons.forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    log(`View changed to: ${view} (preserved ${odontogram.getMarks().length} marks, ${odontogram.getSelection().teeth.length} selected teeth)`);
     if (view === "mixed") {
       odontogram.setTeethState({
         "55": "present",
@@ -79,7 +78,40 @@ for (const view of views) {
       log("Mixed demo: 55 present, 15 unerupted (both coexist in catalog)");
     }
   });
-}
+});
+
+// Orientation toggle
+let showOrientation = true;
+const btnToggleOrientation = document.getElementById("btn-toggle-orientation")!;
+btnToggleOrientation.addEventListener("click", () => {
+  showOrientation = !showOrientation;
+  odontogram.setOption("showOrientationLabels", showOrientation);
+  btnToggleOrientation.textContent = `Orientation: ${showOrientation ? "ON (R/L)" : "OFF"}`;
+  btnToggleOrientation.classList.toggle("active", showOrientation);
+  log(`Orientation labels: ${showOrientation ? "enabled" : "disabled"}`);
+});
+
+// Midline toggle
+let showMidline = true;
+const btnToggleMidline = document.getElementById("btn-toggle-midline")!;
+btnToggleMidline.addEventListener("click", () => {
+  showMidline = !showMidline;
+  odontogram.setOption("showMidline", showMidline);
+  btnToggleMidline.textContent = `Midline: ${showMidline ? "ON" : "OFF"}`;
+  btnToggleMidline.classList.toggle("active", showMidline);
+  log(`Midline divider: ${showMidline ? "enabled" : "disabled"}`);
+});
+
+// Filter controls
+const anteriorTeeth = ["13", "12", "11", "21", "22", "23", "43", "42", "41", "31", "32", "33"] as const;
+document.getElementById("btn-filter-anterior")?.addEventListener("click", () => {
+  odontogram.setOption("visibleTeeth", [...anteriorTeeth]);
+  log(`Filtered visible teeth to anterior group (${anteriorTeeth.length} teeth). Selection and marks on hidden teeth are preserved in model.`);
+});
+document.getElementById("btn-filter-all")?.addEventListener("click", () => {
+  odontogram.setOption("visibleTeeth", undefined);
+  log("Reset tooth filter: all teeth in current view are visible.");
+});
 
 // Notation toggle
 document.getElementById("btn-notation")!.addEventListener("click", () => {
@@ -105,25 +137,53 @@ document.getElementById("btn-unerupted")!.addEventListener("click", () => {
 // Add mark on current selection
 document.getElementById("btn-add-mark")!.addEventListener("click", () => {
   const selection = odontogram.getSelection();
-  if (selection.surfaces.length === 0) {
-    log("Select surfaces to add marks; use presence buttons for missing/unerupted teeth");
+  if (selection.surfaces.length === 0 && selection.teeth.length === 0) {
+    log("Select surfaces or teeth to add marks");
     return;
   }
 
   const marksToAdd: Array<OdontographicMark> = [];
-  for (const { tooth, surface } of selection.surfaces) {
-    markCounter++;
-    marksToAdd.push({
-      id: `mark-${markCounter}`,
-      tooth,
-      surfaces: [surface],
-      type: markCounter % 2 === 0 ? "caries" : "restoration",
-      target: { tooth, surfaces: [surface] },
-    });
+  if (selection.surfaces.length > 0) {
+    for (const { tooth, surface } of selection.surfaces) {
+      markCounter++;
+      marksToAdd.push({
+        id: `mark-${markCounter}`,
+        tooth,
+        surfaces: [surface],
+        type: markCounter % 2 === 0 ? "caries" : "restoration",
+        target: { tooth, surfaces: [surface] },
+      });
+    }
+  } else {
+    for (const tooth of selection.teeth) {
+      markCounter++;
+      marksToAdd.push({
+        id: `mark-${markCounter}`,
+        tooth,
+        type: "crown",
+        target: { tooth },
+      });
+    }
   }
 
   odontogram.addMarks(marksToAdd);
   log(`Added ${marksToAdd.length} mark(s)`);
+});
+
+// Add bridge annotation (multi-tooth)
+document.getElementById("btn-add-bridge")?.addEventListener("click", () => {
+  odontogram.batch(() => {
+    odontogram.setToothState("15", "missing", { pruneMarks: true });
+    odontogram.addMark({
+      id: "bridge-14-16",
+      type: "bridge",
+      status: "planned",
+      target: { teeth: ["14", "15", "16"] },
+      text: "3-unit porcelain-fused-to-metal bridge",
+      style: { stroke: "#1976d2", strokeWidth: 4 },
+    });
+  });
+  log("Placed 3-unit bridge across teeth 14, 15 (pontic), 16 (abutment)");
 });
 
 // Clear marks

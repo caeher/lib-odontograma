@@ -8,10 +8,10 @@
 new Odontogram(el?: HTMLElement | null, options?: OdontogramOptions)
 ```
 
-| Parameter | Type                | Description                                                                 |
-| --------- | ------------------- | --------------------------------------------------------------------------- |
+| Parameter | Type                               | Description                                               |
+| --------- | ---------------------------------- | --------------------------------------------------------- |
 | `el`      | `HTMLElement \| null \| undefined` | Container element (optional for headless / non-DOM usage) |
-| `options` | `OdontogramOptions` | Configuration (see below)                                                   |
+| `options` | `OdontogramOptions`                | Configuration (see below)                                 |
 
 ### Methods
 
@@ -39,9 +39,26 @@ Set an option dynamically. Triggers a re-render.
 - `initialView` — use `changeView()` instead
 - `mode` — specified at construction time
 
-##### `changeView(view: ViewType): void`
+##### `changeView(view: ViewType, viewOptions?: ViewOptions): void`
 
-Switch to a different view (`"permanent"`, `"deciduous"`, `"mixed"`, or custom view). Unmounts the current view and mounts the new one.
+Switch to a different view and optional sub-view configuration. Unmounts the previous view and mounts the target view while guaranteeing **zero data loss** (all marks, biological tooth overlays, and selection states are strictly preserved in model state).
+
+**Supported View Types & Shorthands:**
+- **Full Dentition**: `"permanent"` (32 teeth), `"deciduous"` / `"primary"` (20 teeth), `"mixed"` (52 teeth in anatomical 4-row layout).
+- **Arch Views**: `"arch"` with `viewOptions: { arch: "upper" | "lower" }`, or shorthands `"upper"`, `"lower"`, `"maxillary"`, `"mandibular"`.
+- **Quadrant Views**: `"quadrant"` with `viewOptions: { quadrant: 1..8 }`, or shorthands `"quadrant-1"` through `"quadrant-8"`.
+- **Tooth Detail Views**: `"tooth"` / `"tooth-detail"` with `viewOptions: { tooth: "16" }`, or shorthands `"tooth-11"` through `"tooth-85"`.
+
+```ts
+// Switch to quadrant 1 view with shorthand
+odontogram.changeView("quadrant-1");
+
+// Switch to lower arch view with explicit options
+odontogram.changeView("arch", { arch: "lower", dentition: "permanent" });
+
+// Switch to single tooth enlarged detail view
+odontogram.changeView("tooth", { tooth: "16" });
+```
 
 #### State, Mode & Revisions
 
@@ -63,13 +80,13 @@ Returns the monotonic integer revision number representing the count of successf
 
 #### Internal vs controlled mode
 
-| Concern | `mode: "internal"` (default) | `mode: "controlled"` |
-| ------- | ---------------------------- | -------------------- |
-| Source of truth | Odontogram instance | Host application |
-| Imperative APIs (`addMark`, `selectTooth`, `batch`, …) | Allowed | Throws `ERR_CONTROLLED_MUTATION` |
-| Host updates | Optional via `setState` | Required via `setState` / `reset` with `source: "external"` |
-| UI clicks | Update selection internally (when `selectable`) | Fire `toothClick` / `surfaceClick` only; host updates `selection` via `setState` |
-| Revision sync | Auto-increment on change | Pass `revision` in `SetStateOptions`; regressions (`revision` &lt; current) throw `ERR_REVISION_REGRESSION` |
+| Concern                                                | `mode: "internal"` (default)                    | `mode: "controlled"`                                                                                        |
+| ------------------------------------------------------ | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Source of truth                                        | Odontogram instance                             | Host application                                                                                            |
+| Imperative APIs (`addMark`, `selectTooth`, `batch`, …) | Allowed                                         | Throws `ERR_CONTROLLED_MUTATION`                                                                            |
+| Host updates                                           | Optional via `setState`                         | Required via `setState` / `reset` with `source: "external"`                                                 |
+| UI clicks                                              | Update selection internally (when `selectable`) | Fire `toothClick` / `surfaceClick` only; host updates `selection` via `setState`                            |
+| Revision sync                                          | Auto-increment on change                        | Pass `revision` in `SetStateOptions`; regressions (`revision` &lt; current) throw `ERR_REVISION_REGRESSION` |
 
 In controlled mode, compound host updates should use a **single** `setState` call (not `batch`).
 
@@ -196,6 +213,7 @@ Returns `true` if the specified surface is selected.
 ##### `batch<T>(fn: () => T, options?: BatchOptions): T`
 
 Execute compound operations inside an atomic transaction:
+
 - Changes are buffered until `fn` finishes.
 - If an error or validation failure occurs inside `fn`, **all changes are rolled back** to the pre-batch snapshot.
 - On success, triggers a single revision increment, single `stateDidChange` callback, and single DOM re-render.
@@ -241,19 +259,20 @@ Run structural and coexistence validation against the current odontogram state s
 | `selectionColor` | `string`                                                                       | `"#90caf9"`   | Selection highlight                          |
 | `markColors`     | `Record<string, string>`                                                       | `{}`          | Type-to-color map                            |
 | `statusColors`   | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed) |
+| `instanceId`     | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs |
 | `validator`      | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates               |
 
 ### Callbacks
 
-| Callback              | Argument                                                                     | When                                     |
-| --------------------- | ---------------------------------------------------------------------------- | ---------------------------------------- |
-| `toothClick`          | `{ tooth, jsEvent }`                                                         | User clicks a tooth                      |
-| `surfaceClick`        | `{ tooth, surface, jsEvent }`                                                | User clicks a surface                    |
-| `selectionDidChange`  | `{ selection }`                                                              | Selection state changes                  |
-| `marksSet`            | `{ marks }`                                                                  | Marks array changes                      |
-| `stateDidChange`      | `{ state, revision, source }`                                                | Any state change occurs                  |
-| `toothStateDidChange` | `{ toothId, presence, previousPresence }`                                    | Tooth presence overlay changes           |
-| `validationDidChange` | `{ result }`                                                                 | Validation issues change on state update |
+| Callback              | Argument                                  | When                                     |
+| --------------------- | ----------------------------------------- | ---------------------------------------- |
+| `toothClick`          | `{ tooth, jsEvent }`                      | User clicks a tooth                      |
+| `surfaceClick`        | `{ tooth, surface, jsEvent }`             | User clicks a surface                    |
+| `selectionDidChange`  | `{ selection }`                           | Selection state changes                  |
+| `marksSet`            | `{ marks }`                               | Marks array changes                      |
+| `stateDidChange`      | `{ state, revision, source }`             | Any state change occurs                  |
+| `toothStateDidChange` | `{ toothId, presence, previousPresence }` | Tooth presence overlay changes           |
+| `validationDidChange` | `{ result }`                              | Validation issues change on state update |
 
 ### Hooks
 
@@ -437,25 +456,30 @@ interface OdontogramPluginDef {
 interface ViewDefinition {
   type: ViewType;
   render: (ctx: ViewRenderContext) => void;
+  update?: (ctx: ViewRenderContext) => void;
   destroy?: (ctx: ViewRenderContext) => void;
 }
 ```
+
+### Incremental View Updating Protocol
+
+When state or options change, the core invokes `activeView.update(ctx)` if defined on the `ViewDefinition`. This allows view plugins to perform fine-grained DOM diffing (updating colors, classes, presence styles, and multi-tooth annotation layers) in place without unmounting or destroying existing DOM elements, ensuring `document.activeElement` focus and selections remain preserved. If `update` is omitted or the active view type changes (e.g. permanent → deciduous), the engine cleanly falls back to unmounting and mounting.
 
 ### ViewRenderContext
 
 Passed to view `render` and `destroy` functions:
 
-| Property / Method                           | Description                 |
-| ------------------------------------------- | --------------------------- |
-| `el`                                        | Host HTMLElement            |
-| `options`                                   | Current options             |
+| Property / Method                           | Description                                                               |
+| ------------------------------------------- | ------------------------------------------------------------------------- |
+| `el`                                        | Host HTMLElement                                                          |
+| `options`                                   | Current options                                                           |
 | `state`                                     | Defensive deep clone of current state (mutations do not affect the store) |
-| `requestRender()`                           | Request a re-render         |
-| `selectTooth(tooth)`                        | Select a tooth              |
-| `selectSurface(tooth, surface)`             | Select a single surface     |
-| `toggleSurfaceSelection(tooth, surface)`    | Toggle surface in selection |
-| `emitToothClick(tooth, jsEvent)`            | Fire toothClick callback    |
-| `emitSurfaceClick(tooth, surface, jsEvent)` | Fire surfaceClick callback  |
+| `requestRender()`                           | Request a re-render                                                       |
+| `selectTooth(tooth)`                        | Select a tooth                                                            |
+| `selectSurface(tooth, surface)`             | Select a single surface                                                   |
+| `toggleSurfaceSelection(tooth, surface)`    | Toggle surface in selection                                               |
+| `emitToothClick(tooth, jsEvent)`            | Fire toothClick callback                                                  |
+| `emitSurfaceClick(tooth, surface, jsEvent)` | Fire surfaceClick callback                                                |
 
 ---
 
@@ -466,8 +490,41 @@ type ToothId = string; // FDI canonical, e.g. "16"
 type SurfaceId = "M" | "O" | "I" | "D" | "B" | "L";
 type ToothPresence = "present" | "missing" | "unerupted";
 type Notation = "fdi" | "universal" | "palmer";
-type ViewType = "permanent" | "deciduous" | "mixed" | string;
+type ViewType =
+  | "permanent"
+  | "deciduous"
+  | "primary"
+  | "mixed"
+  | "arch"
+  | "upper"
+  | "lower"
+  | "maxillary"
+  | "mandibular"
+  | "quadrant"
+  | `quadrant-${1 | 2 | 3 | 4 | 5 | 6 | 7 | 8}`
+  | "tooth"
+  | "tooth-detail"
+  | (string & {});
+
+interface ViewOptions {
+  arch?: "upper" | "lower" | "maxillary" | "mandibular";
+  quadrant?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
+  tooth?: ToothId;
+  teeth?: ToothId[];
+  dentition?: "permanent" | "deciduous" | "primary" | "mixed";
+  notation?: Notation;
+  orientationLabels?: boolean;
+  showMidline?: boolean;
+}
 ```
+
+### Model-Driven Selection Retention on Hidden Targets
+
+Selection in `@odontogram` is strictly model-driven and decoupled from the active view DOM:
+- If a user selects teeth in full dentition (e.g. `16`, `36`, and `46`) and then transitions to a partial view (e.g. Upper Arch or Quadrant 1 where `36` and `46` are not rendered), the non-visible teeth **remain preserved** in `state.selection.teeth`.
+- When using `visibleTeeth: ToothId[]` filtering, any selected teeth that are temporarily filtered out remain in `state.selection`.
+- When switching back to a view where those teeth become visible again, their visual highlights and `aria-selected` attributes are automatically restored without losing any selection context.
+- Programmatic selections targeting teeth outside the current active view are committed directly to `state.selection` without error.
 
 ---
 
@@ -544,14 +601,14 @@ import {
 } from "@odontogram/svg/contract";
 ```
 
-| Export | Description |
-| ------ | ----------- |
-| `SVG_CONTRACT_VERSION` | Contract semver string (`1.0.0`) |
-| `validateToothSvg(svg, options?)` | Validate markup; optional metadata sidecar |
-| `parseToothSvgMetadata` / `parseToothSvgMetadataJson` | Parse JSON sidecar |
-| `prefixElementIds(svg, { prefix })` | Prefix ids for multi-instance charts |
-| `expectedSurfacesForToothClass` | Delegates to `@odontogram/dentition` |
-| `DEFAULT_TOOTH_VIEWBOX`, `CONTRACT_LAYER_IDS`, … | Constants from [`svg-contract.md`](svg-contract.md) |
+| Export                                                | Description                                         |
+| ----------------------------------------------------- | --------------------------------------------------- |
+| `SVG_CONTRACT_VERSION`                                | Contract semver string (`1.0.0`)                    |
+| `validateToothSvg(svg, options?)`                     | Validate markup; optional metadata sidecar          |
+| `parseToothSvgMetadata` / `parseToothSvgMetadataJson` | Parse JSON sidecar                                  |
+| `prefixElementIds(svg, { prefix })`                   | Prefix ids for multi-instance charts                |
+| `expectedSurfacesForToothClass`                       | Delegates to `@odontogram/dentition`                |
+| `DEFAULT_TOOTH_VIEWBOX`, `CONTRACT_LAYER_IDS`, …      | Constants from [`svg-contract.md`](svg-contract.md) |
 
 CLI (monorepo root): `npm run validate:svg -- [--metadata sidecar.json] file.svg`
 
@@ -570,16 +627,15 @@ import {
 } from "@odontogram/svg/catalog";
 ```
 
-| Export | Description |
-| ------ | ----------- |
-| `getManifest()` | `families` (16) + `teeth` (52 FDI bindings) |
-| `getOrientationKey(toothId)` | Patient side + arch key for catalog lookup |
-| `resolveToothSvgResource(toothId)` | `resourceId`, paths under `resources/`, manifest fields |
-| `listCatalogFamilies()` / `listCatalogResourceIds()` | Enumerate shared art families |
-| `listTeethForCatalogResource(resourceId)` | FDI ids sharing one SVG family |
-| `assertManifestCoversCatalog(toothIds)` | Test helper — manifest vs dentition |
+| Export                                               | Description                                             |
+| ---------------------------------------------------- | ------------------------------------------------------- |
+| `getManifest()`                                      | `families` (16) + `teeth` (52 FDI bindings)             |
+| `getOrientationKey(toothId)`                         | Patient side + arch key for catalog lookup              |
+| `resolveToothSvgResource(toothId)`                   | `resourceId`, paths under `resources/`, manifest fields |
+| `listCatalogFamilies()` / `listCatalogResourceIds()` | Enumerate shared art families                           |
+| `listTeethForCatalogResource(resourceId)`            | FDI ids sharing one SVG family                          |
+| `assertManifestCoversCatalog(toothIds)`              | Test helper — manifest vs dentition                     |
 
 Node disk loader: `import { loadCatalogSvgMarkup } from "@odontogram/svg/catalog/node"`.
 
 Review gallery: `npm run gallery` (`examples/svg-gallery`).
-

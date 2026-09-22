@@ -2,10 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { JSDOM } from "jsdom";
-import {
-  parseToothSvgMetadataJson,
-  validateToothSvg,
-} from "../index.js";
+import { parseToothSvgMetadataJson, validateToothSvg } from "../index.js";
 
 function installDom(): void {
   if (typeof globalThis.DOMParser !== "undefined") return;

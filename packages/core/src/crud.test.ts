@@ -1,7 +1,7 @@
-﻿import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { Odontogram } from "./odontogram.js";
-import { OdontogramError, VALIDATION_CODES } from "./errors.js";
-import type { OdontographicMark, SurfaceId } from "./types.js";
+import { OdontogramError } from "./errors.js";
+import type { SurfaceId } from "./types.js";
 
 describe("Typed CRUD Operations (Stage 02)", () => {
   let container: HTMLElement;
@@ -92,7 +92,7 @@ describe("Typed CRUD Operations (Stage 02)", () => {
 
     it("updateMark() updates properties while strictly preserving persistent ID", () => {
       const odontogram = new Odontogram(container);
-      const created = odontogram.addMark({
+      odontogram.addMark({
         id: "orig-mark-1",
         tooth: "16",
         surfaces: ["O"],

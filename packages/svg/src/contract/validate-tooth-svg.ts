@@ -1,4 +1,9 @@
-import { DEFAULT_TOOTH_VIEWBOX, SVG_CONTRACT_VERSION, CONTRACT_LAYER_IDS, REQUIRED_ANCHOR_IDS } from "./constants.js";
+import {
+  DEFAULT_TOOTH_VIEWBOX,
+  SVG_CONTRACT_VERSION,
+  CONTRACT_LAYER_IDS,
+  REQUIRED_ANCHOR_IDS,
+} from "./constants.js";
 import { parseSvgMarkup } from "./instance-ids.js";
 import {
   extractSurfaceBindings,
@@ -13,8 +18,7 @@ import type {
   ToothSvgValidationResult,
 } from "./types.js";
 
-const EXTERNAL_URI =
-  /(?:https?:|ftp:|\/\/|data:(?!image\/(?:png|jpeg|jpg|gif|webp|svg\+xml)))/i;
+const EXTERNAL_URI = /(?:https?:|ftp:|\/\/|data:(?!image\/(?:png|jpeg|jpg|gif|webp|svg\+xml)))/i;
 
 /**
  * Validate a single-tooth SVG resource against the odontogram SVG contract.
@@ -92,7 +96,10 @@ function validateViewBox(
     return;
   }
 
-  const parts = viewBox.trim().split(/[\s,]+/).map(Number);
+  const parts = viewBox
+    .trim()
+    .split(/[\s,]+/)
+    .map(Number);
   if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
     issues.push({
       ruleId: "contract.viewbox",
@@ -105,7 +112,12 @@ function validateViewBox(
   const expected = options.metadata?.viewBox ?? DEFAULT_TOOTH_VIEWBOX;
   const minX = expected.minX ?? 0;
   const minY = expected.minY ?? 0;
-  if (parts[0] !== minX || parts[1] !== minY || parts[2] !== expected.width || parts[3] !== expected.height) {
+  if (
+    parts[0] !== minX ||
+    parts[1] !== minY ||
+    parts[2] !== expected.width ||
+    parts[3] !== expected.height
+  ) {
     issues.push({
       ruleId: "contract.viewbox",
       message: `viewBox must be "${minX} ${minY} ${expected.width} ${expected.height}"; got "${viewBox}"`,
@@ -189,7 +201,9 @@ function validateLayers(root: Element, issues: ToothSvgValidationIssue[]): void 
   const directGroups = [...root.children].filter((c) => c.localName === "g");
   const layerOrder = directGroups
     .map((g) => g.getAttribute("id"))
-    .filter((id): id is string => id !== null && (CONTRACT_LAYER_IDS as readonly string[]).includes(id));
+    .filter(
+      (id): id is string => id !== null && (CONTRACT_LAYER_IDS as readonly string[]).includes(id),
+    );
 
   if (layerOrder.length > 0) {
     for (let i = 0; i < layerOrder.length; i++) {
@@ -323,9 +337,7 @@ function validateSurfaces(
     : undefined;
   if (expectedForClass) {
     for (const surface of expectedForClass) {
-      const el = root.querySelector(
-        `#layer-interaction [data-surface="${surface}"]`,
-      );
+      const el = root.querySelector(`#layer-interaction [data-surface="${surface}"]`);
       if (!el) {
         issues.push({
           ruleId: "contract.surfaces.match-class",

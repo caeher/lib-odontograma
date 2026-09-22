@@ -16,7 +16,46 @@ export interface ToothState {
 export type Notation = "fdi" | "universal" | "palmer";
 
 /** Built-in view types; plugins may register additional views. */
-export type ViewType = "permanent" | "deciduous" | "mixed" | string;
+export type ViewType =
+  | "permanent"
+  | "deciduous"
+  | "primary"
+  | "mixed"
+  | "arch"
+  | "upper"
+  | "lower"
+  | "maxillary"
+  | "mandibular"
+  | "quadrant"
+  | "quadrant-1"
+  | "quadrant-2"
+  | "quadrant-3"
+  | "quadrant-4"
+  | "quadrant-5"
+  | "quadrant-6"
+  | "quadrant-7"
+  | "quadrant-8"
+  | "tooth"
+  | "tooth-detail"
+  | (string & {});
+
+/** Configuration options for active view presentation and scoping. */
+export interface ViewOptions {
+  /** Target dentition system for view scoping. */
+  dentition?: "permanent" | "primary" | "deciduous" | "mixed";
+  /** Target dental arch for arch views. */
+  arch?: "maxillary" | "mandibular" | "upper" | "lower";
+  /** Target quadrant (1-8) for quadrant views. */
+  quadrant?: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | number;
+  /** Target tooth ID for single-tooth detail views. */
+  tooth?: ToothId;
+  /** Explicit whitelist filter of visible teeth. */
+  visibleTeeth?: ToothId[];
+  /** Whether to render patient right/left orientation indicators (default: true). */
+  showOrientationLabels?: boolean;
+  /** Whether to render anatomical midline dividers (default: true). */
+  showMidline?: boolean;
+}
 
 /** Visual style overrides for marks or teeth. */
 export interface MarkStyle {
@@ -331,6 +370,11 @@ export interface OdontogramOptions {
   selectionColor?: string;
   markColors?: Record<string, string>;
   statusColors?: Record<string, string>;
+  instanceId?: string;
+  viewOptions?: ViewOptions;
+  showOrientationLabels?: boolean;
+  showMidline?: boolean;
+  visibleTeeth?: ToothId[];
 
   validator?: boolean | ValidatorConfig | ((state: OdontogramState) => ValidationResult);
 
@@ -356,6 +400,7 @@ export interface OdontogramOptions {
 export interface ViewDefinition {
   type: ViewType;
   render: (ctx: ViewRenderContext) => void;
+  update?: (ctx: ViewRenderContext) => void;
   destroy?: (ctx: ViewRenderContext) => void;
 }
 
@@ -364,6 +409,7 @@ export interface ViewRenderContext {
   el: HTMLElement;
   options: OdontogramOptions;
   state: OdontogramState;
+  viewOptions?: ViewOptions;
   requestRender: () => void;
   selectTooth: (tooth: ToothId) => void;
   selectSurface: (tooth: ToothId, surface: SurfaceId) => void;

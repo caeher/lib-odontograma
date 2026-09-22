@@ -4,14 +4,7 @@
   "title": "ToothSvgMetadata",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "contractVersion",
-    "resourceId",
-    "title",
-    "toothClass",
-    "projection",
-    "viewBox"
-  ],
+  "required": ["contractVersion", "resourceId", "title", "toothClass", "projection", "viewBox"],
   "properties": {
     "contractVersion": {
       "type": "string",
