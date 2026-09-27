@@ -19,6 +19,8 @@ import type {
   BatchOptions,
   MarkFilter,
   MarkInput,
+  OdontogramCommand,
+  OdontogramCommandResult,
   OdontogramMode,
   OdontogramOptions,
   OdontogramPlugin,
@@ -61,6 +63,8 @@ export class Odontogram {
   private preBatchState: OdontogramState | null = null;
   private preBatchRevision: number | null = null;
   private preBatchOptions: OdontogramOptions | null = null;
+  private activeMarkCommand: OdontogramCommand | null = null;
+  private evaluatingMarkCommand = false;
 
   constructor(el?: HTMLElement | null, options: OdontogramOptions = {}) {
     if (el !== undefined && el !== null) {
@@ -247,6 +251,12 @@ export class Odontogram {
     state: OdontogramState | OdontogramStateInput | Partial<OdontogramState>,
     options?: SetStateOptions,
   ): void {
+    if (this.evaluatingMarkCommand) {
+      throw new OdontogramError(
+        "State cannot be mutated while beforeMarkCommand is evaluating a candidate.",
+        VALIDATION_CODES.ERR_COMMAND_CANCELLED,
+      );
+    }
     if (!state || typeof state !== "object") {
       throw new OdontogramValidationError(
         "setState requires a valid state object.",
@@ -330,6 +340,35 @@ export class Odontogram {
         activeValidationResult.issues,
         VALIDATION_CODES.ERR_INVALID_STATE,
       );
+    }
+
+    if (this.activeMarkCommand && !isDeepEqual(candidateState.marks, this.state.marks)) {
+      const beforeCommit = this.getOption("beforeMarkCommand");
+      if (beforeCommit) {
+        this.evaluatingMarkCommand = true;
+        let decision: boolean | void;
+        try {
+          decision = beforeCommit({
+            command: deepClone(this.activeMarkCommand),
+            previousState: deepClone(this.state),
+            nextState: deepClone(candidateState),
+          });
+        } finally {
+          this.evaluatingMarkCommand = false;
+        }
+        if (decision && typeof (decision as unknown as { then?: unknown }).then === "function") {
+          throw new OdontogramError(
+            "beforeMarkCommand must be synchronous; return false to veto a command.",
+            VALIDATION_CODES.ERR_INVALID_OPTION,
+          );
+        }
+        if (decision === false) {
+          throw new OdontogramError(
+            "Mark command was cancelled by beforeMarkCommand.",
+            VALIDATION_CODES.ERR_COMMAND_CANCELLED,
+          );
+        }
+      }
     }
 
     // 3. Atomically apply the validated state
@@ -437,6 +476,130 @@ export class Odontogram {
   /** Check if a mark with the given ID exists. */
   hasMark(id: string): boolean {
     return this.state.marks.some((m) => m.id === id);
+  }
+
+  /** Execute a validated odontogram mark action. This API is shared by UI and host consumers. */
+  executeCommand(command: OdontogramCommand): OdontogramCommandResult {
+    const previousState = this.getState();
+    try {
+      if (this.evaluatingMarkCommand) {
+        throw new OdontogramError(
+          "Mark commands cannot be nested inside beforeMarkCommand.",
+          VALIDATION_CODES.ERR_COMMAND_CANCELLED,
+        );
+      }
+      this.assertMutable(`execute ${command.type} command`);
+      let nextMarks = [...this.state.marks];
+      if (command.type === "apply-mark") {
+        const selection = this.state.selection;
+        if (selection.surfaces.length === 0 && selection.teeth.length === 0) {
+          throw new OdontogramError(
+            "Select at least one tooth or surface before applying a mark.",
+            VALIDATION_CODES.ERR_INVALID_SELECTION,
+          );
+        }
+        const targets: Array<{ tooth: ToothId; surface?: SurfaceId }> = selection.surfaces.length
+          ? selection.surfaces.map(({ tooth, surface }) => ({ tooth, surface }))
+          : selection.teeth.map((tooth) => ({ tooth }));
+        const locked = targets.find(({ tooth, surface }) =>
+          surface
+            ? this.isToothLocked(tooth) || this.isSurfaceLocked(tooth, surface)
+            : this.isToothLocked(tooth),
+        );
+        if (locked) {
+          throw new OdontogramError(
+            `Cannot apply a mark because selected target ${locked.tooth}${locked.surface ? `/${locked.surface}` : ""} is locked.`,
+            VALIDATION_CODES.ERR_COMMAND_LOCKED_TARGET,
+          );
+        }
+        const target = selection.surfaces.length
+          ? this.selectionAsMarkTarget(selection.surfaces)
+          : selection.teeth.length === 1
+            ? { kind: "tooth" as const, tooth: selection.teeth[0]! }
+            : { kind: "teeth" as const, teeth: [...selection.teeth] };
+        const mark = normalizeMark({ ...command.mark, target });
+        nextMarks = [...nextMarks, mark as OdontographicMark];
+      } else if (command.type === "edit-mark") {
+        const existing = this.getMark(command.markId);
+        if (!existing)
+          throw new OdontogramError(
+            `Mark with id "${command.markId}" was not found.`,
+            VALIDATION_CODES.ERR_MARK_NOT_FOUND,
+          );
+        if (this.isMarkLocked(existing)) {
+          throw new OdontogramError(
+            `Cannot edit mark "${command.markId}" because one or more of its targets are locked.`,
+            VALIDATION_CODES.ERR_COMMAND_LOCKED_TARGET,
+          );
+        }
+        const updated = normalizeMark({ ...existing, ...command.patch, id: command.markId });
+        if (this.isMarkLocked(updated)) {
+          throw new OdontogramError(
+            `Cannot move mark "${command.markId}" onto a locked target.`,
+            VALIDATION_CODES.ERR_COMMAND_LOCKED_TARGET,
+          );
+        }
+        nextMarks = this.state.marks.map((mark) => (mark.id === command.markId ? updated : mark));
+      } else {
+        const existing = this.getMark(command.markId);
+        if (!existing)
+          throw new OdontogramError(
+            `Mark with id "${command.markId}" was not found.`,
+            VALIDATION_CODES.ERR_MARK_NOT_FOUND,
+          );
+        if (this.isMarkLocked(existing)) {
+          throw new OdontogramError(
+            `Cannot delete mark "${command.markId}" because one or more of its targets are locked.`,
+            VALIDATION_CODES.ERR_COMMAND_LOCKED_TARGET,
+          );
+        }
+        nextMarks = this.state.marks.filter((mark) => mark.id !== command.markId);
+      }
+
+      const nextSelection =
+        command.type === "delete-mark"
+          ? {
+              ...this.state.selection,
+              annotations: (this.state.selection.annotations ?? []).filter(
+                (id) => id !== command.markId,
+              ),
+            }
+          : this.state.selection;
+      this.activeMarkCommand = deepClone(command);
+      this.setState({ marks: nextMarks, selection: nextSelection }, { source: "internal" });
+      const resultMarks =
+        command.type === "apply-mark"
+          ? this.getMarks().filter(
+              (mark) => !previousState.marks.some((oldMark) => oldMark.id === mark.id),
+            )
+          : command.type === "edit-mark"
+            ? [this.getMark(command.markId)!]
+            : [];
+      return {
+        ok: true,
+        command: command.type,
+        changed: !isDeepEqual(previousState, this.state),
+        marks: resultMarks,
+        revision: this.revision,
+      };
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error(String(caught));
+      const detail = caught instanceof OdontogramValidationError ? caught.issues : undefined;
+      return {
+        ok: false,
+        command: command.type,
+        error,
+        code: caught instanceof OdontogramError ? caught.code : undefined,
+        issues: detail,
+        cancelled:
+          caught instanceof OdontogramError &&
+          (caught.code === VALIDATION_CODES.ERR_COMMAND_CANCELLED ||
+            caught.code === VALIDATION_CODES.ERR_COMMAND_LOCKED_TARGET),
+        revision: this.revision,
+      };
+    } finally {
+      this.activeMarkCommand = null;
+    }
   }
 
   /** Get all marks referencing a specific tooth. */
@@ -1152,28 +1315,29 @@ export class Odontogram {
   private createViewContext(): ViewRenderContext {
     const el = this.hostEl!;
     const controlled = this.getMode() === "controlled";
+    const uiReadOnly = controlled || Boolean(this.getOption("readOnly"));
     return {
       el,
       options: this.options,
       state: deepClone(this.state),
       viewOptions: deepClone(this.options.viewOptions),
       requestRender: () => this.requestRender(),
-      selectTooth: controlled
+      selectTooth: uiReadOnly
         ? () => {
             /* selection is host-driven in controlled mode */
           }
         : (tooth, mode = "replace") => this.selectTooth(tooth, mode),
-      selectSurface: controlled
+      selectSurface: uiReadOnly
         ? () => {
             /* selection is host-driven in controlled mode */
           }
         : (tooth, surface, mode = "replace") => this.selectSurface(tooth, surface, mode),
-      selectAnnotation: controlled
+      selectAnnotation: uiReadOnly
         ? () => {
             /* selection is host-driven in controlled mode */
           }
         : (markId) => this.selectAnnotation(markId),
-      toggleSurfaceSelection: controlled
+      toggleSurfaceSelection: uiReadOnly
         ? () => {
             /* selection is host-driven in controlled mode */
           }
@@ -1219,25 +1383,88 @@ export class Odontogram {
   }
 
   private canSelectTooth(tooth: ToothId): boolean {
-    return !this.getOption("lockedTeeth")?.includes(tooth) &&
-      (this.getOption("isToothSelectable")?.(tooth) ?? true);
+    return (
+      !this.getOption("lockedTeeth")?.includes(tooth) &&
+      (this.getOption("isToothSelectable")?.(tooth) ?? true)
+    );
+  }
+
+  private isToothLocked(tooth: ToothId): boolean {
+    return this.getOption("lockedTeeth")?.includes(tooth) ?? false;
+  }
+
+  private isSurfaceLocked(tooth: ToothId, surface: SurfaceId): boolean {
+    return (
+      this.getOption("lockedSurfaces")?.some(
+        (item) => item.tooth === tooth && item.surface === surface,
+      ) ?? false
+    );
+  }
+
+  private isMarkLocked(mark: OdontographicMark): boolean {
+    const target = mark.target;
+    if ("elements" in target) {
+      return target.elements.some(
+        (element) =>
+          this.isToothLocked(element.tooth) ||
+          (element.surfaces
+            ? element.surfaces.some((surface) => this.isSurfaceLocked(element.tooth, surface))
+            : false),
+      );
+    }
+    if ("teeth" in target) return target.teeth.some((tooth) => this.isToothLocked(tooth));
+    if ("surfaces" in target && Array.isArray(target.surfaces)) {
+      return (
+        this.isToothLocked(target.tooth) ||
+        target.surfaces.some((surface) => this.isSurfaceLocked(target.tooth, surface))
+      );
+    }
+    return this.isToothLocked(target.tooth);
+  }
+
+  private selectionAsMarkTarget(
+    surfaces: Array<{ tooth: ToothId; surface: SurfaceId }>,
+  ): OdontographicMark["target"] {
+    const grouped = new Map<ToothId, SurfaceId[]>();
+    for (const { tooth, surface } of surfaces) {
+      const toothSurfaces = grouped.get(tooth) ?? [];
+      toothSurfaces.push(surface);
+      grouped.set(tooth, toothSurfaces);
+    }
+    const elements = [...grouped].map(([tooth, toothSurfaces]) => ({
+      tooth,
+      surfaces: toothSurfaces,
+    }));
+    if (elements.length === 1) return { kind: "surface", ...elements[0]! };
+    return { kind: "complex", elements };
   }
 
   private canSelectSurface(tooth: ToothId, surface: SurfaceId): boolean {
-    return this.canSelectTooth(tooth) &&
-      !this.getOption("lockedSurfaces")?.some((item) => item.tooth === tooth && item.surface === surface) &&
-      (this.getOption("isSurfaceSelectable")?.(tooth, surface) ?? true);
+    return (
+      this.canSelectTooth(tooth) &&
+      !this.getOption("lockedSurfaces")?.some(
+        (item) => item.tooth === tooth && item.surface === surface,
+      ) &&
+      (this.getOption("isSurfaceSelectable")?.(tooth, surface) ?? true)
+    );
   }
 
   private emitToothClick(tooth: ToothId, jsEvent?: Event): void {
     this.getOption("toothClick")?.({
-      target: { kind: "tooth", tooth }, tooth, selection: this.getSelection(), jsEvent,
+      target: { kind: "tooth", tooth },
+      tooth,
+      selection: this.getSelection(),
+      jsEvent,
     });
   }
 
   private emitSurfaceClick(tooth: ToothId, surface: SurfaceId, jsEvent?: Event): void {
     this.getOption("surfaceClick")?.({
-      target: { kind: "surface", tooth, surface }, tooth, surface, selection: this.getSelection(), jsEvent,
+      target: { kind: "surface", tooth, surface },
+      tooth,
+      surface,
+      selection: this.getSelection(),
+      jsEvent,
     });
   }
 

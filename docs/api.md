@@ -91,6 +91,10 @@ Returns the monotonic integer revision number representing the count of successf
 
 In controlled mode, compound host updates should use a **single** `setState` call (not `batch`).
 
+#### Read-only interaction mode
+
+Set `readOnly: true` to make rendered chart selection handlers no-ops. Tooth and surface click callbacks still run, and existing selection, marks, and query methods remain available. Changing a selection through `setSelection()` and executing commands are programmatic operations and remain available in internal mode; `mode: "controlled"` continues to reject imperative mutations. Applications that provide their own mark controls should disable those controls when read-only. The option does not clear selection or mark data.
+
 #### Marks CRUD Operations
 
 ##### `getMarks(filter?: MarkFilter): OdontographicMark[]`
@@ -140,6 +144,33 @@ Remove all marks referencing a specific tooth. Returns the count of removed mark
 ##### `clearMarks(filter?: MarkFilter): number`
 
 Remove all marks, or only marks matching the optional filter. Returns the count of cleared marks.
+
+#### Selection mark commands
+
+`executeCommand(command: OdontogramCommand): OdontogramCommandResult` provides a UI-independent command API. A built-in toolbar or a consumer-owned UI can call the same method; commands operate only on odontogram marks and their odontogram selection.
+
+```ts
+const applied = odontogram.executeCommand({
+  type: "apply-mark",
+  mark: { type: "restoration", status: "planned", text: "Composite" },
+});
+
+const edited = odontogram.executeCommand({
+  type: "edit-mark",
+  markId: "mark-123",
+  patch: { status: "completed", metadata: { material: "composite" } },
+});
+
+const deleted = odontogram.executeCommand({ type: "delete-mark", markId: "mark-123" });
+```
+
+- `apply-mark` creates one mark for the current selection. Selected surfaces take precedence over selected teeth; surfaces on several teeth become one `complex` target. A whole tooth selection becomes a tooth target, and multiple teeth become one grouped target. Empty or locked targets reject the whole action.
+- `edit-mark` changes only the named mark and preserves its id. `delete-mark` removes only the named mark and clears that id from selected annotations.
+- The candidate state is validated before commit. A successful command makes one state update/revision and emits the normal state and mark callbacks once.
+- Results have `ok: true` plus the affected marks and revision, or `ok: false` plus `error`, `code`, optional validation `issues`, and a `cancelled` flag for a veto or locked target. A rejected command leaves state and revision unchanged.
+- `beforeMarkCommand` receives cloned previous and candidate state snapshots after validation and before commit. Return `false` synchronously to veto. Throwing also rejects the command; asynchronous callbacks are unsupported. The callback is invoked only for a command that would change marks.
+
+Locked targets are configured through `lockedTeeth` and `lockedSurfaces`. If any target in an applied multi-target selection is locked, the command is cancelled atomically; no eligible subset is applied. Edit and delete commands are also cancelled when any target of that specific mark is locked. Existing CRUD methods remain available for lower-level programmatic integrations.
 
 #### Tooth State & Biological Presence
 
@@ -269,33 +300,35 @@ Run structural and coexistence validation against the current odontogram state s
 
 ## OdontogramOptions
 
-| Option           | Type                                                                           | Default       | Description                                  |
-| ---------------- | ------------------------------------------------------------------------------ | ------------- | -------------------------------------------- |
-| `mode`           | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode            |
-| `plugins`        | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                          |
-| `initialView`    | `ViewType`                                                                     | `"permanent"` | Starting view                                |
-| `notation`       | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                         |
-| `height`         | `number \| string`                                                             | `400`         | Container height                             |
-| `selectable`     | `boolean`                                                                      | `true`        | Enable selection                             |
-| `toothColor`     | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                           |
-| `surfaceColor`   | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                         |
-| `selectionColor` | `string`                                                                       | `"#90caf9"`   | Selection highlight                          |
-| `markColors`     | `Record<string, string>`                                                       | `{}`          | Type-to-color map                            |
-| `statusColors`   | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed) |
-| `instanceId`     | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs |
-| `validator`      | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates               |
+| Option           | Type                                                                           | Default       | Description                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------- |
+| `mode`           | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode                                                             |
+| `plugins`        | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                                                                           |
+| `initialView`    | `ViewType`                                                                     | `"permanent"` | Starting view                                                                                 |
+| `notation`       | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                                                                          |
+| `height`         | `number \| string`                                                             | `400`         | Container height                                                                              |
+| `selectable`     | `boolean`                                                                      | `true`        | Enable selection                                                                              |
+| `readOnly`       | `boolean`                                                                      | `false`       | Ignore selection mutations from rendered chart interactions; imperative APIs remain available |
+| `toothColor`     | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                                                                            |
+| `surfaceColor`   | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                                                                          |
+| `selectionColor` | `string`                                                                       | `"#90caf9"`   | Selection highlight                                                                           |
+| `markColors`     | `Record<string, string>`                                                       | `{}`          | Type-to-color map                                                                             |
+| `statusColors`   | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed)                                                  |
+| `instanceId`     | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs                                                  |
+| `validator`      | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates                                                                |
 
 ### Callbacks
 
-| Callback              | Argument                                  | When                                     |
-| --------------------- | ----------------------------------------- | ---------------------------------------- |
-| `toothClick`          | `{ tooth, jsEvent }`                      | User clicks a tooth                      |
-| `surfaceClick`        | `{ tooth, surface, jsEvent }`             | User clicks a surface                    |
-| `selectionDidChange`  | `{ selection }`                           | Selection state changes                  |
-| `marksSet`            | `{ marks }`                               | Marks array changes                      |
-| `stateDidChange`      | `{ state, revision, source }`             | Any state change occurs                  |
-| `toothStateDidChange` | `{ toothId, presence, previousPresence }` | Tooth presence overlay changes           |
-| `validationDidChange` | `{ result }`                              | Validation issues change on state update |
+| Callback              | Argument                                  | When                                          |
+| --------------------- | ----------------------------------------- | --------------------------------------------- |
+| `toothClick`          | `{ tooth, jsEvent }`                      | User clicks a tooth                           |
+| `surfaceClick`        | `{ tooth, surface, jsEvent }`             | User clicks a surface                         |
+| `selectionDidChange`  | `{ selection }`                           | Selection state changes                       |
+| `marksSet`            | `{ marks }`                               | Marks array changes                           |
+| `stateDidChange`      | `{ state, revision, source }`             | Any state change occurs                       |
+| `beforeMarkCommand`   | `{ command, previousState, nextState }`   | Synchronous pre-commit veto for mark commands |
+| `toothStateDidChange` | `{ toothId, presence, previousPresence }` | Tooth presence overlay changes                |
+| `validationDidChange` | `{ result }`                              | Validation issues change on state update      |
 
 ### Hooks
 

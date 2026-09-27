@@ -1,13 +1,12 @@
 import { Odontogram } from "@odontogram/core";
 import { svgPlugin } from "@odontogram/svg";
-import type { Notation, OdontographicMark, ToothPresence } from "@odontogram/core";
+import type { Notation, ToothPresence } from "@odontogram/core";
 import "@odontogram/core/style.css";
 import "@odontogram/svg/style.css";
 
 const container = document.getElementById("odontogram-container")!;
 const logEl = document.getElementById("log")!;
 
-let markCounter = 0;
 const notations: Notation[] = ["fdi", "universal", "palmer"];
 let notationIdx = 0;
 
@@ -161,38 +160,43 @@ document.getElementById("btn-unerupted")!.addEventListener("click", () => {
 
 // Add mark on current selection
 document.getElementById("btn-add-mark")!.addEventListener("click", () => {
-  const selection = odontogram.getSelection();
-  if (selection.surfaces.length === 0 && selection.teeth.length === 0) {
-    log("Select surfaces or teeth to add marks");
+  const result = odontogram.executeCommand({
+    type: "apply-mark",
+    mark: {
+      type: (document.getElementById("mark-type") as HTMLSelectElement).value,
+      status: (document.getElementById("mark-status") as HTMLSelectElement).value,
+    },
+  });
+  log(
+    result.ok ? `Applied ${result.marks[0]?.type} to the current selection` : result.error.message,
+  );
+});
+
+document.getElementById("btn-edit-mark")!.addEventListener("click", () => {
+  const markId = odontogram.getSelection().annotations?.[0];
+  if (!markId) {
+    log("Select a mark annotation to edit it");
     return;
   }
+  const result = odontogram.executeCommand({
+    type: "edit-mark",
+    markId,
+    patch: {
+      type: (document.getElementById("mark-type") as HTMLSelectElement).value,
+      status: (document.getElementById("mark-status") as HTMLSelectElement).value,
+    },
+  });
+  log(result.ok ? `Updated mark ${markId}` : result.error.message);
+});
 
-  const marksToAdd: Array<OdontographicMark> = [];
-  if (selection.surfaces.length > 0) {
-    for (const { tooth, surface } of selection.surfaces) {
-      markCounter++;
-      marksToAdd.push({
-        id: `mark-${markCounter}`,
-        tooth,
-        surfaces: [surface],
-        type: markCounter % 2 === 0 ? "caries" : "restoration",
-        target: { tooth, surfaces: [surface] },
-      });
-    }
-  } else {
-    for (const tooth of selection.teeth) {
-      markCounter++;
-      marksToAdd.push({
-        id: `mark-${markCounter}`,
-        tooth,
-        type: "crown",
-        target: { tooth },
-      });
-    }
+document.getElementById("btn-delete-mark")!.addEventListener("click", () => {
+  const markId = odontogram.getSelection().annotations?.[0];
+  if (!markId) {
+    log("Select a mark annotation to delete it");
+    return;
   }
-
-  odontogram.addMarks(marksToAdd);
-  log(`Added ${marksToAdd.length} mark(s)`);
+  const result = odontogram.executeCommand({ type: "delete-mark", markId });
+  log(result.ok ? `Deleted mark ${markId}` : result.error.message);
 });
 
 // Add bridge annotation (multi-tooth)

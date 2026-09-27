@@ -229,8 +229,39 @@ export interface SelectionState {
 
 /** A typed tooth or surface target that can be selected by the chart UI. */
 export type SelectionTarget =
-  | { kind: "tooth"; tooth: ToothId }
-  | { kind: "surface"; tooth: ToothId; surface: SurfaceId };
+  { kind: "tooth"; tooth: ToothId } | { kind: "surface"; tooth: ToothId; surface: SurfaceId };
+
+/** A domain action requested against the current odontogram selection or a mark id. */
+export type OdontogramCommand =
+  | { type: "apply-mark"; mark: Omit<MarkInput, "target" | "tooth" | "teeth" | "surfaces"> }
+  | { type: "edit-mark"; markId: string; patch: Partial<MarkInput> }
+  | { type: "delete-mark"; markId: string };
+
+/** Result of a mark command. Rejected commands leave state and revision unchanged. */
+export type OdontogramCommandResult =
+  | {
+      ok: true;
+      command: OdontogramCommand["type"];
+      changed: boolean;
+      marks: OdontographicMark[];
+      revision: number;
+    }
+  | {
+      ok: false;
+      command: OdontogramCommand["type"];
+      error: Error;
+      code?: string;
+      issues?: ValidationIssue[];
+      cancelled?: boolean;
+      revision: number;
+    };
+
+/** Synchronous pre-commit hook. Return false to veto; asynchronous results are unsupported. */
+export type BeforeMarkCommand = (arg: {
+  command: OdontogramCommand;
+  previousState: OdontogramState;
+  nextState: OdontogramState;
+}) => boolean | void;
 
 /** Input state snapshot, allowing flexible / legacy mark inputs. */
 export interface OdontogramStateInput<
@@ -438,6 +469,8 @@ export interface OdontogramOptions {
   notation?: Notation;
   height?: number | string;
   selectable?: boolean;
+  /** Disable mutations originating from rendered chart interactions; imperative APIs remain available. */
+  readOnly?: boolean;
   /** Teeth excluded from user and programmatic selection. */
   lockedTeeth?: ToothId[];
   /** Surfaces excluded from user and programmatic selection. */
@@ -468,6 +501,8 @@ export interface OdontogramOptions {
   marksSet?: (arg: MarksSetArg) => void;
   validationDidChange?: (arg: ValidationChangeArg) => void;
   stateDidChange?: (arg: StateChangeArg) => void;
+  /** Synchronously veto a validated mark command by returning false. */
+  beforeMarkCommand?: BeforeMarkCommand;
   toothStateDidChange?: (arg: ToothStateChangeArg) => void;
 
   toothClassNames?: (arg: ToothClassNamesArg) => string | string[];
@@ -509,7 +544,11 @@ export interface ViewRenderContext {
   selectTooth: (tooth: ToothId, mode?: "replace" | "add" | "toggle") => void;
   selectSurface: (tooth: ToothId, surface: SurfaceId, mode?: "replace" | "add" | "toggle") => void;
   selectAnnotation: (markId: string) => void;
-  toggleSurfaceSelection: (tooth: ToothId, surface: SurfaceId, mode?: "replace" | "add" | "toggle") => void;
+  toggleSurfaceSelection: (
+    tooth: ToothId,
+    surface: SurfaceId,
+    mode?: "replace" | "add" | "toggle",
+  ) => void;
   emitToothClick: (tooth: ToothId, jsEvent?: Event) => void;
   emitSurfaceClick: (tooth: ToothId, surface: SurfaceId, jsEvent?: Event) => void;
 }

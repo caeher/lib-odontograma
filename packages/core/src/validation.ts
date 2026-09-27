@@ -45,6 +45,7 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "notation",
   "height",
   "selectable",
+  "readOnly",
   "lockedTeeth",
   "lockedSurfaces",
   "isToothSelectable",
@@ -68,6 +69,7 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "marksSet",
   "validationDidChange",
   "stateDidChange",
+  "beforeMarkCommand",
   "toothStateDidChange",
   "toothClassNames",
   "toothLabelClassNames",
@@ -265,6 +267,16 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
       severity: "error",
       message: `Option "selectable" must be a boolean.`,
       path: "options.selectable",
+    });
+  }
+
+  if (options.readOnly !== undefined && typeof options.readOnly !== "boolean") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "readOnly" must be a boolean.`,
+      path: "options.readOnly",
     });
   }
 

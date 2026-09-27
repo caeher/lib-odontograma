@@ -56,6 +56,7 @@ export { Odontogram } from "./odontogram.js";
 export { createPlugin } from "./plugin.js";
 export type {
   BatchOptions,
+  BeforeMarkCommand,
   AnnotationHookArg,
   AnnotationContext,
   ComplexTarget,
@@ -75,6 +76,8 @@ export type {
   Notation,
   OdontographicMark,
   OdontogramMode,
+  OdontogramCommand,
+  OdontogramCommandResult,
   OdontogramOptions,
   OdontogramPlugin,
   OdontogramPluginDef,

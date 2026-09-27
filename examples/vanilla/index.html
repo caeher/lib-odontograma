@@ -75,7 +75,7 @@
     <p class="subtitle">Stage 03 · SVG & representation — interactive incremental SVG demo</p>
 
     <div class="toolbar" id="views-toolbar">
-      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem;">Views:</strong>
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem">Views:</strong>
       <button id="btn-permanent" class="active" data-view="permanent">Permanent (32)</button>
       <button id="btn-deciduous" data-view="deciduous">Deciduous (20)</button>
       <button id="btn-mixed" data-view="mixed">Mixed (52)</button>
@@ -90,7 +90,9 @@
     </div>
 
     <div class="toolbar" id="options-toolbar">
-      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem;">Options:</strong>
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem"
+        >Options:</strong
+      >
       <button id="btn-notation">Notation: FDI</button>
       <button id="btn-toggle-orientation" class="active">Orientation: ON (R/L)</button>
       <button id="btn-toggle-midline" class="active">Midline: ON</button>
@@ -99,11 +101,32 @@
     </div>
 
     <div class="toolbar" id="actions-toolbar">
-      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem;">Actions:</strong>
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem"
+        >Actions:</strong
+      >
       <button id="btn-present">Set Present</button>
       <button id="btn-missing">Set Missing</button>
       <button id="btn-unerupted">Set Unerupted</button>
-      <button id="btn-add-mark">Add Mark on Selection</button>
+      <label
+        >Mark type
+        <select id="mark-type">
+          <option value="caries">Caries</option>
+          <option value="restoration">Restoration</option>
+          <option value="crown">Crown</option>
+        </select>
+      </label>
+      <label
+        >Status
+        <select id="mark-status">
+          <option value="existing">Existing</option>
+          <option value="planned">Planned</option>
+          <option value="completed">Completed</option>
+          <option value="proposed">Proposed</option>
+        </select>
+      </label>
+      <button id="btn-add-mark">Apply Mark to Selection</button>
+      <button id="btn-edit-mark">Edit Selected Mark</button>
+      <button id="btn-delete-mark">Delete Selected Mark</button>
       <button id="btn-add-bridge">Add Bridge (14-16)</button>
       <button id="btn-batch">Batch Demo</button>
       <button id="btn-clear-marks">Clear Marks</button>

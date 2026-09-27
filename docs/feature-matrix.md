@@ -33,6 +33,9 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Orphaned mark pruning             |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | Multi-instance isolation          |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | Defensive cloning / immutability  |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Selection-based mark commands     |  ✅  |     —     |  —  |    —    |    —     | 05    |
+| Command validation, veto & errors |  ✅  |     —     |  —  |    —    |    —     | 05    |
+| Read-only chart interaction       |  ✅  |     —     | ✅  |    —    |    —     | 05    |
 
 ## Dentition
 
