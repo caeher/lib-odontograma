@@ -459,6 +459,23 @@ export class IncrementalSvgRenderer {
     }
   }
 
+  private resolveNotation(ctx: ViewRenderContext, tooth: ToothId, notation: Notation): string {
+    const custom = ctx.getNotation?.(notation);
+    if (custom) return custom.format(tooth);
+    return toNotation(tooth, notation);
+  }
+
+  private resolveAccessibleNotation(
+    ctx: ViewRenderContext,
+    tooth: ToothId,
+    notation: Notation,
+  ): string {
+    const custom = ctx.getNotation?.(notation);
+    if (custom?.formatAccessible) return custom.formatAccessible(tooth);
+    if (custom) return `Tooth ${custom.format(tooth)}`;
+    return toAccessibleNotation(tooth, notation);
+  }
+
   render(ctx: ViewRenderContext): void {
     this.destroy(ctx);
 
@@ -487,6 +504,7 @@ export class IncrementalSvgRenderer {
 
     this.layoutMap.clear();
     for (const item of allLayout) {
+      item.label = this.resolveNotation(ctx, item.tooth, notation);
       this.layoutMap.set(item.tooth, item);
     }
 
@@ -782,7 +800,7 @@ export class IncrementalSvgRenderer {
         : "";
       return `${mark.type}${mark.status ? `, ${mark.status}` : ""}${location}`;
     });
-    return `${toAccessibleNotation(tooth, notation)}, ${presenceLabel}${marks.length ? `; ${t(ctx, "a11y.marks", { marks: marks.join("; ") })}` : `; ${t(ctx, "a11y.noMarks")}`}`;
+    return `${this.resolveAccessibleNotation(ctx, tooth, notation)}, ${presenceLabel}${marks.length ? `; ${t(ctx, "a11y.marks", { marks: marks.join("; ") })}` : `; ${t(ctx, "a11y.noMarks")}`}`;
   }
 
   private syncAccessibleNames(ctx: ViewRenderContext, tooth: ToothId): void {
@@ -920,8 +938,8 @@ export class IncrementalSvgRenderer {
     if (notation !== this.renderedNotation) {
       this.renderedNotation = notation;
       for (const [toothId, layout] of this.layoutMap.entries()) {
-        const nextLabel = toNotation(toothId, notation);
-        const nextAccessible = toAccessibleNotation(toothId, notation);
+        const nextLabel = this.resolveNotation(ctx, toothId, notation);
+        const nextAccessible = this.resolveAccessibleNotation(ctx, toothId, notation);
         layout.label = nextLabel;
         const toothGroup = this.toothElements.get(toothId);
         if (toothGroup) {
@@ -1134,7 +1152,7 @@ export class IncrementalSvgRenderer {
     const firstLayout = layout[0];
     if (layout.length === 1 && firstLayout?.isDetail) {
       const tooth = firstLayout.tooth;
-      const notation = toNotation(tooth, this.renderedNotation);
+      const notation = this.resolveNotation(ctx, tooth, this.renderedNotation);
       const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
       text.setAttribute("class", "odontogram-orientation-label");
       text.setAttribute("x", "0");
@@ -1145,7 +1163,7 @@ export class IncrementalSvgRenderer {
       text.setAttribute("fill", "#555");
       text.textContent = t(ctx, "a11y.tooth", {
         number: notation,
-        accessible: toAccessibleNotation(tooth, this.renderedNotation),
+        accessible: this.resolveAccessibleNotation(ctx, tooth, this.renderedNotation),
       });
       group.appendChild(text);
       return;
@@ -1226,7 +1244,7 @@ export class IncrementalSvgRenderer {
     const { options, state } = ctx;
     const notation = (options.notation ?? "fdi") as Notation;
     const presence = getToothPresence(state.teeth, tooth);
-    const accessibleLabel = toAccessibleNotation(tooth, notation);
+    const accessibleLabel = this.resolveAccessibleNotation(ctx, tooth, notation);
     const isToothSelected = state.selection.teeth.includes(tooth);
 
     const toothGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -1576,7 +1594,11 @@ export class IncrementalSvgRenderer {
     const context = {
       tooth,
       label,
-      accessibleLabel: toAccessibleNotation(tooth, (ctx.options.notation ?? "fdi") as Notation),
+      accessibleLabel: this.resolveAccessibleNotation(
+        ctx,
+        tooth,
+        (ctx.options.notation ?? "fdi") as Notation,
+      ),
       isSelected: ctx.state.selection.teeth.includes(tooth),
       presence: getToothPresence(ctx.state.teeth, tooth),
       view: ctx.state.view,
