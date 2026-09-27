@@ -248,3 +248,87 @@ document.getElementById("btn-batch")!.addEventListener("click", () => {
   });
   log(`Batch update applied (revision: ${odontogram.getRevision()}, single re-render)`);
 });
+
+// Export & Print handlers
+document.getElementById("btn-export-svg")?.addEventListener("click", () => {
+  const theme = (document.getElementById("export-theme") as HTMLSelectElement).value as
+    "light" | "dark" | "auto";
+  const scope = (document.getElementById("export-scope") as HTMLSelectElement).value as
+    "current" | "full" | "upper" | "lower";
+  const svgMarkup = odontogram.exportSvg({
+    theme,
+    scope,
+    title: "Odontogram Chart Export",
+    subtitle: `Generated: ${new Date().toLocaleDateString()}`,
+    includeLegend: true,
+  });
+  const blob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `odontogram-${scope}-${theme}.svg`;
+  a.click();
+  URL.revokeObjectURL(url);
+  log(`Exported standalone SVG (${svgMarkup.length} bytes, scope: ${scope}, theme: ${theme})`);
+});
+
+document.getElementById("btn-export-png")?.addEventListener("click", async () => {
+  const theme = (document.getElementById("export-theme") as HTMLSelectElement).value as
+    "light" | "dark" | "auto";
+  const scope = (document.getElementById("export-scope") as HTMLSelectElement).value as
+    "current" | "full" | "upper" | "lower";
+  try {
+    const pngResult = await odontogram.exportPng({
+      scale: 2,
+      theme,
+      scope,
+      title: "Odontogram Chart Export",
+      subtitle: `Generated: ${new Date().toLocaleDateString()}`,
+      includeLegend: true,
+      background: theme === "dark" ? "#1a1a1a" : "#ffffff",
+    });
+    const url = typeof pngResult === "string" ? pngResult : URL.createObjectURL(pngResult);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `odontogram-${scope}-${theme}@2x.png`;
+    a.click();
+    if (typeof pngResult !== "string") URL.revokeObjectURL(url);
+    log(`Exported PNG (@ 2x, scope: ${scope}, theme: ${theme})`);
+  } catch (err: unknown) {
+    log(`PNG export failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+});
+
+document.getElementById("btn-export-png-transparent")?.addEventListener("click", async () => {
+  const scope = (document.getElementById("export-scope") as HTMLSelectElement).value as
+    "current" | "full" | "upper" | "lower";
+  try {
+    const pngResult = await odontogram.exportPng({
+      scale: 2,
+      scope,
+      transparent: true,
+    });
+    const url = typeof pngResult === "string" ? pngResult : URL.createObjectURL(pngResult);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `odontogram-${scope}-transparent@2x.png`;
+    a.click();
+    if (typeof pngResult !== "string") URL.revokeObjectURL(url);
+    log(`Exported transparent PNG (@ 2x, scope: ${scope})`);
+  } catch (err: unknown) {
+    log(`PNG export failed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+});
+
+document.getElementById("btn-print")?.addEventListener("click", () => {
+  const scope = (document.getElementById("export-scope") as HTMLSelectElement).value as
+    "current" | "full" | "upper" | "lower";
+  log("Opening print / PDF dialog...");
+  odontogram.print({
+    scope,
+    title: "Clinical Odontogram Representation",
+    subtitle: `Generated on ${new Date().toLocaleString()}`,
+    includeLegend: true,
+    orientation: "landscape",
+  });
+});

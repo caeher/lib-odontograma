@@ -137,6 +137,33 @@
       <button id="btn-clear-marks">Clear Marks</button>
     </div>
 
+    <div class="toolbar" id="export-toolbar">
+      <strong style="align-self: center; font-size: 0.85rem; margin-right: 0.25rem"
+        >Export / Share:</strong
+      >
+      <button id="btn-export-svg">Download SVG</button>
+      <button id="btn-export-png">Download PNG (2x)</button>
+      <button id="btn-export-png-transparent">Download PNG (Transparent)</button>
+      <button id="btn-print">Print / PDF</button>
+      <label
+        >Theme
+        <select id="export-theme">
+          <option value="light">Light</option>
+          <option value="dark">Dark</option>
+          <option value="auto">Auto</option>
+        </select>
+      </label>
+      <label
+        >Scope
+        <select id="export-scope">
+          <option value="current">Current View</option>
+          <option value="full">Full Dentition</option>
+          <option value="upper">Upper Arch</option>
+          <option value="lower">Lower Arch</option>
+        </select>
+      </label>
+    </div>
+
     <div id="odontogram-container"></div>
     <div class="info" id="log">Ready.</div>
 
