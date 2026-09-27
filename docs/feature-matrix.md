@@ -4,21 +4,21 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 
 ## Core features
 
-| Feature                                    | Core | Dentition | SVG | Plugins | Adapters | Stage |
-| ------------------------------------------ | :--: | :-------: | :-: | :-----: | :------: | ----- |
-| Odontogram instance API                    |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| Headless execution                         |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| render / destroy                           |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| getOption / setOption                      |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| changeView                                 |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| getState / setState                        |  ✅  |     —     |  —  |    —    |    —     | 01    |
-| batch / batchRendering                     |  ✅  |     —     |  —  |    —    |    —     | 02    |
-| createPlugin / plugin API contract         |  ✅  |     —     |  —  |   ✅    |    —     | 07    |
-| Plugin dependencies / lifecycle            |  ✅  |     —     |  —  |   ✅    |    —     | 07    |
-| Plugin views / renderers / symbols / tools |  ✅  |     —     | ✅  |   ✅    |    —     | 07    |
-| Lifecycle hooks                            |  ✅  |     —     | ✅  |    —    |    —     | 01    |
-| Click callbacks                            |  ✅  |     —     | ✅  |    —    |    —     | 01    |
-| State & presence events                    |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| Feature                                                | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| ------------------------------------------------------ | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Odontogram instance API                                |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| Headless execution                                     |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| render / destroy                                       |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| getOption / setOption                                  |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| changeView                                             |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| getState / setState                                    |  ✅  |     —     |  —  |    —    |    —     | 01    |
+| batch / batchRendering                                 |  ✅  |     —     |  —  |    —    |    —     | 02    |
+| createPlugin / plugin API contract                     |  ✅  |     —     |  —  |   ✅    |    —     | 07    |
+| Plugin dependencies / lifecycle                        |  ✅  |     —     |  —  |   ✅    |    —     | 07    |
+| Plugin views / renderers / symbols / tools / notations |  ✅  |    ✅     | ✅  |   ✅    |    —     | 07    |
+| Lifecycle hooks                                        |  ✅  |     —     | ✅  |    —    |    —     | 01    |
+| Click callbacks                                        |  ✅  |     —     | ✅  |    —    |    —     | 01    |
+| State & presence events                                |  ✅  |     —     |  —  |    —    |    —     | 02    |
 
 ## Model & Data Operations
 

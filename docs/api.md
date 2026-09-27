@@ -416,6 +416,74 @@ Remove surface marks targeting teeth that are currently `"missing"` or `"unerupt
 
 Run structural and coexistence validation against the current odontogram state snapshot. Returns a `ValidationResult` with `valid` boolean, `errors`, `warnings`, and `issues`.
 
+#### Interoperability & Document Serialization (Stage 07)
+
+Stage 07 allows consumer systems (EHRs, practice management systems, clinical registries) to cleanly serialize, save, validate, migrate, and restore an odontogram in their own systems. The domain contract is strictly limited to the odontogram domain, requiring no patient identity or storage dependencies.
+
+##### `exportDocument(options?: ExportDocumentOptions): OdontogramDocument`
+
+Export the current chart model to a clean, schema-compliant `OdontogramDocument` object.
+
+- **Exclusion by default**: DOM elements, functions, event listeners, and transient selection state are excluded by default.
+- **Optional visual settings**: Pass `includeVisualSettings: true` to include serializable presentation options (`notation`, `locale`, `showOrientationLabels`, `showMidline`, `toothColor`, `surfaceColor`, `selectionColor`, `markColors`, `statusColors`, `minZoom`, `maxZoom`).
+- **Optional selection**: Pass `includeSelection: true` to include transient selection state.
+- **Metadata & Extensions**: Custom document-level `metadata` and custom top-level `extensions` can be supplied and are persisted in the exported payload.
+
+```ts
+const document = odontogram.exportDocument({
+  includeVisualSettings: true,
+  metadata: {
+    exportDate: new Date().toISOString(),
+    clinicId: "clinic-101",
+  },
+});
+```
+
+##### `toJSON(): OdontogramDocument`
+
+Alias for `exportDocument()` providing native `JSON.stringify(odontogram)` serialization compatibility.
+
+##### `importDocument(doc: unknown, options?: ImportDocumentOptions): OdontogramImportResult`
+
+Import a serialized `OdontogramDocument` into the chart instance atomically.
+
+- **Atomic validation**: Validates document structure, schema version, tooth presence coexistence, and clinical targets before replacing state. If validation fails, throws `OdontogramValidationError` with detailed diagnostic issues, leaving the existing instance state and revision completely untouched.
+- **Automatic migration**: Automatically executes schema migrations for older document versions (e.g. legacy/unversioned snapshots -> `"1.0.0"`).
+- **Future version rejection**: Rejects documents with a `schemaVersion` newer than supported (e.g. `"2.0.0"` > `"1.0.0"`) with diagnostic code `ERR_UNSUPPORTED_FUTURE_VERSION`.
+- **Preservation of unknown extensions**: Strictly preserves unknown extension properties and custom metadata across save and restore cycles without data loss.
+
+```ts
+try {
+  const result = odontogram.importDocument(jsonPayload, {
+    applyVisualSettings: true,
+  });
+  console.log("Document restored successfully, schema version:", result.schemaVersion);
+} catch (error) {
+  if (error instanceof OdontogramValidationError) {
+    console.error("Document import rejected atomically:", error.issues);
+  }
+}
+```
+
+##### `validateOdontogramDocument(doc: unknown, config?: ValidatorConfig): ValidationResult`
+
+Pure validation function to validate a candidate document against the schema and clinical rules without needing an active Odontogram instance.
+
+##### `migrateOdontogramDocument(rawDoc: unknown, targetVersion?: string, customMigrations?: DocumentMigration[])`
+
+Pure function to execute registered or custom migrations on a raw document.
+
+##### `registerDocumentMigration(migration: DocumentMigration): void`
+
+Register a custom migration function from one schema version to another.
+
+##### JSON Schema Specification
+
+The canonical JSON schema for exported documents is available at:
+`https://lib-odontograma.dev/schemas/odontogram-document.schema.json`
+Or bundled in the `@odontogram/core` package at:
+`@odontogram/core/schema/odontogram-document.schema.json`.
+
 ---
 
 ## OdontogramOptions
@@ -709,6 +777,7 @@ interface OdontogramPluginDef {
   dentalRenderers?: DentalRendererDefinition[];
   symbols?: OdontogramSymbolDefinition[];
   tools?: OdontogramToolDefinition[];
+  notations?: OdontogramNotationDefinition[];
 }
 ```
 
@@ -727,16 +796,19 @@ Plugins supplied in the constructor and plugins registered later use the same de
 
 ### Odontogram plugin contributions
 
-- **Views** use the existing `ViewDefinition` and `ViewRenderContext`. Contexts expose `getDentalRenderers()` and `getSymbol(markType)` so views can consume other registered odontogram contributions.
+- **Views** use the existing `ViewDefinition` and `ViewRenderContext`. Contexts expose `getDentalRenderers()`, `getSymbol(markType)`, and `getNotation(id)` so views can consume other registered odontogram contributions.
 - **Dental renderers** use `{ id, matches(tooth), render(context) }`. The bundled SVG view invokes the first matching renderer for each tooth, inside its anatomy layer. It passes the tooth id, bounds, notation label, presence, and selection state. Surface geometry and tooth selection remain core/view responsibilities.
 - **Symbols** use `{ id, markTypes, render(context) }`. The bundled SVG view invokes the matching renderer for multi-tooth annotations and passes target anchor coordinates, mark, selection, and resolved color.
 - **Tools** use `{ id, label, disabled?, onActivate(context) }`. The default integrated toolbar adds a tools group when tools are registered. Custom groups can reference a tool with `{ tool: "tool-id" }`. Tools receive a read-only state snapshot and the odontogram command API.
+- **Numbering / Notations** use `{ id, name, description?, format(toothId), formatAccessible?(toothId), parse?(label), isValid?(label) }`. The bundled SVG view and core formatters update rendered tooth labels and screen reader attributes according to the custom numbering system.
 
-Dental renderer, symbol, tool, and lifecycle cleanup failures are reported through `pluginDidError` and isolated from the rest of the odontogram. View `render`, `update`, and `destroy` failures propagate by default so strict renderers can reject invalid dental resources; set `errorPolicy: "isolate"` to report and suppress view failures. A failing `pluginDidError` handler is logged.
+Dental renderer, symbol, tool, notation, and lifecycle cleanup failures are reported through `pluginDidError` and isolated from the rest of the odontogram. View `render`, `update`, and `destroy` failures propagate by default so strict renderers can reject invalid dental resources; set `errorPolicy: "isolate"` to report and suppress view failures. A failing `pluginDidError` handler is logged.
 
-### Optional bridge plugin example
+### Optional plugin examples
 
-The complete example in [`examples/plugins/custom-bridge-plugin.ts`](../examples/plugins/custom-bridge-plugin.ts) adds a molar anatomy overlay, a bridge symbol, and an “Apply bridge” toolbar tool. Load it only where bridge editing is enabled:
+#### Custom bridge symbol and tool
+
+The example in [`examples/plugins/custom-bridge-plugin.ts`](../examples/plugins/custom-bridge-plugin.ts) adds a molar anatomy overlay, a bridge symbol, and an “Apply bridge” toolbar tool. Load it dynamically only where bridge editing is enabled:
 
 ```ts
 if (bridgeEditingEnabled) {
@@ -745,7 +817,18 @@ if (bridgeEditingEnabled) {
 }
 ```
 
-The plugin depends on `@odontogram/svg` because that view consumes its renderer and symbol contributions. The core remains renderer-agnostic; a different view may consume the same typed registries through `ViewRenderContext`.
+#### Custom numbering system (Victor Haderup notation)
+
+The example in [`examples/plugins/custom-haderup-notation-plugin.ts`](../examples/plugins/custom-haderup-notation-plugin.ts) adds support for the Scandinavian Victor Haderup `+`/`-` dental notation:
+
+```ts
+import { customHaderupNotationPlugin } from "../examples/plugins/custom-haderup-notation-plugin.js";
+
+const chart = new Odontogram(container, {
+  plugins: [svgPlugin, customHaderupNotationPlugin],
+  notation: "haderup",
+});
+```
 
 For compatibility, `createPlugin({ name, views })` is still accepted for existing view-only extensions and normalizes `name` into an id with default metadata. New extensions should always declare `id`, `version`, and `apiCompatibility`.
 
@@ -779,6 +862,8 @@ Passed to view `render` and `destroy` functions:
 | `emitSurfaceClick(tooth, surface, jsEvent)` | Fire surfaceClick callback                                                |
 | `getDentalRenderers()`                      | Return registered dental renderer contributions                           |
 | `getSymbol(markType)`                       | Resolve a custom mark symbol renderer                                     |
+| `getNotation(notation)`                     | Resolve a custom tooth numbering notation definition                      |
+| `getNotations()`                            | Return all registered custom notation definitions                         |
 
 ---
 
