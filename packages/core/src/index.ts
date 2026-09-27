@@ -67,6 +67,7 @@ export type {
   MarkTarget,
   MarksSetArg,
   MultiToothTarget,
+  MultiToothTargetEntry,
   Notation,
   OdontographicMark,
   OdontogramMode,

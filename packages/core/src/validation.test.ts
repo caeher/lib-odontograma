@@ -162,6 +162,54 @@ describe("Odontogram Validation", () => {
       expect(issue?.path).toBe("marks[0].target.teeth[2]");
     });
 
+    it("accepts ordered support and pontic entries matching a span", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: [
+          {
+            id: "span-14-16",
+            type: "bridge",
+            target: {
+              kind: "teeth",
+              teeth: ["14", "15", "16"],
+              targets: [
+                { tooth: "14", role: "support", anchor: "anchor-distal" },
+                { tooth: "15", role: "pontic", anchor: "anchor-center" },
+                { tooth: "16", role: "support", anchor: "anchor-mesial" },
+              ],
+            },
+          },
+        ],
+        selection: { teeth: [], surfaces: [] },
+        teeth: {},
+      };
+      expect(validateOdontogramState(state).valid).toBe(true);
+    });
+
+    it("rejects ordered span entries that do not match target tooth order", () => {
+      const state: OdontogramState = {
+        view: "permanent",
+        marks: [
+          {
+            id: "span-order-error",
+            type: "bridge",
+            target: {
+              kind: "teeth",
+              teeth: ["14", "15", "16"],
+              targets: [{ tooth: "15" }, { tooth: "14" }, { tooth: "16" }],
+            },
+          },
+        ],
+        selection: { teeth: [], surfaces: [] },
+        teeth: {},
+      };
+      const result = validateOdontogramState(state);
+      expect(result.valid).toBe(false);
+      expect(result.errors.find((issue) => issue.path === "marks[0].target.targets")?.code).toBe(
+        VALIDATION_CODES.ERR_INVALID_TARGET,
+      );
+    });
+
     it("detects complex marks with empty elements array", () => {
       const state: OdontogramState = {
         view: "permanent",

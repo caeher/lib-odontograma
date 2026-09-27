@@ -279,6 +279,13 @@ export class Odontogram {
       selection: {
         teeth: nextSelection.teeth ? [...nextSelection.teeth] : [],
         surfaces: nextSelection.surfaces ? [...nextSelection.surfaces] : [],
+        ...(nextSelection.annotations?.length
+          ? {
+              annotations: nextSelection.annotations.filter((id) =>
+                nextMarks.some((mark) => mark.id === id),
+              ),
+            }
+          : {}),
       },
       teeth: { ...nextTeeth },
     };
@@ -516,7 +523,16 @@ export class Odontogram {
   removeMark(id: string): boolean {
     this.assertMutable("remove mark");
     if (!this.hasMark(id)) return false;
-    this.setState({ marks: this.state.marks.filter((m) => m.id !== id) }, { source: "internal" });
+    this.setState(
+      {
+        marks: this.state.marks.filter((m) => m.id !== id),
+        selection: {
+          ...this.state.selection,
+          annotations: (this.state.selection.annotations ?? []).filter((markId) => markId !== id),
+        },
+      },
+      { source: "internal" },
+    );
     return true;
   }
 
@@ -531,7 +547,18 @@ export class Odontogram {
     const remaining = this.state.marks.filter((m) => !targetIds.has(m.id));
     const removedCount = initialCount - remaining.length;
     if (removedCount > 0) {
-      this.setState({ marks: remaining }, { source: "internal" });
+      this.setState(
+        {
+          marks: remaining,
+          selection: {
+            ...this.state.selection,
+            annotations: (this.state.selection.annotations ?? []).filter(
+              (id) => !targetIds.has(id),
+            ),
+          },
+        },
+        { source: "internal" },
+      );
     }
     return removedCount;
   }
@@ -546,7 +573,19 @@ export class Odontogram {
     const remaining = this.state.marks.filter((m) => !getMarkTargetTeeth(m).includes(toothId));
     const removedCount = initialCount - remaining.length;
     if (removedCount > 0) {
-      this.setState({ marks: remaining }, { source: "internal" });
+      const remainingIds = new Set(remaining.map((mark) => mark.id));
+      this.setState(
+        {
+          marks: remaining,
+          selection: {
+            ...this.state.selection,
+            annotations: (this.state.selection.annotations ?? []).filter((id) =>
+              remainingIds.has(id),
+            ),
+          },
+        },
+        { source: "internal" },
+      );
     }
     return removedCount;
   }
@@ -728,7 +767,11 @@ export class Odontogram {
   setSelection(
     selection:
       | SelectionState
-      | { teeth?: ToothId[]; surfaces?: Array<{ tooth: ToothId; surface: SurfaceId }> },
+      | {
+          teeth?: ToothId[];
+          surfaces?: Array<{ tooth: ToothId; surface: SurfaceId }>;
+          annotations?: string[];
+        },
   ): void {
     this.assertMutable("set selection");
     this.setState(
@@ -736,6 +779,7 @@ export class Odontogram {
         selection: {
           teeth: selection.teeth ? [...selection.teeth] : [],
           surfaces: selection.surfaces ? [...selection.surfaces] : [],
+          ...(selection.annotations ? { annotations: [...selection.annotations] } : {}),
         },
       },
       { source: "interaction" },
@@ -800,10 +844,30 @@ export class Odontogram {
     this.setState({ selection: { teeth, surfaces } }, { source: "interaction" });
   }
 
+  /** Select a mark or multi-tooth annotation as one unit. */
+  selectAnnotation(markId: string): void {
+    this.assertMutable("select annotation");
+    if (!this.getOption("selectable")) return;
+    if (!this.state.marks.some((mark) => mark.id === markId)) return;
+    this.setState(
+      { selection: { teeth: [], surfaces: [], annotations: [markId] } },
+      { source: "interaction" },
+    );
+  }
+
+  /** Check whether a mark or annotation is selected. */
+  isAnnotationSelected(markId: string): boolean {
+    return this.state.selection.annotations?.includes(markId) ?? false;
+  }
+
   /** Clear all tooth and surface selection. */
   clearSelection(): void {
     this.assertMutable("clear selection");
-    if (this.state.selection.teeth.length > 0 || this.state.selection.surfaces.length > 0) {
+    if (
+      this.state.selection.teeth.length > 0 ||
+      this.state.selection.surfaces.length > 0 ||
+      (this.state.selection.annotations?.length ?? 0) > 0
+    ) {
       this.setState({ selection: { teeth: [], surfaces: [] } }, { source: "interaction" });
     }
   }
@@ -1104,6 +1168,11 @@ export class Odontogram {
             /* selection is host-driven in controlled mode */
           }
         : (tooth, surface) => this.selectSurface(tooth, surface, "replace"),
+      selectAnnotation: controlled
+        ? () => {
+            /* selection is host-driven in controlled mode */
+          }
+        : (markId) => this.selectAnnotation(markId),
       toggleSurfaceSelection: controlled
         ? () => {
             /* selection is host-driven in controlled mode */
@@ -1161,6 +1230,9 @@ export class Odontogram {
     const selection: SelectionState = {
       teeth: [...this.state.selection.teeth],
       surfaces: [...this.state.selection.surfaces],
+      ...(this.state.selection.annotations
+        ? { annotations: [...this.state.selection.annotations] }
+        : {}),
     };
     this.getOption("selectionDidChange")?.({ selection });
   }

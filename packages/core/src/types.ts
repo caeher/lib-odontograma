@@ -86,8 +86,19 @@ export interface WholeToothTarget {
 /** Target specifying a group or range of teeth (e.g. bridge, archwire, splint). */
 export interface MultiToothTarget {
   kind?: "teeth" | "group";
+  /** Ordered tooth ids. Order is preserved by renderers for connected annotations. */
   teeth: ToothId[];
+  /** Optional per-tooth roles for symbols that distinguish supports from pontics. */
+  targets?: MultiToothTargetEntry[];
   surfaces?: never;
+}
+
+/** Ordered tooth entry for a multi-tooth odontographic symbol. */
+export interface MultiToothTargetEntry {
+  tooth: ToothId;
+  role?: "support" | "pontic" | (string & {});
+  /** Stable renderer anchor name to use for this tooth (defaults to anchor-center). */
+  anchor?: string;
 }
 
 /** Target specifying multiple teeth with optional per-tooth surface specifications. */
@@ -212,6 +223,8 @@ export interface ValidatorConfig {
 export interface SelectionState {
   teeth: ToothId[];
   surfaces: Array<{ tooth: ToothId; surface: SurfaceId }>;
+  /** Selected odontographic marks, including multi-tooth annotations. */
+  annotations?: string[];
 }
 
 /** Input state snapshot, allowing flexible / legacy mark inputs. */
@@ -413,6 +426,7 @@ export interface ViewRenderContext {
   requestRender: () => void;
   selectTooth: (tooth: ToothId) => void;
   selectSurface: (tooth: ToothId, surface: SurfaceId) => void;
+  selectAnnotation: (markId: string) => void;
   toggleSurfaceSelection: (tooth: ToothId, surface: SurfaceId) => void;
   emitToothClick: (tooth: ToothId, jsEvent: MouseEvent) => void;
   emitSurfaceClick: (tooth: ToothId, surface: SurfaceId, jsEvent: MouseEvent) => void;

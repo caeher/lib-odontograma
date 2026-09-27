@@ -527,6 +527,36 @@ export function validateOdontogramState(
             seenTeeth.add(t);
           }
         });
+        if (target.targets !== undefined) {
+          const entries = target.targets;
+          if (
+            !Array.isArray(entries) ||
+            entries.length !== target.teeth.length ||
+            entries.some((entry, idx) => entry?.tooth !== target.teeth[idx])
+          ) {
+            if (targetRule.enabled) {
+              issues.push({
+                ruleId: RULE_TARGET_INTEGRITY,
+                code: VALIDATION_CODES.ERR_INVALID_TARGET,
+                severity: targetRule.severity,
+                message: `Ordered targets for multi-tooth mark "${mark.id}" must match target.teeth exactly.`,
+                path: `${markBasePath}.target.targets`,
+                markId: mark.id,
+              });
+            }
+          }
+          (Array.isArray(entries) ? entries : []).forEach((entry, idx) => {
+            if (entry?.role !== undefined && typeof entry.role !== "string") {
+              issues.push({
+                ruleId: RULE_TARGET_INTEGRITY,
+                severity: targetRule.severity,
+                message: `Target role at index ${idx} must be a string.`,
+                path: `${markBasePath}.target.targets[${idx}].role`,
+                markId: mark.id,
+              });
+            }
+          });
+        }
       }
     } else if (isComplexTarget(target)) {
       if (!Array.isArray(target.elements) || target.elements.length === 0) {
