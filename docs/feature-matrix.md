@@ -129,6 +129,27 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Atomic state rollback/rejection  |  ✅  |     —     |  —  |    —    |    —     | 02    |
 | Unknown mark type preservation   |  ✅  |     —     | ✅  |    —    |    —     | 02    |
 
+## Interoperability & Export
+
+| Feature                               | Core | Dentition | SVG | Plugins | Adapters | Stage |
+| ------------------------------------- | :--: | :-------: | :-: | :-----: | :------: | ----- |
+| Document export (JSON)                |  ✅  |     —     |  —  |    —    |    —     | 07    |
+| Document import & validation          |  ✅  |     —     |  —  |    —    |    —     | 07    |
+| Document schema versioning            |  ✅  |     —     |  —  |    —    |    —     | 07    |
+| Document migrations engine            |  ✅  |     —     |  —  |    —    |    —     | 07    |
+| Async data loader & AbortSignal       |  ✅  |     —     |  —  |    —    |    —     | 07    |
+| Dirty state tracking & unsaved checks |  ✅  |     —     |  —  |    —    |    —     | 07    |
+| Standalone SVG export                 |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Inlined CSS / system font stacks      |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Scope export (view / full / arch)     |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Dark / Light / Auto theme export      |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| PNG rasterization & scale factor      |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Transparent / opaque background PNG   |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Print layout markup generation        |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Browser print dialog & PDF target     |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Exact color adjust print styles       |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+| Consumer title, subtitle & legend     |  ✅  |     —     | ✅  |    —    |    —     | 07    |
+
 ## Integration
 
 | Feature                      | Core | Dentition | SVG | Plugins | Adapters | Stage    |

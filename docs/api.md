@@ -551,6 +551,83 @@ Sets the current state snapshot as the clean baseline (e.g. after the host appli
 
 Returns a defensive copy of the current clean baseline state snapshot.
 
+#### Shareable Representations: SVG, PNG & Print / PDF Export (Stage 07)
+
+Stage 07 provides shareable, standalone representations of the current odontogram chart across vector (SVG), raster (PNG), and print/PDF media formats while remaining strictly within the odontogram presentation domain without coupling to external patient EHR records.
+
+##### `exportSvg(options?: ExportSvgOptions): string`
+
+Generate a self-contained, standalone SVG document markup string representing the odontogram chart.
+
+- **Standalone & Portable**: Inlines all required CSS styles, color variables, tooth symbols, and notation labels directly into `<style>` and `<defs>` blocks. Contains zero external network font dependencies (uses universal system font stacks `system-ui, -apple-system, sans-serif`).
+- **Clean Output**: Strictly excludes edit controls, toolbar buttons, interactive hitboxes, script tags, event listeners, and accessibility live announcer regions.
+- **Scope Configuration**: `scope` defaults to `"current"`, exporting the active view. Set `scope: "full"` to export the complete permanent 32-tooth dentition, or specify any valid `ViewType` (e.g. `"upper"`, `"quadrant-1"`, `"tooth-16"`) to export a specific arch or quadrant without mutating active instance state.
+- **Theme & Appearance**: `theme` supports `"light"`, `"dark"`, or `"auto"` (matching `@media (prefers-color-scheme)`). Optional `background` color or `transparent: true`.
+- **Title, Subtitle & Legend**: Optional consumer-supplied `title`, `subtitle`, and `includeLegend` (auto-generating a clean symbol legend from the mark catalog and present marks).
+- **Resource Fallback**: Custom or external tooth SVG resources fallback cleanly to built-in procedural occlusal schematics if unavailable or invalid.
+
+```ts
+const standaloneSvg = odontogram.exportSvg({
+  scope: "current",
+  theme: "light",
+  title: "Permanent Dentition Chart",
+  subtitle: "Examination Date: 2026-09-27",
+  includeLegend: true,
+});
+```
+
+##### `exportPng(options?: ExportPngOptions): Promise<PngExportResult>`
+
+Export a high-resolution PNG image rasterization of the standalone odontogram chart.
+
+- **Configurable Scale & Resolution**: Set `scale` (e.g., `2` for high-DPI displays or `3`–`4` for 300 DPI publication/print quality).
+- **Transparent or Opaque Background**: Set `transparent: true` for an alpha-channel background, or supply an explicit `background` color string (e.g. `"#ffffff"` or `"#1a1a1a"`).
+- **Return Payload**: Returns a `Promise<PngExportResult>` containing:
+  - `blob`: `Blob` object (`image/png`)
+  - `dataUrl`: Base64 data URL string (`data:image/png;base64,...`)
+  - `width`: Scaled width in pixels
+  - `height`: Scaled height in pixels
+
+```ts
+const png = await odontogram.exportPng({
+  scale: 2,
+  theme: "light",
+  background: "#ffffff",
+  title: "Clinical Odontogram Export",
+  includeLegend: true,
+});
+
+// Download PNG file
+const downloadLink = document.createElement("a");
+downloadLink.href = png.dataUrl;
+downloadLink.download = "odontogram-chart@2x.png";
+downloadLink.click();
+```
+
+##### `getPrintMarkup(options?: PrintOptions): string`
+
+Generate standalone, print-optimized HTML markup containing the embedded standalone SVG chart, optional header, metadata subtitle, and symbol legend.
+
+- Inlines `@media print` styles ensuring `-webkit-print-color-adjust: exact` and `print-color-adjust: exact` so colors and fills are preserved during printing.
+- Configurable `@page` margins (`margins?: string`), page orientation (`orientation?: "portrait" | "landscape"`), and scaling (`scale?: number`).
+
+##### `print(options?: PrintOptions): void`
+
+Trigger the browser print dialog directly with the print layout markup.
+
+- Creates an isolated, invisible print frame to avoid altering or reflowing the host page.
+- Automatically triggers `window.print()` after styles and fonts have rendered, cleanly supporting native browser PDF export ("Save as PDF").
+
+```ts
+odontogram.print({
+  scope: "full",
+  orientation: "landscape",
+  title: "Odontogram Record",
+  subtitle: "Exported: 2026-09-27",
+  includeLegend: true,
+});
+```
+
 ---
 
 ## OdontogramOptions
