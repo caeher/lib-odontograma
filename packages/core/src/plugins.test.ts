@@ -3,6 +3,8 @@ import { svgPlugin } from "@odontogram/svg";
 import { Odontogram, createPlugin, ODONTOGRAM_PLUGIN_API_VERSION } from "./index.js";
 import { OdontogramError, VALIDATION_CODES } from "./errors.js";
 import type { OdontogramPluginDef } from "./types.js";
+import { customBridgePlugin } from "../../../examples/plugins/custom-bridge-plugin.js";
+import { customHaderupNotationPlugin } from "../../../examples/plugins/custom-haderup-notation-plugin.js";
 
 const compatible = `^${ODONTOGRAM_PLUGIN_API_VERSION}`;
 
@@ -269,5 +271,111 @@ describe("typed odontogram plugins", () => {
     expect(chart).toBeInstanceOf(Odontogram);
     expect(registerHealthy).toHaveBeenCalledOnce();
     expect(errors).toHaveBeenCalledTimes(2);
+  });
+
+  it("integrates customBridgePlugin with custom molar anatomy, symbol, and tool plus clean unregistration", () => {
+    const root = document.createElement("div");
+    document.body.append(root);
+    roots = [root];
+
+    const chart = new Odontogram(root, {
+      plugins: [svgPlugin, customBridgePlugin],
+      initialView: "permanent",
+      toolbar: {},
+    });
+    chart.render();
+
+    // Dental renderer contribution check
+    expect(root.querySelector(".example-molar-fissure")).not.toBeNull();
+
+    // Select teeth for bridge
+    chart.setSelection({ teeth: ["14", "15", "16"], surfaces: [] });
+
+    // Tool contribution check
+    const toolButton = [...root.querySelectorAll("button")].find(
+      (btn) => btn.textContent === "Apply bridge",
+    );
+    expect(toolButton).toBeDefined();
+    expect(toolButton?.disabled).toBe(false);
+    toolButton!.click();
+
+    // Custom symbol contribution check
+    expect(chart.getMarks().map(({ type }) => type)).toEqual(["bridge"]);
+    expect(root.querySelector(".example-bridge-symbol")).not.toBeNull();
+
+    // Unregistration & clean removal of contributions
+    expect(chart.unregisterPlugin("@example/odontogram-bridge")).toBe(true);
+    expect(root.querySelector(".example-molar-fissure")).toBeNull();
+  });
+
+  it("integrates customHaderupNotationPlugin and updates tooth labels and accessible attributes", () => {
+    const root = document.createElement("div");
+    document.body.append(root);
+    roots = [root];
+
+    const chart = new Odontogram(root, {
+      plugins: [svgPlugin, customHaderupNotationPlugin],
+      initialView: "permanent",
+      notation: "haderup",
+    });
+    chart.render();
+
+    const tooth16 = root.querySelector('[data-tooth="16"]');
+    expect(tooth16?.getAttribute("data-notation-label")).toBe("6+");
+
+    const tooth21 = root.querySelector('[data-tooth="21"]');
+    expect(tooth21?.getAttribute("data-notation-label")).toBe("+1");
+
+    const tooth31 = root.querySelector('[data-tooth="31"]');
+    expect(tooth31?.getAttribute("data-notation-label")).toBe("-1");
+
+    const tooth41 = root.querySelector('[data-tooth="41"]');
+    expect(tooth41?.getAttribute("data-notation-label")).toBe("1-");
+
+    // Dynamic unregistration cleans up notation
+    expect(chart.unregisterPlugin("@example/odontogram-haderup-notation")).toBe(true);
+    chart.setOption("notation", "fdi");
+    expect(root.querySelector('[data-tooth="16"]')?.getAttribute("data-notation-label")).toBe("16");
+  });
+
+  it("detects duplicate notation contribution ids and isolates notation formatting failures", () => {
+    const dupNotationA = plugin("notation-a", {
+      notations: [{ id: "custom-dup", name: "Dup A", format: (t) => t }],
+    });
+    const dupNotationB = plugin("notation-b", {
+      notations: [{ id: "custom-dup", name: "Dup B", format: (t) => t }],
+    });
+
+    expect(() => new Odontogram(null, { plugins: [dupNotationA, dupNotationB] })).toThrow(
+      expect.objectContaining({ code: VALIDATION_CODES.ERR_PLUGIN_CONTRIBUTION_CONFLICT }),
+    );
+
+    const errors = vi.fn();
+    const failingNotation = plugin("failing-notation-plugin", {
+      notations: [
+        {
+          id: "buggy-notation",
+          name: "Buggy",
+          format: () => {
+            throw new Error("notation format error");
+          },
+        },
+      ],
+    });
+
+    const chart = new Odontogram(null, {
+      plugins: [failingNotation],
+      pluginDidError: errors,
+    });
+
+    const adapter = chart.getNotation("buggy-notation");
+    expect(adapter).toBeDefined();
+    expect(adapter?.format("16")).toBe("16"); // Safe fallback on error
+    expect(errors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pluginId: "failing-notation-plugin",
+        phase: "notation:buggy-notation:format",
+      }),
+    );
   });
 });

@@ -14,16 +14,28 @@ import {
   normalizeMark,
   normalizeMarks,
 } from "./marks.js";
-import { deepClone, isDeepEqual, validateOdontogramState, validateOptions } from "./validation.js";
+import {
+  deepClone,
+  isDeepEqual,
+  registerValidNotation,
+  unregisterValidNotation,
+  validateOdontogramState,
+  validateOptions,
+} from "./validation.js";
 import { renderLegend, renderToolbar } from "./controls.js";
 import { getLocaleDirection, getLocaleText } from "./locale.js";
 import { assertPluginApiCompatible, satisfiesVersion } from "./plugin.js";
+import { exportOdontogramDocument, importOdontogramDocument } from "./interoperability.js";
 import type {
   BatchOptions,
+  ExportDocumentOptions,
+  ImportDocumentOptions,
   MarkFilter,
   MarkInput,
   OdontogramCommand,
   OdontogramCommandResult,
+  OdontogramDocument,
+  OdontogramImportResult,
   HistoryChangeArg,
   OdontogramMode,
   OdontogramOptions,
@@ -51,6 +63,7 @@ import type {
   OdontogramPluginContext,
   OdontogramSymbolDefinition,
   OdontogramToolDefinition,
+  OdontogramNotationDefinition,
 } from "./types.js";
 
 const RECREATION_OPTIONS = new Set<keyof OdontogramOptions>([
@@ -85,6 +98,10 @@ export class Odontogram {
   >();
   private symbolTypes = new Map<string, string>();
   private toolMap = new Map<string, { pluginId: string; definition: OdontogramToolDefinition }>();
+  private notationMap = new Map<
+    string,
+    { pluginId: string; definition: OdontogramNotationDefinition }
+  >();
   private activeView: ViewDefinition | null = null;
   private activeViewOwnerId: string | null = null;
   private viewContext: ViewRenderContext | null = null;
@@ -344,6 +361,59 @@ export class Odontogram {
     return true;
   }
 
+  /** Get a registered custom tooth numbering notation by id. */
+  getNotation(id: string): OdontogramNotationDefinition | undefined {
+    const entry = this.notationMap.get(id);
+    if (!entry) return undefined;
+    const def = entry.definition;
+    return {
+      ...def,
+      format: (toothId) => {
+        try {
+          return def.format(toothId);
+        } catch (error) {
+          this.reportPluginFailure(entry.pluginId, `notation:${id}:format`, error);
+          return toothId;
+        }
+      },
+      formatAccessible: def.formatAccessible
+        ? (toothId) => {
+            try {
+              return def.formatAccessible!(toothId);
+            } catch (error) {
+              this.reportPluginFailure(entry.pluginId, `notation:${id}:formatAccessible`, error);
+              return def.format(toothId);
+            }
+          }
+        : undefined,
+      parse: def.parse
+        ? (label) => {
+            try {
+              return def.parse!(label);
+            } catch (error) {
+              this.reportPluginFailure(entry.pluginId, `notation:${id}:parse`, error);
+              return null;
+            }
+          }
+        : undefined,
+      isValid: def.isValid
+        ? (label) => {
+            try {
+              return def.isValid!(label);
+            } catch (error) {
+              this.reportPluginFailure(entry.pluginId, `notation:${id}:isValid`, error);
+              return false;
+            }
+          }
+        : undefined,
+    };
+  }
+
+  /** Get all registered plugin tooth numbering notation definitions. */
+  getNotations(): OdontogramNotationDefinition[] {
+    return [...this.notationMap.values()].map(({ definition }) => definition);
+  }
+
   getOption<K extends keyof OdontogramOptions>(name: K): OdontogramOptions[K] {
     if (name in this.options) {
       return this.options[name];
@@ -459,6 +529,56 @@ export class Odontogram {
 
   getState(): OdontogramState {
     return deepClone(this.state);
+  }
+
+  /**
+   * Export the current odontogram chart into a portable OdontogramDocument.
+   * Excludes DOM elements, event listeners, callbacks, and transient selection by default.
+   */
+  exportDocument(options?: ExportDocumentOptions): OdontogramDocument {
+    return exportOdontogramDocument(this.state, options, this.options);
+  }
+
+  /**
+   * Alias for exportDocument providing standard JSON.stringify(odontogram) compatibility.
+   */
+  toJSON(): OdontogramDocument {
+    return this.exportDocument();
+  }
+
+  /**
+   * Import an OdontogramDocument into this instance atomically.
+   * Validates document structure and runs migrations before replacing state.
+   * If validation fails, throws OdontogramValidationError and leaves previous state untouched.
+   */
+  importDocument(doc: unknown, options?: ImportDocumentOptions): OdontogramImportResult {
+    this.assertNotInCallback("importDocument");
+    const result = importOdontogramDocument(doc, options);
+
+    // Apply visual presentation settings if requested and present
+    if (options?.applyVisualSettings !== false && result.visualSettings) {
+      for (const [key, val] of Object.entries(result.visualSettings)) {
+        if (val !== undefined) {
+          (this.options as any)[key] = deepClone(val);
+        }
+      }
+      if (result.visualSettings.locale && this.hostEl) {
+        this.hostEl.dir = getLocaleDirection(result.visualSettings.locale);
+        this.hostEl.lang = result.visualSettings.locale;
+      }
+    }
+
+    // Atomically apply state
+    this.setState(result.state, {
+      source: options?.source ?? "import",
+    });
+
+    if (this.rendered) {
+      this.renderControls();
+      this.requestRender();
+    }
+
+    return result;
   }
 
   /** Whether one local odontogram state change can be undone. */
@@ -1725,6 +1845,19 @@ export class Odontogram {
       localTools.add(tool.id);
       if (this.toolMap.has(tool.id)) this.throwContributionConflict("tool", tool.id);
     }
+    const localNotations = new Set<string>();
+    for (const notation of def.notations ?? []) {
+      if (!notation.id || !notation.id.trim() || typeof notation.format !== "function") {
+        throw new OdontogramError(
+          `Plugin "${def.id}" has an invalid notation contribution without id or format function.`,
+          VALIDATION_CODES.ERR_INVALID_OPTION,
+        );
+      }
+      if (localNotations.has(notation.id)) this.throwContributionConflict("notation", notation.id);
+      localNotations.add(notation.id);
+      if (this.notationMap.has(notation.id))
+        this.throwContributionConflict("notation", notation.id);
+    }
 
     this.plugins.set(def.id, { plugin });
     for (const view of def.views ?? []) {
@@ -1739,6 +1872,10 @@ export class Odontogram {
     }
     for (const tool of def.tools ?? [])
       this.toolMap.set(tool.id, { pluginId: def.id, definition: tool });
+    for (const notation of def.notations ?? []) {
+      this.notationMap.set(notation.id, { pluginId: def.id, definition: notation });
+      registerValidNotation(notation.id);
+    }
 
     if (def.onRegister) {
       const context: OdontogramPluginContext = { odontogram: this, pluginId: def.id };
@@ -1769,6 +1906,10 @@ export class Odontogram {
       for (const markType of symbol.markTypes) this.symbolTypes.delete(markType);
     }
     for (const tool of def.tools ?? []) this.toolMap.delete(tool.id);
+    for (const notation of def.notations ?? []) {
+      this.notationMap.delete(notation.id);
+      unregisterValidNotation(notation.id);
+    }
   }
 
   private throwContributionConflict(kind: string, id: string): never {
@@ -1952,6 +2093,8 @@ export class Odontogram {
         this.emitDetail(tooth, surface, trigger, jsEvent),
       getDentalRenderers: () => this.getDentalRenderers(),
       getSymbol: (markType) => this.getSymbol(markType),
+      getNotation: (notation) => this.getNotation(notation),
+      getNotations: () => this.getNotations(),
     };
   }
 
