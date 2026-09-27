@@ -103,6 +103,14 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "markWillUnmount",
   "viewDidMount",
   "viewWillUnmount",
+  "beforeMount",
+  "mountDidMount",
+  "beforeViewChange",
+  "viewDidChange",
+  "beforeSelectionChange",
+  "beforeDataChange",
+  "editDidChange",
+  "errorDidOccur",
 ]);
 
 /** Deeply clones any serializable object to prevent consumer mutation leakage. */

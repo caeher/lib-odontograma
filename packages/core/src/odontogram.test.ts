@@ -94,12 +94,11 @@ describe("Odontogram", () => {
     expect(odontogram.getOption("notation")).toBe("universal");
   });
 
-  it("setOption warns for immutable options", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  it("setOption throws a clear error for recreation-only options", () => {
     const odontogram = new Odontogram(container, { initialView: "permanent" });
-    odontogram.setOption("initialView", "deciduous");
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
+    expect(() => odontogram.setOption("initialView", "deciduous")).toThrow(
+      'Option "initialView" can only be set when creating an Odontogram instance.',
+    );
   });
 
   it("setOption throws OdontogramValidationError for invalid option values", () => {

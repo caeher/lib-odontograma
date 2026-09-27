@@ -1,6 +1,6 @@
 import { Odontogram } from "@odontogram/core";
 import { svgPlugin } from "@odontogram/svg";
-import type { Notation, ToothPresence } from "@odontogram/core";
+import type { Notation, ToothPresence, ViewType } from "@odontogram/core";
 import "@odontogram/core/style.css";
 import "@odontogram/svg/style.css";
 
@@ -45,6 +45,9 @@ const odontogram = new Odontogram(container, {
   marksSet: ({ marks }) => {
     log(`Marks updated: ${marks.length} total`);
   },
+  errorDidOccur: ({ callback }) => {
+    log(`A ${callback ?? "Odontogram"} callback failed; the committed chart state is retained.`);
+  },
   toothClassNames: ({ tooth, isSelected }) => (isSelected ? "tooth-selected" : `tooth-${tooth}`),
   surfaceClassNames: ({ isSelected }) => (isSelected ? "app-surface-selected" : ""),
   toothContent: ({ tooth }) => {
@@ -72,7 +75,9 @@ function setPresenceForSelection(presence: ToothPresence): void {
       odontogram.setToothState(tooth, presence, { pruneMarks: true });
     }
   });
-  log(`Set ${selection.teeth.join(", ")} → ${presence}`);
+  log(
+    `Set ${selection.teeth.join(", ")} → ${presence}; ${odontogram.getMarksForTooth(selection.teeth[0]!).length} mark(s) on the first selected tooth`,
+  );
 }
 
 // View buttons
@@ -81,7 +86,7 @@ const viewButtons = document.querySelectorAll<HTMLButtonElement>(
 );
 viewButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
-    const view = btn.dataset.view as any;
+    const view = btn.dataset.view as ViewType;
     odontogram.changeView(view);
     viewButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");

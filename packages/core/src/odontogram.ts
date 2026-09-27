@@ -45,9 +45,17 @@ import type {
   ViewOptions,
   ViewRenderContext,
   ViewType,
+  OdontogramErrorArg,
 } from "./types.js";
 
-const IMMUTABLE_OPTIONS = new Set<keyof OdontogramOptions>(["plugins", "initialView"]);
+const RECREATION_OPTIONS = new Set<keyof OdontogramOptions>([
+  "plugins",
+  "initialView",
+  "mode",
+  "instanceId",
+  "toothResources",
+  "toothResourceFallback",
+]);
 
 export class Odontogram {
   private el: HTMLElement | null = null;
@@ -74,6 +82,7 @@ export class Odontogram {
   private undoStack: OdontogramState[] = [];
   private redoStack: OdontogramState[] = [];
   private applyingHistory = false;
+  private callbackDepth = 0;
 
   constructor(el?: HTMLElement | null, options: OdontogramOptions = {}) {
     if (el !== undefined && el !== null) {
@@ -125,6 +134,7 @@ export class Odontogram {
    * If a container was not provided in the constructor, one can be passed here.
    */
   render(container?: HTMLElement): void {
+    this.assertNotInCallback("render");
     if (container) {
       if (typeof container !== "object" || !("appendChild" in container)) {
         throw new OdontogramError(
@@ -153,6 +163,8 @@ export class Odontogram {
       return;
     }
 
+    if (!this.runBeforeCallback("beforeMount", this.getOption("beforeMount"))) return;
+
     this.hostEl = document.createElement("div");
     this.hostEl.className = "odontogram-host";
     this.hostEl.dir = getLocaleDirection(this.getOption("locale"));
@@ -173,6 +185,7 @@ export class Odontogram {
     this.rendered = true;
     this.renderControls();
     this.mountView();
+    this.runCallback("mountDidMount", this.getOption("mountDidMount"));
   }
 
   destroy(): void {
@@ -200,11 +213,12 @@ export class Odontogram {
   }
 
   setOption<K extends keyof OdontogramOptions>(name: K, value: OdontogramOptions[K]): void {
-    if (IMMUTABLE_OPTIONS.has(name)) {
-      console.warn(
-        `[Odontogram] Option "${String(name)}" cannot be changed after initialization. Use changeView() for view changes.`,
+    this.assertNotInCallback("setOption");
+    if (RECREATION_OPTIONS.has(name)) {
+      throw new OdontogramError(
+        `Option "${String(name)}" can only be set when creating an Odontogram instance.`,
+        VALIDATION_CODES.ERR_IMMUTABLE_OPTION,
       );
-      return;
     }
 
     const candidateOptions: OdontogramOptions = { ...this.options, [name]: value };
@@ -247,6 +261,7 @@ export class Odontogram {
   }
 
   changeView(view: ViewType, viewOptions?: ViewOptions): void {
+    this.assertNotInCallback("changeView");
     if (typeof view !== "string" || view.trim() === "") {
       throw new OdontogramValidationError(
         "View must be a non-empty string.",
@@ -282,13 +297,22 @@ export class Odontogram {
       mergedViewOptions.arch = "lower";
     }
 
-    this.options.viewOptions = mergedViewOptions;
-
     if (this.state.view === view) {
+      this.options.viewOptions = mergedViewOptions;
       this.requestRender();
       return;
     }
-    this.setState({ view }, { source: "internal" });
+    const previousOptions = this.options.viewOptions;
+    this.options.viewOptions = mergedViewOptions;
+    try {
+      this.setState({ view }, { source: "internal" });
+    } catch (error) {
+      this.options.viewOptions = previousOptions;
+      throw error;
+    }
+    if (this.state.view === view) return;
+    // A canceled beforeViewChange leaves both the view and its options unchanged.
+    this.options.viewOptions = previousOptions;
   }
 
   getState(): OdontogramState {
@@ -354,6 +378,7 @@ export class Odontogram {
     state: OdontogramState | OdontogramStateInput | Partial<OdontogramState>,
     options?: SetStateOptions,
   ): void {
+    this.assertNotInCallback("setState");
     if (this.evaluatingMarkCommand) {
       throw new OdontogramError(
         "State cannot be mutated while beforeMarkCommand is evaluating a candidate.",
@@ -457,6 +482,12 @@ export class Odontogram {
             previousState: deepClone(this.state),
             nextState: deepClone(candidateState),
           });
+        } catch (error) {
+          this.reportCallbackError("beforeMarkCommand", error);
+          throw new OdontogramError(
+            "Mark command was cancelled because beforeMarkCommand threw.",
+            VALIDATION_CODES.ERR_COMMAND_CANCELLED,
+          );
         } finally {
           this.evaluatingMarkCommand = false;
         }
@@ -474,6 +505,31 @@ export class Odontogram {
         }
       }
     }
+
+    if (
+      !isDeepEqual(candidateState.view, this.state.view) &&
+      !this.runBeforeCallback("beforeViewChange", this.getOption("beforeViewChange"), {
+        previousView: this.state.view,
+        view: candidateState.view,
+      })
+    )
+      return;
+    if (
+      !isDeepEqual(candidateState.selection, this.state.selection) &&
+      !this.runBeforeCallback("beforeSelectionChange", this.getOption("beforeSelectionChange"), {
+        previousSelection: deepClone(this.state.selection),
+        selection: deepClone(candidateState.selection),
+      })
+    )
+      return;
+    if (
+      !isDeepEqual(candidateState.marks, this.state.marks) &&
+      !this.runBeforeCallback("beforeDataChange", this.getOption("beforeDataChange"), {
+        previousMarks: deepClone(this.state.marks),
+        marks: deepClone(candidateState.marks),
+      })
+    )
+      return;
 
     // 3. Atomically apply the validated state
     const previousState = this.state;
@@ -507,7 +563,9 @@ export class Odontogram {
     if (!options?.silent) {
       if (this.batchDepth === 0) {
         if (changedProperties.includes("marks")) {
-          this.getOption("marksSet")?.({ marks: deepClone(this.state.marks) });
+          this.runCallback("marksSet", this.getOption("marksSet"), {
+            marks: deepClone(this.state.marks),
+          });
         }
 
         if (changedProperties.includes("selection")) {
@@ -525,7 +583,11 @@ export class Odontogram {
               const prev = previousState.teeth[toothId] ?? { presence: "present" };
               const curr = candidateState.teeth[toothId] ?? { presence: "present" };
               if (!isDeepEqual(prev, curr)) {
-                toothCallback({ toothId, state: deepClone(curr), previousState: deepClone(prev) });
+                this.runCallback("toothStateDidChange", toothCallback, {
+                  toothId,
+                  state: deepClone(curr),
+                  previousState: deepClone(prev),
+                });
               }
             }
           }
@@ -534,25 +596,28 @@ export class Odontogram {
         const validationCallback = this.getOption("validationDidChange");
         if (validationCallback) {
           const finalResult = activeValidationResult ?? this.validate();
-          validationCallback({ result: finalResult });
+          this.runCallback("validationDidChange", validationCallback, { result: finalResult });
         }
 
-        const stateCallback = this.getOption("stateDidChange");
-        if (stateCallback) {
-          stateCallback({
-            state: deepClone(this.state),
-            previousState: deepClone(previousState),
-            revision: this.revision,
-            source,
-            changedProperties,
-          });
-        }
+        const stateArg = {
+          state: deepClone(this.state),
+          previousState: deepClone(previousState),
+          revision: this.revision,
+          source,
+          changedProperties,
+        };
+        this.runCallback("stateDidChange", this.getOption("stateDidChange"), stateArg);
+        this.runCallback("editDidChange", this.getOption("editDidChange"), stateArg);
       }
     }
 
-    if (changedProperties.includes("view") && this.rendered) {
+    if (changedProperties.includes("view") && this.rendered && this.batchDepth === 0) {
       this.unmountView();
       this.mountView();
+      this.runCallback("viewDidChange", this.getOption("viewDidChange"), {
+        previousView: previousState.view,
+        view: this.state.view,
+      });
     } else {
       this.requestRender();
     }
@@ -1174,6 +1239,7 @@ export class Odontogram {
    * When successful, callbacks and re-render execute exactly once.
    */
   batch<T>(fn: () => T, options: BatchOptions = { transactional: true }): T {
+    this.assertNotInCallback("batch");
     this.assertMutable("execute batch");
     if (this.batchDepth === 0) {
       this.preBatchState = deepClone(this.state);
@@ -1214,7 +1280,9 @@ export class Odontogram {
           if (!isDeepEqual(this.state.teeth, preState.teeth)) changedProperties.push("teeth");
 
           if (changedProperties.includes("marks")) {
-            this.getOption("marksSet")?.({ marks: deepClone(this.state.marks) });
+            this.runCallback("marksSet", this.getOption("marksSet"), {
+              marks: deepClone(this.state.marks),
+            });
           }
           if (changedProperties.includes("selection")) {
             this.emitSelectionChange();
@@ -1230,7 +1298,7 @@ export class Odontogram {
                 const prev = preState.teeth[toothId] ?? { presence: "present" };
                 const curr = this.state.teeth[toothId] ?? { presence: "present" };
                 if (!isDeepEqual(prev, curr)) {
-                  toothCallback({
+                  this.runCallback("toothStateDidChange", toothCallback, {
                     toothId,
                     state: deepClone(curr),
                     previousState: deepClone(prev),
@@ -1242,18 +1310,28 @@ export class Odontogram {
 
           const validationCallback = this.getOption("validationDidChange");
           if (validationCallback) {
-            validationCallback({ result: this.validate() });
+            this.runCallback("validationDidChange", validationCallback, {
+              result: this.validate(),
+            });
           }
 
-          const stateCallback = this.getOption("stateDidChange");
-          if (stateCallback) {
-            stateCallback({
-              state: deepClone(this.state),
-              previousState: deepClone(preState),
-              revision: this.revision,
-              source: "batch",
-              changedProperties,
+          const stateArg = {
+            state: deepClone(this.state),
+            previousState: deepClone(preState),
+            revision: this.revision,
+            source: "batch" as const,
+            changedProperties,
+          };
+          this.runCallback("stateDidChange", this.getOption("stateDidChange"), stateArg);
+          this.runCallback("editDidChange", this.getOption("editDidChange"), stateArg);
+          if (changedProperties.includes("view") && this.rendered) {
+            this.unmountView();
+            this.mountView();
+            this.runCallback("viewDidChange", this.getOption("viewDidChange"), {
+              previousView: preState.view,
+              view: this.state.view,
             });
+            this.renderQueued = false;
           }
         }
 
@@ -1405,7 +1483,10 @@ export class Odontogram {
 
     const viewDidMount = this.getOption("viewDidMount");
     if (viewDidMount && this.chartEl?.firstElementChild) {
-      viewDidMount({ view: this.state.view, el: this.chartEl.firstElementChild });
+      this.runCallback("viewDidMount", viewDidMount, {
+        view: this.state.view,
+        el: this.chartEl.firstElementChild,
+      });
     }
   }
 
@@ -1414,7 +1495,10 @@ export class Odontogram {
 
     const viewWillUnmount = this.getOption("viewWillUnmount");
     if (viewWillUnmount && this.chartEl?.firstElementChild) {
-      viewWillUnmount({ view: this.state.view, el: this.chartEl.firstElementChild });
+      this.runCallback("viewWillUnmount", viewWillUnmount, {
+        view: this.state.view,
+        el: this.chartEl.firstElementChild,
+      });
     }
 
     this.activeView.destroy?.(this.viewContext);
@@ -1516,7 +1600,7 @@ export class Odontogram {
       undoCount: this.undoStack.length,
       redoCount: this.redoStack.length,
     };
-    callback(change);
+    this.runCallback("historyDidChange", callback, change);
   }
 
   private requestRender(): void {
@@ -1614,7 +1698,7 @@ export class Odontogram {
   }
 
   private emitToothClick(tooth: ToothId, jsEvent?: Event): void {
-    this.getOption("toothClick")?.({
+    this.runCallback("toothClick", this.getOption("toothClick"), {
       target: { kind: "tooth", tooth },
       tooth,
       selection: this.getSelection(),
@@ -1623,7 +1707,7 @@ export class Odontogram {
   }
 
   private emitSurfaceClick(tooth: ToothId, surface: SurfaceId, jsEvent?: Event): void {
-    this.getOption("surfaceClick")?.({
+    this.runCallback("surfaceClick", this.getOption("surfaceClick"), {
       target: { kind: "surface", tooth, surface },
       tooth,
       surface,
@@ -1640,7 +1724,7 @@ export class Odontogram {
         ? { annotations: [...this.state.selection.annotations] }
         : {}),
     };
-    this.getOption("selectionDidChange")?.({ selection });
+    this.runCallback("selectionDidChange", this.getOption("selectionDidChange"), { selection });
   }
 
   private emitDetail(
@@ -1662,7 +1746,7 @@ export class Odontogram {
           targetSurfaces.add(targetSurface);
       }
     }
-    this.getOption("detailDidChange")?.({
+    this.runCallback("detailDidChange", this.getOption("detailDidChange"), {
       tooth,
       ...(surface ? { surface } : {}),
       surfaces: [...targetSurfaces],
@@ -1670,6 +1754,64 @@ export class Odontogram {
       trigger,
       jsEvent,
     });
+  }
+
+  private assertNotInCallback(operation: string): void {
+    if (this.callbackDepth > 0) {
+      throw new OdontogramError(
+        `Cannot call ${operation} from an Odontogram callback. Schedule the operation after the callback returns.`,
+        VALIDATION_CODES.ERR_TRANSACTION_FAILED,
+      );
+    }
+  }
+
+  private runCallback<T>(
+    name: string,
+    callback: ((arg: T) => unknown) | (() => unknown) | undefined,
+    arg?: T,
+  ): void {
+    if (!callback) return;
+    this.callbackDepth++;
+    try {
+      callback(arg as T);
+    } catch (error) {
+      this.reportCallbackError(name, error);
+    } finally {
+      this.callbackDepth--;
+    }
+  }
+
+  private runBeforeCallback<T>(
+    name: string,
+    callback: ((arg: T) => boolean | void) | (() => boolean | void) | undefined,
+    arg?: T,
+  ): boolean {
+    if (!callback) return true;
+    this.callbackDepth++;
+    try {
+      return callback(arg as T) !== false;
+    } catch (error) {
+      this.reportCallbackError(name, error);
+      return false;
+    } finally {
+      this.callbackDepth--;
+    }
+  }
+
+  private reportCallbackError(callback: string, error: unknown): void {
+    const onError = this.getOption("errorDidOccur");
+    if (onError) {
+      this.callbackDepth++;
+      try {
+        onError({ error, phase: "callback", callback } satisfies OdontogramErrorArg);
+      } catch (reportingError) {
+        console.error("[Odontogram] errorDidOccur callback threw", reportingError);
+      } finally {
+        this.callbackDepth--;
+      }
+    } else {
+      console.error(`[Odontogram] ${callback} callback threw`, error);
+    }
   }
 
   private renderControls(): void {

@@ -305,6 +305,25 @@ export interface SelectionChangeArg {
   selection: SelectionState;
 }
 
+/** Cancelable pre-change hooks are synchronous; returning false rejects the change. */
+export interface ViewChangeArg {
+  previousView: ViewType;
+  view: ViewType;
+}
+export interface SelectionWillChangeArg {
+  previousSelection: SelectionState;
+  selection: SelectionState;
+}
+export interface DataWillChangeArg {
+  previousMarks: OdontographicMark[];
+  marks: OdontographicMark[];
+}
+export interface OdontogramErrorArg {
+  error: unknown;
+  phase: string;
+  callback?: string;
+}
+
 /** Callback argument for marks change events. */
 export interface MarksSetArg {
   marks: OdontographicMark[];
@@ -686,6 +705,19 @@ export interface OdontogramOptions {
   markWillUnmount?: (arg: MarkMountArg) => void;
   viewDidMount?: (arg: ViewMountArg) => void;
   viewWillUnmount?: (arg: ViewMountArg) => void;
+  /** Runs before the first mount. Return false to cancel render(). */
+  beforeMount?: () => boolean | void;
+  /** Runs after the host and initial view have mounted. */
+  mountDidMount?: () => void;
+  /** Cancelable pre-change hooks; return false to leave the current state unchanged. */
+  beforeViewChange?: (arg: ViewChangeArg) => boolean | void;
+  viewDidChange?: (arg: ViewChangeArg) => void;
+  beforeSelectionChange?: (arg: SelectionWillChangeArg) => boolean | void;
+  beforeDataChange?: (arg: DataWillChangeArg) => boolean | void;
+  /** Post-commit notification for any odontogram state edit. */
+  editDidChange?: (arg: StateChangeArg) => void;
+  /** Receives exceptions thrown by callbacks. Exceptions from this handler are logged. */
+  errorDidOccur?: (arg: OdontogramErrorArg) => void;
 }
 
 /** View definition registered by a plugin. */

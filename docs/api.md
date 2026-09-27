@@ -63,11 +63,11 @@ const chart = new Odontogram(container, {
 
 ##### `render(container?: HTMLElement): void`
 
-Mount the odontogram into the container. Creates a host element and renders the active view. Safe to call once; subsequent calls trigger a re-render. If constructed headlessly without a container, passing `container` mounts the instance.
+Mount the odontogram into the container. Creates a host element and renders the active view. Calling it again on a mounted instance requests an update without duplicating the host or view. If constructed headlessly without a container, passing `container` mounts the instance. `beforeMount` can synchronously return `false` to cancel the first mount.
 
 ##### `destroy(): void`
 
-Unmount the odontogram, call view destroy hooks, remove DOM event listeners, and remove the host element.
+Unmount the odontogram, call view destroy hooks, remove DOM event listeners, and remove the host element. It is safe to call repeatedly; a later `render()` may mount the same instance again.
 
 ##### `getOption<K>(name: K): OdontogramOptions[K]`
 
@@ -75,17 +75,22 @@ Get the current value of an option. Returns the default if not explicitly set.
 
 ##### `setOption<K>(name: K, value: OdontogramOptions[K]): void`
 
-Set an option dynamically. Triggers a re-render.
+Set a runtime-updatable option dynamically. Triggers an update of affected controls and the active view. Invalid values throw `OdontogramValidationError`.
 
-**Immutable options** (cannot be changed after construction):
+**Recreation-only options** throw `OdontogramError` with code `ERR_IMMUTABLE_OPTION` when changed after construction:
 
-- `plugins` — register at construction time
-- `initialView` — use `changeView()` instead
-- `mode` — specified at construction time
+- `plugins` — register plugins at construction time
+- `initialView` — use `changeView()` to switch the active view
+- `mode` — choose internal or controlled mode at construction
+- `instanceId`, `toothResources`, and `toothResourceFallback` — establish DOM identity and resource resolution at construction
+
+All other declared `OdontogramOptions` are runtime-updatable, including callbacks and presentation, selection, validation, and locale options. `viewOptions` is runtime-updatable; use `changeView(view, viewOptions)` when changing the active view and its scope together.
 
 ##### `changeView(view: ViewType, viewOptions?: ViewOptions): void`
 
 Switch to a different view and optional sub-view configuration. Unmounts the previous view and mounts the target view while guaranteeing **zero data loss** (all marks, biological tooth overlays, and selection states are strictly preserved in model state).
+
+`beforeViewChange({ previousView, view })` runs synchronously before a changed view commits. Return `false` to cancel. `viewDidChange({ previousView, view })` runs after the new view has mounted. A no-op change to the current view updates its options and requests a render without emitting view-change notifications.
 
 **Supported View Types & Shorthands:**
 
@@ -389,7 +394,7 @@ Execute compound operations inside an atomic transaction:
 
 ##### `batchRendering(fn: () => void): void`
 
-Legacy alias: execute `fn` with rendering deferred until completion.
+Compatibility form of `batch`: executes `fn` transactionally with state notifications and rendering deferred until completion. The outermost batch emits each changed data/selection notification once, one edit notification, and one render. Nested batches commit at the outermost boundary. `batchRendering` retains its `void` return type; use `batch<T>(fn)` when the callback result is needed.
 
 ##### `reset(options?: ResetOptions): void`
 
@@ -441,17 +446,34 @@ Run structural and coexistence validation against the current odontogram state s
 
 ### Callbacks
 
-| Callback              | Argument                                  | When                                          |
-| --------------------- | ----------------------------------------- | --------------------------------------------- |
-| `toothClick`          | `{ tooth, jsEvent }`                      | User clicks a tooth                           |
-| `surfaceClick`        | `{ tooth, surface, jsEvent }`             | User clicks a surface                         |
-| `selectionDidChange`  | `{ selection }`                           | Selection state changes                       |
-| `marksSet`            | `{ marks }`                               | Marks array changes                           |
-| `stateDidChange`      | `{ state, revision, source }`             | Any state change occurs                       |
-| `beforeMarkCommand`   | `{ command, previousState, nextState }`   | Synchronous pre-commit veto for mark commands |
-| `toothStateDidChange` | `{ toothId, presence, previousPresence }` | Tooth presence overlay changes                |
-| `validationDidChange` | `{ result }`                              | Validation issues change on state update      |
-| `detailDidChange`     | `DetailChangeArg`                         | Tooth/surface receives focus or activation    |
+The lifecycle and state callbacks use this order:
+
+1. `beforeMount` runs before first mount; returning `false` cancels it. `viewDidMount` runs after the view renderer mounts, then `mountDidMount` runs after initial mounting completes.
+2. For each state update, applicable cancelable pre-hooks run before commit in this order: `beforeMarkCommand` for a mark command, `beforeViewChange`, `beforeSelectionChange`, then `beforeDataChange`. Returning `false` vetoes the update. A thrown pre-hook is reported through `errorDidOccur` and also vetoes it.
+3. After commit, notifications run in this order: `marksSet`, `selectionDidChange`, `toothStateDidChange` (per changed tooth), `validationDidChange`, `stateDidChange`, then `editDidChange`.
+4. A view transition then calls `viewWillUnmount`, the view destroy/render hooks, `viewDidMount`, and `viewDidChange`. `detailDidChange` and click callbacks follow the originating DOM interaction.
+
+Pre-hooks are synchronous. Odontogram mutations from any callback are rejected with `ERR_TRANSACTION_FAILED`; schedule them after the callback returns. Read-only queries are safe. Destroying the instance in a callback is allowed and prevents further rendering. Exceptions thrown by notification callbacks do not roll back committed state or stop later notifications; they are passed to `errorDidOccur({ error, phase: "callback", callback })`. If the error callback throws, that exception is logged with `console.error`. Without an error callback, notification exceptions are logged. Exceptions raised during ordinary API calls (for example validation errors) remain thrown to the caller.
+
+| Callback                | Argument                                | When                                          |
+| ----------------------- | --------------------------------------- | --------------------------------------------- |
+| `beforeMount`           | `() => boolean or void`                 | Before first mount; `false` cancels           |
+| `mountDidMount`         | `() => void`                            | After initial mount completes                 |
+| `beforeViewChange`      | `{ previousView, view }`                | Before view state commits; `false` cancels    |
+| `viewDidChange`         | `{ previousView, view }`                | After target view mounts                      |
+| `beforeSelectionChange` | `{ previousSelection, selection }`      | Before selection commits; `false` cancels     |
+| `beforeDataChange`      | `{ previousMarks, marks }`              | Before mark data commits; `false` cancels     |
+| `toothClick`            | `{ tooth, jsEvent }`                    | User clicks a tooth                           |
+| `surfaceClick`          | `{ tooth, surface, jsEvent }`           | User clicks a surface                         |
+| `selectionDidChange`    | `{ selection }`                         | Selection state changes                       |
+| `marksSet`              | `{ marks }`                             | Marks array changes                           |
+| `stateDidChange`        | `{ state, revision, source }`           | Any state change occurs                       |
+| `editDidChange`         | `StateChangeArg`                        | After each committed state edit               |
+| `beforeMarkCommand`     | `{ command, previousState, nextState }` | Synchronous pre-commit veto for mark commands |
+| `toothStateDidChange`   | `{ toothId, state, previousState }`     | Tooth presence overlay changes                |
+| `validationDidChange`   | `{ result }`                            | Validation issues change on state update      |
+| `detailDidChange`       | `DetailChangeArg`                       | Tooth/surface receives focus or activation    |
+| `errorDidOccur`         | `{ error, phase, callback? }`           | A notification callback throws                |
 
 ### Hooks
 
