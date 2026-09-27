@@ -1323,6 +1323,16 @@ export class IncrementalSvgRenderer {
 
     anatomyLayer.appendChild(bg);
 
+    const dentalRenderer = ctx.getDentalRenderers?.().find((renderer) => renderer.matches(tooth));
+    dentalRenderer?.render({
+      tooth,
+      element: anatomyLayer,
+      bounds: { x, y, width, height },
+      presence,
+      label,
+      selected: isToothSelected,
+    });
+
     // Stable points in the tooth SVG coordinate space used by annotation geometry.
     const center = { x: x + width / 2, y: y + height / 2 };
     const mesialTowardRight = [1, 4, 5, 8].includes(quadrant);
@@ -2356,44 +2366,55 @@ export class IncrementalSvgRenderer {
       "#1976d2",
     );
 
-    const segments: Array<[(typeof coords)[number], (typeof coords)[number]]> = [];
-    for (let i = 1; i < coords.length; i += 1) {
-      const previous = coords[i - 1]!;
-      const current = coords[i]!;
-      if (current.index === previous.index + 1) segments.push([previous, current]);
-    }
-    if (segments.length > 0) {
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      const d = segments.map(([from, to]) => `M ${from.x} ${from.y} L ${to.x} ${to.y}`).join(" ");
-      path.setAttribute("d", d);
-      path.setAttribute(
-        "stroke",
-        mark.style?.stroke ?? (selected ? options.selectionColor : strokeColor) ?? strokeColor,
-      );
-      path.setAttribute(
-        "stroke-width",
-        String((mark.style?.strokeWidth ?? 3) + (selected ? 1 : 0)),
-      );
-      path.setAttribute("stroke-linecap", "round");
-      path.setAttribute("fill", "none");
-      if (mark.style?.opacity !== undefined) {
-        path.setAttribute("opacity", String(mark.style.opacity));
+    const symbol = ctx.getSymbol?.(mark.type);
+    if (symbol) {
+      symbol.render({
+        mark,
+        element: group,
+        targets: coords,
+        selected,
+        color: strokeColor,
+      });
+    } else {
+      const segments: Array<[(typeof coords)[number], (typeof coords)[number]]> = [];
+      for (let i = 1; i < coords.length; i += 1) {
+        const previous = coords[i - 1]!;
+        const current = coords[i]!;
+        if (current.index === previous.index + 1) segments.push([previous, current]);
       }
-      group.appendChild(path);
-    }
+      if (segments.length > 0) {
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+        const d = segments.map(([from, to]) => `M ${from.x} ${from.y} L ${to.x} ${to.y}`).join(" ");
+        path.setAttribute("d", d);
+        path.setAttribute(
+          "stroke",
+          mark.style?.stroke ?? (selected ? options.selectionColor : strokeColor) ?? strokeColor,
+        );
+        path.setAttribute(
+          "stroke-width",
+          String((mark.style?.strokeWidth ?? 3) + (selected ? 1 : 0)),
+        );
+        path.setAttribute("stroke-linecap", "round");
+        path.setAttribute("fill", "none");
+        if (mark.style?.opacity !== undefined) {
+          path.setAttribute("opacity", String(mark.style.opacity));
+        }
+        group.appendChild(path);
+      }
 
-    // Node circles on visible abutments/pontics
-    for (const c of coords) {
-      const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      circle.setAttribute("cx", String(c.x));
-      circle.setAttribute("cy", String(c.y));
-      circle.setAttribute("r", selected ? "5" : "4");
-      circle.setAttribute("data-tooth", c.tooth);
-      if (c.role) circle.setAttribute("data-role", c.role);
-      circle.setAttribute("fill", strokeColor);
-      circle.setAttribute("stroke", "#ffffff");
-      circle.setAttribute("stroke-width", "1.5");
-      group.appendChild(circle);
+      // Node circles on visible abutments/pontics
+      for (const c of coords) {
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("cx", String(c.x));
+        circle.setAttribute("cy", String(c.y));
+        circle.setAttribute("r", selected ? "5" : "4");
+        circle.setAttribute("data-tooth", c.tooth);
+        if (c.role) circle.setAttribute("data-role", c.role);
+        circle.setAttribute("fill", strokeColor);
+        circle.setAttribute("stroke", "#ffffff");
+        circle.setAttribute("stroke-width", "1.5");
+        group.appendChild(circle);
+      }
     }
 
     this.appendCustomContent(

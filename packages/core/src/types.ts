@@ -1,3 +1,5 @@
+import type { Odontogram } from "./odontogram.js";
+
 /** Canonical tooth identifier (FDI notation string, e.g. "16"). */
 export type ToothId = string;
 
@@ -453,7 +455,12 @@ export interface ToolbarCustomButton {
 export interface ToolbarGroup {
   id: string;
   label?: string;
-  controls: Array<ToolbarControlId | ToolbarCustomButton>;
+  controls: Array<ToolbarControlId | ToolbarCustomButton | PluginToolControl>;
+}
+
+/** Reference a tool contributed by an Odontogram plugin. */
+export interface PluginToolControl {
+  tool: string;
 }
 
 /** Opt-in integrated toolbar arrangement. Groups and controls are rendered in array order. */
@@ -718,6 +725,8 @@ export interface OdontogramOptions {
   editDidChange?: (arg: StateChangeArg) => void;
   /** Receives exceptions thrown by callbacks. Exceptions from this handler are logged. */
   errorDidOccur?: (arg: OdontogramErrorArg) => void;
+  /** Called when a plugin hook or contribution throws; plugin failures remain isolated. */
+  pluginDidError?: (arg: { pluginId: string; phase: string; error: unknown }) => void;
 }
 
 /** View definition registered by a plugin. */
@@ -752,12 +761,91 @@ export interface ViewRenderContext {
     trigger: "focus" | "click",
     jsEvent?: Event,
   ) => void;
+  /** Dental anatomy renderers registered by active odontogram plugins. */
+  getDentalRenderers?: () => DentalRendererDefinition[];
+  /** Find a registered symbol for one odontographic mark type. */
+  getSymbol?: (markType: string) => OdontogramSymbolDefinition | undefined;
 }
 
 /** Plugin definition shape. */
 export interface OdontogramPluginDef {
-  name: string;
+  /** Stable, globally unique id (for example `@clinic/occlusal-symbols`). */
+  id: string;
+  /** Plugin package version using semantic versioning. */
+  version: string;
+  /** Supported Odontogram plugin API version range (for example `^1.0.0`). */
+  apiCompatibility: string;
+  /** Set to `isolate` to report and suppress exceptions from view render hooks. */
+  errorPolicy?: "isolate" | "throw";
+  /** Required plugin ids and compatible plugin version ranges. */
+  dependencies?: OdontogramPluginDependency[];
+  /** Called after contributions are registered; may return an instance cleanup function. */
+  onRegister?: (context: OdontogramPluginContext) => void | HookCleanup;
+  /** Called during unregistration after the returned cleanup function runs. */
+  onUnregister?: (context: OdontogramPluginContext) => void;
   views?: ViewDefinition[];
+  dentalRenderers?: DentalRendererDefinition[];
+  symbols?: OdontogramSymbolDefinition[];
+  tools?: OdontogramToolDefinition[];
+}
+
+export interface OdontogramPluginDependency {
+  id: string;
+  version?: string;
+}
+
+export interface OdontogramPluginContext {
+  odontogram: Odontogram;
+  pluginId: string;
+}
+
+/** Append odontogram-specific anatomy to the SVG tooth anatomy layer. */
+export interface DentalRendererDefinition {
+  id: string;
+  matches: (tooth: ToothId) => boolean;
+  render: (context: DentalRendererContext) => void;
+}
+
+export interface DentalRendererContext {
+  tooth: ToothId;
+  element: SVGGElement;
+  bounds: { x: number; y: number; width: number; height: number };
+  presence: ToothPresence;
+  label: string;
+  selected: boolean;
+}
+
+/** Custom SVG symbol renderer for one or more odontographic mark types. */
+export interface OdontogramSymbolDefinition {
+  id: string;
+  markTypes: string[];
+  render: (context: OdontogramSymbolContext) => void;
+}
+
+export interface OdontogramSymbolContext {
+  mark: OdontographicMark;
+  element: SVGGElement;
+  targets: Array<{ tooth: ToothId; x: number; y: number; role?: string }>;
+  selected: boolean;
+  color: string;
+}
+
+/** A toolbar tool that performs an odontogram operation. */
+export interface OdontogramToolDefinition {
+  id: string;
+  label: string;
+  title?: string;
+  disabled?: boolean | ((context: OdontogramToolContext) => boolean);
+  onActivate: (context: OdontogramToolContext) => void;
+}
+
+export interface OdontogramToolContext {
+  state: Readonly<OdontogramState>;
+  readOnly: boolean;
+  disabled: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  executeCommand: (command: OdontogramCommand) => OdontogramCommandResult;
 }
 
 /** A plugin instance created via createPlugin(). */

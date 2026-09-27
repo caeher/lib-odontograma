@@ -111,6 +111,7 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "beforeDataChange",
   "editDidChange",
   "errorDidOccur",
+  "pluginDidError",
 ]);
 
 /** Deeply clones any serializable object to prevent consumer mutation leakage. */

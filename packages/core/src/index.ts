@@ -54,7 +54,12 @@ export {
   WHOLE_TOOTH_MARKS_EXAMPLE,
 } from "./examples.js";
 export { Odontogram } from "./odontogram.js";
-export { createPlugin } from "./plugin.js";
+export {
+  createPlugin,
+  ODONTOGRAM_PLUGIN_API_VERSION,
+  satisfiesVersion,
+  type LegacyOdontogramPluginDef,
+} from "./plugin.js";
 export type {
   BatchOptions,
   BeforeMarkCommand,
@@ -70,6 +75,8 @@ export type {
   OdontogramLocale,
   DetailChangeArg,
   DataWillChangeArg,
+  DentalRendererContext,
+  DentalRendererDefinition,
   MarkFilter,
   MarkInput,
   MarkMountArg,
@@ -89,7 +96,13 @@ export type {
   OdontogramErrorArg,
   OdontogramOptions,
   OdontogramPlugin,
+  OdontogramPluginContext,
+  OdontogramPluginDependency,
   OdontogramPluginDef,
+  OdontogramSymbolContext,
+  OdontogramSymbolDefinition,
+  OdontogramToolDefinition,
+  OdontogramToolContext,
   OdontogramState,
   ResetOptions,
   SelectionChangeArg,
@@ -118,6 +131,7 @@ export type {
   ToolbarCustomButton,
   ToolbarGroup,
   ToolbarOptions,
+  PluginToolControl,
   ToothSurfaceTarget,
   ValidationChangeArg,
   ValidationContext,

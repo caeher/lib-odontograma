@@ -85,13 +85,9 @@ A recorded mark is a record of clinical observation, historical finding, or plan
 
 ### Plugins
 
-Plugins are created with `createPlugin()` and registered via the `plugins` constructor option. A plugin can register one or more **views**. The core dispatches render/destroy to the active view.
+Plugins are created with `createPlugin()` using a stable id, semantic version, plugin API compatibility range, optional dependencies, and registration/cleanup hooks. Contributions can provide views, dental anatomy renderers, odontographic mark symbols, and chart tools. The core validates dependency order and compatibility, owns registration lifetimes, and isolates contribution failures. Plugins can be loaded on demand by dynamically importing the module and calling `registerPlugin()`; `unregisterPlugin()` runs cleanup and removes contributions.
 
-Stage 01 ships one plugin: `@odontogram/svg`. Future plugins may include:
-
-- Interaction (drag-select, keyboard navigation)
-- Anatomical renderer (detailed tooth paths)
-- Theme/styling presets
+The SVG plugin is one renderer implementation. Other view plugins can consume dental renderers and symbols through `ViewRenderContext`, while tools use the core odontogram command interface.
 
 ### Adapters (future)
 

@@ -696,16 +696,60 @@ try {
 
 ```ts
 function createPlugin(def: OdontogramPluginDef): OdontogramPlugin;
+
+interface OdontogramPluginDef {
+  id: string;
+  version: string;
+  apiCompatibility: string;
+  errorPolicy?: "isolate" | "throw";
+  dependencies?: Array<{ id: string; version?: string }>;
+  onRegister?: (context: OdontogramPluginContext) => void | (() => void);
+  onUnregister?: (context: OdontogramPluginContext) => void;
+  views?: ViewDefinition[];
+  dentalRenderers?: DentalRendererDefinition[];
+  symbols?: OdontogramSymbolDefinition[];
+  tools?: OdontogramToolDefinition[];
+}
 ```
 
-Create a plugin for registration with `Odontogram`.
+Create a typed odontogram extension. Every plugin has a stable `id`, its own semantic `version`, and an `apiCompatibility` semver range. `ODONTOGRAM_PLUGIN_API_VERSION` reports the plugin API provided by this core release. Supported ranges are exact versions, `^`, `~`, `>=`, and `*`.
+
+Dependencies are resolved before registration. Missing ids, incompatible versions, cycles, duplicate plugin or contribution ids, and incompatible core API ranges throw an `OdontogramError` with a specific `ERR_PLUGIN_*` code. Registration calls `onRegister` after contributions are installed. Unregistration first calls the cleanup function returned by `onRegister`, then `onUnregister`, and removes contributions. Cleanup and contribution exceptions are isolated and reported to `pluginDidError`; a failing `pluginDidError` handler is logged.
+
+If a constructor-supplied plugin's `onRegister` throws, that plugin and plugins depending on it are skipped, while unrelated plugins remain registered. The failure is reported through `pluginDidError`. A runtime `registerPlugin()` call reports the failure and throws `ERR_PLUGIN_REGISTRATION_FAILED` to its caller.
 
 ```ts
-interface OdontogramPluginDef {
-  name: string;
-  views?: ViewDefinition[];
-}
+chart.registerPlugin(plugin);
+chart.unregisterPlugin("@clinic/bridge-tools"); // returns false when not registered
+```
 
+Plugins supplied in the constructor and plugins registered later use the same dependency checks. Dependencies register before dependents and must be unregistered after them. A plugin that owns the active view cannot be unregistered until the chart switches to another view. To load only extensions needed on a particular screen, dynamically import the plugin module at that point and then call `registerPlugin()`; the core does not import plugin packages on its own.
+
+### Odontogram plugin contributions
+
+- **Views** use the existing `ViewDefinition` and `ViewRenderContext`. Contexts expose `getDentalRenderers()` and `getSymbol(markType)` so views can consume other registered odontogram contributions.
+- **Dental renderers** use `{ id, matches(tooth), render(context) }`. The bundled SVG view invokes the first matching renderer for each tooth, inside its anatomy layer. It passes the tooth id, bounds, notation label, presence, and selection state. Surface geometry and tooth selection remain core/view responsibilities.
+- **Symbols** use `{ id, markTypes, render(context) }`. The bundled SVG view invokes the matching renderer for multi-tooth annotations and passes target anchor coordinates, mark, selection, and resolved color.
+- **Tools** use `{ id, label, disabled?, onActivate(context) }`. The default integrated toolbar adds a tools group when tools are registered. Custom groups can reference a tool with `{ tool: "tool-id" }`. Tools receive a read-only state snapshot and the odontogram command API.
+
+Dental renderer, symbol, tool, and lifecycle cleanup failures are reported through `pluginDidError` and isolated from the rest of the odontogram. View `render`, `update`, and `destroy` failures propagate by default so strict renderers can reject invalid dental resources; set `errorPolicy: "isolate"` to report and suppress view failures. A failing `pluginDidError` handler is logged.
+
+### Optional bridge plugin example
+
+The complete example in [`examples/plugins/custom-bridge-plugin.ts`](../examples/plugins/custom-bridge-plugin.ts) adds a molar anatomy overlay, a bridge symbol, and an “Apply bridge” toolbar tool. Load it only where bridge editing is enabled:
+
+```ts
+if (bridgeEditingEnabled) {
+  const { customBridgePlugin } = await import("../examples/plugins/custom-bridge-plugin.js");
+  chart.registerPlugin(customBridgePlugin);
+}
+```
+
+The plugin depends on `@odontogram/svg` because that view consumes its renderer and symbol contributions. The core remains renderer-agnostic; a different view may consume the same typed registries through `ViewRenderContext`.
+
+For compatibility, `createPlugin({ name, views })` is still accepted for existing view-only extensions and normalizes `name` into an id with default metadata. New extensions should always declare `id`, `version`, and `apiCompatibility`.
+
+```ts
 interface ViewDefinition {
   type: ViewType;
   render: (ctx: ViewRenderContext) => void;
@@ -733,6 +777,8 @@ Passed to view `render` and `destroy` functions:
 | `toggleSurfaceSelection(tooth, surface)`    | Toggle surface in selection                                               |
 | `emitToothClick(tooth, jsEvent)`            | Fire toothClick callback                                                  |
 | `emitSurfaceClick(tooth, surface, jsEvent)` | Fire surfaceClick callback                                                |
+| `getDentalRenderers()`                      | Return registered dental renderer contributions                           |
+| `getSymbol(markType)`                       | Resolve a custom mark symbol renderer                                     |
 
 ---
 

@@ -6,7 +6,9 @@ import {
 } from "./schematic-view.js";
 
 export const svgPlugin = createPlugin({
-  name: "odontogram-svg",
+  id: "@odontogram/svg",
+  version: "0.1.0",
+  apiCompatibility: "^1.0.0",
   views: [
     {
       type: "permanent",

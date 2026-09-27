@@ -4,9 +4,8 @@ import type {
   MarkCatalogEntry,
   OdontogramCommand,
   ToolbarContext,
-  ToolbarControlId,
-  ToolbarOptions,
   LocaleMessageKey,
+  ToolbarGroup,
 } from "./types.js";
 
 function t(
@@ -93,10 +92,23 @@ function getCatalog(chart: Odontogram): MarkCatalogEntry[] {
 
 function appendControl(
   group: HTMLElement,
-  control:
-    ToolbarControlId | (NonNullable<ToolbarOptions["groups"]>[number]["controls"][number] & object),
+  control: ToolbarGroup["controls"][number],
   chart: Odontogram,
 ): void {
+  if (typeof control === "object" && "tool" in control) {
+    const definition = chart.getPluginTool(control.tool);
+    if (!definition) return;
+    const button = createButton(definition.label, definition.title);
+    const ctx = contextFor(chart);
+    button.disabled = Boolean(
+      ctx.disabled ||
+      ctx.readOnly ||
+      (typeof definition.disabled === "function" ? definition.disabled(ctx) : definition.disabled),
+    );
+    button.addEventListener("click", () => chart.activatePluginTool(definition.id));
+    group.append(button);
+    return;
+  }
   if (typeof control === "object") {
     const button = createButton(control.label, control.title);
     const updateDisabled = () => {
@@ -250,6 +262,15 @@ export function renderToolbar(chart: Odontogram, container: HTMLElement): void {
     { id: "marks", label: t(chart, "ui.marks"), controls: ["marks"] as const },
     { id: "selection", label: t(chart, "ui.selection"), controls: ["selection"] as const },
     { id: "history", label: t(chart, "ui.history"), controls: ["history"] as const },
+    ...(chart.getPluginTools().length
+      ? [
+          {
+            id: "plugin-tools",
+            label: "Tools",
+            controls: chart.getPluginTools().map(({ id }) => ({ tool: id })),
+          },
+        ]
+      : []),
   ];
   container.className = `odontogram-toolbar odontogram-toolbar-${config.position ?? "top"}`;
   container.setAttribute("role", "toolbar");

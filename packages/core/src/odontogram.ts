@@ -17,6 +17,7 @@ import {
 import { deepClone, isDeepEqual, validateOdontogramState, validateOptions } from "./validation.js";
 import { renderLegend, renderToolbar } from "./controls.js";
 import { getLocaleDirection, getLocaleText } from "./locale.js";
+import { assertPluginApiCompatible, satisfiesVersion } from "./plugin.js";
 import type {
   BatchOptions,
   MarkFilter,
@@ -46,6 +47,10 @@ import type {
   ViewRenderContext,
   ViewType,
   OdontogramErrorArg,
+  DentalRendererDefinition,
+  OdontogramPluginContext,
+  OdontogramSymbolDefinition,
+  OdontogramToolDefinition,
 } from "./types.js";
 
 const RECREATION_OPTIONS = new Set<keyof OdontogramOptions>([
@@ -57,13 +62,31 @@ const RECREATION_OPTIONS = new Set<keyof OdontogramOptions>([
   "toothResourceFallback",
 ]);
 
+interface RegisteredPlugin {
+  plugin: OdontogramPlugin;
+  cleanup?: () => void;
+}
+
 export class Odontogram {
   private el: HTMLElement | null = null;
   private options: OdontogramOptions;
   private state: OdontogramState;
   private revision = 0;
   private viewMap: Map<ViewType, ViewDefinition> = new Map();
+  private viewOwners = new Map<ViewType, string>();
+  private plugins = new Map<string, RegisteredPlugin>();
+  private dentalRendererMap = new Map<
+    string,
+    { pluginId: string; definition: DentalRendererDefinition }
+  >();
+  private symbolMap = new Map<
+    string,
+    { pluginId: string; definition: OdontogramSymbolDefinition }
+  >();
+  private symbolTypes = new Map<string, string>();
+  private toolMap = new Map<string, { pluginId: string; definition: OdontogramToolDefinition }>();
   private activeView: ViewDefinition | null = null;
+  private activeViewOwnerId: string | null = null;
   private viewContext: ViewRenderContext | null = null;
   private rendered = false;
   private batchDepth = 0;
@@ -200,6 +223,125 @@ export class Odontogram {
     this.toolbarEl = null;
     this.legendEl = null;
     this.rendered = false;
+  }
+
+  /** Register one odontogram extension and its contributions on this instance. */
+  registerPlugin(plugin: OdontogramPlugin): void {
+    this.assertNotInCallback("registerPlugin");
+    this.registerPluginDefinition(plugin);
+    this.refreshPluginContributions();
+  }
+
+  /** Unregister a plugin after cleaning up its instance resources. */
+  unregisterPlugin(id: string): boolean {
+    this.assertNotInCallback("unregisterPlugin");
+    const record = this.plugins.get(id);
+    if (!record) return false;
+    if (this.activeViewOwnerId === id) {
+      throw new OdontogramError(
+        `Plugin "${id}" provides the active view "${this.state.view}". Change views before unregistering it.`,
+        VALIDATION_CODES.ERR_PLUGIN_IN_USE,
+      );
+    }
+    const dependent = [...this.plugins.entries()].find(([, candidate]) =>
+      candidate.plugin.pluginDef.dependencies?.some((dependency) => dependency.id === id),
+    );
+    if (dependent) {
+      throw new OdontogramError(
+        `Plugin "${id}" is required by registered plugin "${dependent[0]}".`,
+        VALIDATION_CODES.ERR_PLUGIN_MISSING_DEPENDENCY,
+      );
+    }
+
+    const def = record.plugin.pluginDef;
+    const context: OdontogramPluginContext = { odontogram: this, pluginId: id };
+    if (record.cleanup) this.runPluginHook(id, "cleanup", record.cleanup);
+    if (def.onUnregister) this.runPluginHook(id, "unregister", () => def.onUnregister!(context));
+    this.removePluginContributions(record.plugin);
+    this.plugins.delete(id);
+    this.refreshPluginContributions();
+    return true;
+  }
+
+  private refreshPluginContributions(): void {
+    if (!this.rendered) return;
+    this.renderControls();
+    if (this.activeView) this.unmountView();
+    this.mountView();
+  }
+
+  /** Get the registered plugin-rendered dental symbols available to a view. */
+  getDentalRenderers(): DentalRendererDefinition[] {
+    return [...this.dentalRendererMap.values()].map(({ pluginId, definition }) => ({
+      ...definition,
+      matches: (tooth) => {
+        try {
+          return definition.matches(tooth);
+        } catch (error) {
+          this.reportPluginFailure(pluginId, `dentalRenderer:${definition.id}:matches`, error);
+          return false;
+        }
+      },
+      render: (context) =>
+        this.runPluginHook(pluginId, `dentalRenderer:${definition.id}`, () =>
+          definition.render(context),
+        ),
+    }));
+  }
+
+  /** Resolve a symbol renderer by odontographic mark type. */
+  getSymbol(markType: string): OdontogramSymbolDefinition | undefined {
+    const id = this.symbolTypes.get(markType);
+    if (!id) return undefined;
+    const entry = this.symbolMap.get(id);
+    if (!entry) return undefined;
+    return {
+      ...entry.definition,
+      render: (context) =>
+        this.runPluginHook(entry.pluginId, `symbol:${id}`, () => entry.definition.render(context)),
+    };
+  }
+
+  /** Get a plugin tool by id for toolbar integrations. */
+  getPluginTool(id: string): OdontogramToolDefinition | undefined {
+    const entry = this.toolMap.get(id);
+    if (!entry) return undefined;
+    const disabled = entry.definition.disabled;
+    return {
+      ...entry.definition,
+      disabled:
+        typeof disabled === "function"
+          ? (context) => {
+              try {
+                return disabled(context);
+              } catch (error) {
+                this.reportPluginFailure(entry.pluginId, `tool:${id}:disabled`, error);
+                return true;
+              }
+            }
+          : disabled,
+    };
+  }
+
+  getPluginTools(): OdontogramToolDefinition[] {
+    return [...this.toolMap.values()].map(({ definition }) => definition);
+  }
+
+  /** Run a registered tool through the plugin error-isolation boundary. */
+  activatePluginTool(id: string): boolean {
+    const entry = this.toolMap.get(id);
+    if (!entry) return false;
+    this.runPluginHook(entry.pluginId, `tool:${id}`, () =>
+      entry.definition.onActivate({
+        state: this.getState(),
+        readOnly: this.getMode() === "controlled" || Boolean(this.getOption("readOnly")),
+        disabled: Boolean(this.getOption("disabled")),
+        canUndo: this.canUndo(),
+        canRedo: this.canRedo(),
+        executeCommand: (command) => this.executeCommand(command),
+      }),
+    );
+    return true;
   }
 
   getOption<K extends keyof OdontogramOptions>(name: K): OdontogramOptions[K] {
@@ -1428,10 +1570,265 @@ export class Odontogram {
   // ==========================================================================
 
   private registerPlugins(plugins: OdontogramPlugin[]): void {
+    const byId = new Map<string, OdontogramPlugin>();
     for (const plugin of plugins) {
-      for (const view of plugin.pluginDef.views ?? []) {
-        this.viewMap.set(view.type, view);
+      this.validatePluginDefinition(plugin);
+      const id = plugin.pluginDef.id;
+      if (byId.has(id)) {
+        throw new OdontogramError(
+          `Duplicate plugin id "${id}".`,
+          VALIDATION_CODES.ERR_PLUGIN_DUPLICATE_ID,
+        );
       }
+      byId.set(id, plugin);
+    }
+    const order: OdontogramPlugin[] = [];
+    const visiting = new Set<string>();
+    const visited = new Set<string>();
+    const visit = (id: string): void => {
+      if (visited.has(id)) return;
+      if (visiting.has(id)) {
+        throw new OdontogramError(
+          `Plugin dependency cycle includes "${id}".`,
+          VALIDATION_CODES.ERR_PLUGIN_DEPENDENCY_CYCLE,
+        );
+      }
+      visiting.add(id);
+      const plugin = byId.get(id)!;
+      for (const dependency of plugin.pluginDef.dependencies ?? []) {
+        const target = byId.get(dependency.id);
+        if (!target) {
+          throw new OdontogramError(
+            `Plugin "${id}" requires missing plugin "${dependency.id}".`,
+            VALIDATION_CODES.ERR_PLUGIN_MISSING_DEPENDENCY,
+          );
+        }
+        if (dependency.version && !satisfiesVersion(target.pluginDef.version, dependency.version)) {
+          throw new OdontogramError(
+            `Plugin "${id}" requires "${dependency.id}" at "${dependency.version}", but found "${target.pluginDef.version}".`,
+            VALIDATION_CODES.ERR_PLUGIN_VERSION_MISMATCH,
+          );
+        }
+        visit(dependency.id);
+      }
+      visiting.delete(id);
+      visited.add(id);
+      order.push(plugin);
+    };
+    for (const id of byId.keys()) visit(id);
+    const installed: string[] = [];
+    const failed = new Set<string>();
+    for (const plugin of order) {
+      const def = plugin.pluginDef;
+      const unavailableDependency = def.dependencies?.find((dependency) =>
+        failed.has(dependency.id),
+      );
+      if (unavailableDependency) {
+        failed.add(def.id);
+        this.reportPluginFailure(
+          def.id,
+          "dependency",
+          new OdontogramError(
+            `Plugin "${def.id}" was skipped because dependency "${unavailableDependency.id}" failed registration.`,
+            VALIDATION_CODES.ERR_PLUGIN_REGISTRATION_FAILED,
+          ),
+        );
+        continue;
+      }
+      try {
+        this.registerPluginDefinition(plugin);
+        installed.push(plugin.pluginDef.id);
+      } catch (error) {
+        if (
+          error instanceof OdontogramError &&
+          error.code === VALIDATION_CODES.ERR_PLUGIN_REGISTRATION_FAILED
+        ) {
+          failed.add(def.id);
+          continue;
+        }
+        for (const id of installed.reverse()) this.unregisterPlugin(id);
+        throw error;
+      }
+    }
+  }
+
+  private validatePluginDefinition(plugin: OdontogramPlugin): void {
+    const def = plugin?.pluginDef;
+    if (!def || !def.id?.trim() || !def.version || !def.apiCompatibility) {
+      throw new OdontogramError(
+        "A plugin requires a non-empty id, version, and apiCompatibility range.",
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+    assertPluginApiCompatible(def);
+    if (!satisfiesVersion(def.version)) {
+      throw new OdontogramError(
+        `Plugin "${def.id}" has invalid semantic version "${def.version}".`,
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+  }
+
+  private registerPluginDefinition(plugin: OdontogramPlugin): void {
+    this.validatePluginDefinition(plugin);
+    const def = plugin.pluginDef;
+    if (this.plugins.has(def.id))
+      throw new OdontogramError(
+        `Duplicate plugin id "${def.id}".`,
+        VALIDATION_CODES.ERR_PLUGIN_DUPLICATE_ID,
+      );
+    for (const dependency of def.dependencies ?? []) {
+      const target = this.plugins.get(dependency.id)?.plugin.pluginDef;
+      if (!target)
+        throw new OdontogramError(
+          `Plugin "${def.id}" requires missing plugin "${dependency.id}".`,
+          VALIDATION_CODES.ERR_PLUGIN_MISSING_DEPENDENCY,
+        );
+      if (dependency.version && !satisfiesVersion(target.version, dependency.version)) {
+        throw new OdontogramError(
+          `Plugin "${def.id}" requires "${dependency.id}" at "${dependency.version}", but found "${target.version}".`,
+          VALIDATION_CODES.ERR_PLUGIN_VERSION_MISMATCH,
+        );
+      }
+    }
+    const localViews = new Set<string>();
+    for (const view of def.views ?? []) {
+      if (localViews.has(view.type)) this.throwContributionConflict("view", view.type);
+      localViews.add(view.type);
+      if (this.viewMap.has(view.type)) this.throwContributionConflict("view", view.type);
+    }
+    const localRenderers = new Set<string>();
+    for (const renderer of def.dentalRenderers ?? []) {
+      if (localRenderers.has(renderer.id))
+        this.throwContributionConflict("dental renderer", renderer.id);
+      localRenderers.add(renderer.id);
+      if (this.dentalRendererMap.has(renderer.id))
+        this.throwContributionConflict("dental renderer", renderer.id);
+    }
+    const localSymbols = new Set<string>();
+    const localMarkTypes = new Set<string>();
+    for (const symbol of def.symbols ?? []) {
+      if (localSymbols.has(symbol.id)) this.throwContributionConflict("symbol", symbol.id);
+      localSymbols.add(symbol.id);
+      if (this.symbolMap.has(symbol.id)) this.throwContributionConflict("symbol", symbol.id);
+      for (const markType of symbol.markTypes) {
+        if (localMarkTypes.has(markType))
+          this.throwContributionConflict("symbol mark type", markType);
+        localMarkTypes.add(markType);
+        if (this.symbolTypes.has(markType))
+          this.throwContributionConflict("symbol mark type", markType);
+      }
+    }
+    const localTools = new Set<string>();
+    for (const tool of def.tools ?? []) {
+      if (localTools.has(tool.id)) this.throwContributionConflict("tool", tool.id);
+      localTools.add(tool.id);
+      if (this.toolMap.has(tool.id)) this.throwContributionConflict("tool", tool.id);
+    }
+
+    this.plugins.set(def.id, { plugin });
+    for (const view of def.views ?? []) {
+      this.viewMap.set(view.type, this.wrapPluginView(def.id, view));
+      this.viewOwners.set(view.type, def.id);
+    }
+    for (const renderer of def.dentalRenderers ?? [])
+      this.dentalRendererMap.set(renderer.id, { pluginId: def.id, definition: renderer });
+    for (const symbol of def.symbols ?? []) {
+      this.symbolMap.set(symbol.id, { pluginId: def.id, definition: symbol });
+      for (const markType of symbol.markTypes) this.symbolTypes.set(markType, symbol.id);
+    }
+    for (const tool of def.tools ?? [])
+      this.toolMap.set(tool.id, { pluginId: def.id, definition: tool });
+
+    if (def.onRegister) {
+      const context: OdontogramPluginContext = { odontogram: this, pluginId: def.id };
+      try {
+        const cleanup = def.onRegister(context);
+        if (cleanup) this.plugins.get(def.id)!.cleanup = cleanup;
+      } catch (error) {
+        this.removePluginContributions(plugin);
+        this.plugins.delete(def.id);
+        this.reportPluginFailure(def.id, "register", error);
+        throw new OdontogramError(
+          `Plugin "${def.id}" failed during registration: ${String(error)}`,
+          VALIDATION_CODES.ERR_PLUGIN_REGISTRATION_FAILED,
+        );
+      }
+    }
+  }
+
+  private removePluginContributions(plugin: OdontogramPlugin): void {
+    const def = plugin.pluginDef;
+    for (const view of def.views ?? []) {
+      this.viewMap.delete(view.type);
+      this.viewOwners.delete(view.type);
+    }
+    for (const renderer of def.dentalRenderers ?? []) this.dentalRendererMap.delete(renderer.id);
+    for (const symbol of def.symbols ?? []) {
+      this.symbolMap.delete(symbol.id);
+      for (const markType of symbol.markTypes) this.symbolTypes.delete(markType);
+    }
+    for (const tool of def.tools ?? []) this.toolMap.delete(tool.id);
+  }
+
+  private throwContributionConflict(kind: string, id: string): never {
+    throw new OdontogramError(
+      `Duplicate plugin ${kind} contribution "${id}".`,
+      VALIDATION_CODES.ERR_PLUGIN_CONTRIBUTION_CONFLICT,
+    );
+  }
+
+  private wrapPluginView(pluginId: string, view: ViewDefinition): ViewDefinition {
+    return {
+      ...view,
+      render: (context) =>
+        this.invokePluginView(pluginId, `view:${view.type}:render`, () => view.render(context)),
+      ...(view.update
+        ? {
+            update: (context: ViewRenderContext) =>
+              this.invokePluginView(pluginId, `view:${view.type}:update`, () =>
+                view.update!(context),
+              ),
+          }
+        : {}),
+      ...(view.destroy
+        ? {
+            destroy: (context: ViewRenderContext) =>
+              this.invokePluginView(pluginId, `view:${view.type}:destroy`, () =>
+                view.destroy!(context),
+              ),
+          }
+        : {}),
+    };
+  }
+
+  private invokePluginView(pluginId: string, phase: string, render: () => void): void {
+    try {
+      render();
+    } catch (error) {
+      if (this.plugins.get(pluginId)?.plugin.pluginDef.errorPolicy !== "isolate") throw error;
+      this.reportPluginFailure(pluginId, phase, error);
+    }
+  }
+
+  private runPluginHook(pluginId: string, phase: string, hook: () => void): void {
+    try {
+      hook();
+    } catch (error) {
+      this.reportPluginFailure(pluginId, phase, error);
+    }
+  }
+
+  private reportPluginFailure(pluginId: string, phase: string, error: unknown): void {
+    const callback = this.getOption("pluginDidError");
+    if (!callback) {
+      console.error(`[Odontogram] Plugin "${pluginId}" failed during ${phase}`, error);
+      return;
+    }
+    try {
+      callback({ pluginId, phase, error });
+    } catch (reportingError) {
+      console.error("[Odontogram] pluginDidError callback threw", reportingError);
     }
   }
 
@@ -1478,6 +1875,7 @@ export class Odontogram {
     if (!this.chartEl) return;
 
     this.activeView = viewDef;
+    this.activeViewOwnerId = this.viewOwners.get(viewDef.type) ?? null;
     this.viewContext = this.createViewContext();
     viewDef.render(this.viewContext);
 
@@ -1508,6 +1906,7 @@ export class Odontogram {
     }
 
     this.activeView = null;
+    this.activeViewOwnerId = null;
     this.viewContext = null;
   }
 
@@ -1551,6 +1950,8 @@ export class Odontogram {
         this.emitDetail(tooth, undefined, trigger, jsEvent),
       emitSurfaceDetail: (tooth, surface, trigger, jsEvent) =>
         this.emitDetail(tooth, surface, trigger, jsEvent),
+      getDentalRenderers: () => this.getDentalRenderers(),
+      getSymbol: (markType) => this.getSymbol(markType),
     };
   }
 
