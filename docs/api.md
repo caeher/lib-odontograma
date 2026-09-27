@@ -138,6 +138,8 @@ Set `disabled: true` to disable rendered tooth and surface activation and integr
 
 #### Optional integrated controls, legends, and detail hooks
 
+The schematic SVG implements the odontogram keyboard and screen-reader pattern described in [accessibility guidance](accessibility.md). It uses a roving tooth/surface focus sequence, exposes presence and marks in target names, and includes a synchronized text equivalent. The text equivalent summarizes the currently visible chart; consumers should retain their own textual record if they hide the SVG view.
+
 The built-in controls are opt-in. Omit `toolbar` or set it to `false` for a chart without controls. `toolbar: {}` renders the standard view, mark, selection, and history groups. Set `position` to `top`, `bottom`, `left`, or `right`. Supply `groups` to replace and order the groups; each group's `controls` list can contain built-in ids (`views`, `marks`, `selection`, `history`) or custom buttons. The built-in mark group uses `executeCommand()` and history availability, and disables unavailable actions.
 
 ```ts

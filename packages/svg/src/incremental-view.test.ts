@@ -173,7 +173,7 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
       const svg = container.querySelector("svg.odontogram-svg");
       expect(svg).toBeTruthy();
       expect(svg?.getAttribute("data-instance-id")).toBe("test-chart-1-");
-      expect(svg?.getAttribute("role")).toBe("img");
+      expect(svg?.getAttribute("role")).toBe("group");
 
       // Defs
       const defs = svg?.querySelector("defs#test-chart-1-defs");
@@ -205,7 +205,10 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
       expect(tooth16?.getAttribute("id")).toBe("test-chart-1-tooth-16");
       expect(tooth16?.getAttribute("data-quadrant")).toBe("1");
       expect(tooth16?.getAttribute("data-arch")).toBe("upper");
-      expect(tooth16?.getAttribute("tabindex")).toBe("0");
+      expect(tooth16?.getAttribute("tabindex")).toBe("-1");
+      expect(
+        svg?.querySelector('.odontogram-tooth[data-tooth="11"]')?.getAttribute("tabindex"),
+      ).toBe("0");
 
       expect(tooth16?.querySelector(".odontogram-layer-anatomy")).toBeTruthy();
       expect(tooth16?.querySelector(".odontogram-layer-interaction")).toBeTruthy();
@@ -417,8 +420,8 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
       // 2. Programmatically select tooth 26
       odontogram.selectTooth("26");
 
-      expect(tooth26After?.getAttribute("aria-selected")).toBe("true");
-      expect(tooth16After?.getAttribute("aria-selected")).toBeNull();
+      expect(tooth26After?.getAttribute("aria-pressed")).toBe("true");
+      expect(tooth16After?.getAttribute("aria-pressed")).toBe("false");
       expect(container.querySelector('.odontogram-tooth[data-tooth="26"]')).toBe(tooth26Before);
 
       odontogram.destroy();
@@ -554,7 +557,7 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
       // Instance 2 remains healthy and interactive
       expect(container2.querySelector("svg")).toBeTruthy();
       inst2.selectTooth("16");
-      expect(svg2?.querySelector("#chart-beta-tooth-16")?.getAttribute("aria-selected")).toBe(
+      expect(svg2?.querySelector("#chart-beta-tooth-16")?.getAttribute("aria-pressed")).toBe(
         "true",
       );
 
@@ -704,7 +707,7 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
           entry.arch === "maxillary" ? "upper" : "lower",
         );
         expect(toothEl?.getAttribute("data-notation-label")).toBe(entry.fdi);
-        expect(toothEl?.getAttribute("aria-label")).toBe(`FDI ${entry.fdi}`);
+        expect(toothEl?.getAttribute("aria-label")).toBe(`FDI ${entry.fdi}, present; no marks`);
       }
 
       // Test Universal notation
@@ -712,7 +715,9 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
       for (const entry of notationsFixture) {
         const toothEl = container.querySelector(`.odontogram-tooth[data-tooth="${entry.fdi}"]`);
         expect(toothEl?.getAttribute("data-notation-label")).toBe(entry.universal);
-        expect(toothEl?.getAttribute("aria-label")).toBe(`Universal ${entry.universal}`);
+        expect(toothEl?.getAttribute("aria-label")).toBe(
+          `Universal ${entry.universal}, present; no marks`,
+        );
       }
 
       // Test Palmer notation
@@ -720,7 +725,9 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
       for (const entry of notationsFixture) {
         const toothEl = container.querySelector(`.odontogram-tooth[data-tooth="${entry.fdi}"]`);
         expect(toothEl?.getAttribute("data-notation-label")).toBe(entry.palmerSymbol);
-        expect(toothEl?.getAttribute("aria-label")).toBe(entry.palmerAccessible);
+        expect(toothEl?.getAttribute("aria-label")).toBe(
+          `${entry.palmerAccessible}, present; no marks`,
+        );
       }
 
       odontogram.destroy();

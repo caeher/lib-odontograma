@@ -25,6 +25,7 @@ import {
   mapSurfaceToFace,
   toAccessibleNotation,
   toNotation,
+  SURFACE_LABELS,
   type GraphicFace,
   type Notation,
 } from "@odontogram/dentition";
@@ -420,6 +421,8 @@ export class IncrementalSvgRenderer {
   private latestContext: ViewRenderContext | null = null;
   private hookCleanups = new Map<string, () => void>();
   private renderedResourceSignature = "";
+  private accessibleSummary: HTMLDivElement | null = null;
+  private liveRegion: HTMLDivElement | null = null;
 
   constructor(instancePrefix?: string) {
     if (instancePrefix && instancePrefix.trim() !== "") {
@@ -503,9 +506,23 @@ export class IncrementalSvgRenderer {
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
-    svg.setAttribute("role", "img");
-    svg.setAttribute("tabindex", "0");
-    svg.setAttribute("aria-label", "Dental Chart Odontogram");
+    svg.setAttribute("role", "group");
+    svg.setAttribute("aria-label", "Dental chart");
+    const summary = document.createElement("div");
+    summary.className = "odontogram-sr-only odontogram-text-summary";
+    summary.id = `${this.instanceId}text-summary`;
+    summary.setAttribute("data-odontogram-text-summary", "");
+    const live = document.createElement("div");
+    live.className = "odontogram-sr-only";
+    live.setAttribute("role", "status");
+    live.setAttribute("aria-live", "polite");
+    live.setAttribute("aria-atomic", "true");
+    live.id = `${this.instanceId}live`;
+    svg.setAttribute("aria-describedby", summary.id);
+    el.append(summary, live);
+    this.accessibleSummary = summary;
+    this.liveRegion = live;
+    this.syncAccessibleText(ctx, renderedLayout);
     svg.style.display = "block";
     svg.style.width = "100%";
     svg.style.height = options.fitToContainer === false ? "auto" : "100%";
@@ -598,6 +615,8 @@ export class IncrementalSvgRenderer {
     this.syncSelectionCaches(ctx);
     this.syncPresenceCaches(ctx);
     this.syncMarks(ctx, true);
+    this.syncAccessibleText(ctx, renderedLayout);
+    for (const tooth of this.toothElements.keys()) this.syncAccessibleNames(ctx, tooth);
 
     // Mount to container
     el.appendChild(svg);
@@ -713,6 +732,77 @@ export class IncrementalSvgRenderer {
       : null;
   }
 
+  private syncAccessibleText(ctx: ViewRenderContext, layout: ToothLayout[]): void {
+    if (!this.accessibleSummary) return;
+    const lines = layout.map(({ tooth }) => this.toothAccessibleName(ctx, tooth));
+    this.accessibleSummary.textContent = `Text equivalent of the visible dental chart. ${lines.join(". ")}`;
+  }
+
+  private toothAccessibleName(ctx: ViewRenderContext, tooth: ToothId): string {
+    const notation = (ctx.options.notation ?? "fdi") as Notation;
+    const presence = getToothPresence(ctx.state.teeth, tooth);
+    const presenceLabel = presence === "present" ? "present" : presence;
+    const marks = getMarksForTooth(ctx.state.marks, tooth).map((mark) => {
+      const surfaces = getMarkTargetSurfaces(mark, tooth);
+      const location = surfaces.length
+        ? ` on ${surfaces.map((s) => SURFACE_LABELS[s]).join(", ")}`
+        : "";
+      return `${mark.type}${mark.status ? `, ${mark.status}` : ""}${location}`;
+    });
+    return `${toAccessibleNotation(tooth, notation)}, ${presenceLabel}${marks.length ? `; marks: ${marks.join("; ")}` : "; no marks"}`;
+  }
+
+  private syncAccessibleNames(ctx: ViewRenderContext, tooth: ToothId): void {
+    const name = this.toothAccessibleName(ctx, tooth);
+    this.toothElements.get(tooth)?.setAttribute("aria-label", name);
+    for (const surface of getApplicableSurfaces(tooth)) {
+      const el = this.surfaceElements.get(`${tooth}:${surface}`);
+      if (!el) continue;
+      const marks = getMarksForSurface(ctx.state.marks, tooth, surface).map(
+        (mark) => `${mark.type}${mark.status ? `, ${mark.status}` : ""}`,
+      );
+      el.setAttribute(
+        "aria-label",
+        `${name}; ${SURFACE_LABELS[surface]} surface${marks.length ? `; marks: ${marks.join("; ")}` : "; no marks"}`,
+      );
+    }
+  }
+
+  private setRovingTabStop(tooth: ToothId, surface: SurfaceId | null): void {
+    for (const [id, toothEl] of this.toothElements)
+      toothEl.setAttribute("tabindex", id === tooth && surface === null ? "0" : "-1");
+    for (const [key, surfaceEl] of this.surfaceElements)
+      surfaceEl.setAttribute(
+        "tabindex",
+        key === `${tooth}:${surface}` && surface !== null ? "0" : "-1",
+      );
+  }
+
+  private moveDentalFocus(tooth: ToothId, surface: SurfaceId | null, key: string): boolean {
+    const forward = key === "ArrowRight" || key === "ArrowDown";
+    const backward = key === "ArrowLeft" || key === "ArrowUp";
+    if (!forward && !backward) return false;
+    const sequence: Array<{ tooth: ToothId; surface: SurfaceId | null; el: SVGGElement }> = [];
+    for (const id of this.layoutMap.keys()) {
+      const toothEl = this.toothElements.get(id);
+      if (toothEl) sequence.push({ tooth: id, surface: null, el: toothEl });
+      for (const code of getApplicableSurfaces(id)) {
+        const surfaceEl = this.surfaceElements.get(`${id}:${code}`);
+        if (surfaceEl) sequence.push({ tooth: id, surface: code, el: surfaceEl });
+      }
+    }
+    const index = sequence.findIndex((item) => item.tooth === tooth && item.surface === surface);
+    const next = sequence[index + (forward ? 1 : -1)];
+    if (!next) return false;
+    this.setRovingTabStop(next.tooth, next.surface);
+    next.el.focus();
+    return true;
+  }
+
+  private announceSelection(message: string): void {
+    if (this.liveRegion) this.liveRegion.textContent = `Activated ${message}.`;
+  }
+
   private zoomAt(next: number, anchorX?: number, anchorY?: number): void {
     const base = this.baseViewBox;
     if (!base || !this.latestContext) return;
@@ -757,6 +847,10 @@ export class IncrementalSvgRenderer {
     }
 
     const { options, state } = ctx;
+    this.syncAccessibleText(
+      ctx,
+      [...this.toothElements.keys()].map((tooth) => this.layoutMap.get(tooth)!),
+    );
     const resourceSignature = JSON.stringify([
       options.toothResources ?? {},
       options.toothResourceFallback ?? "schematic",
@@ -804,6 +898,7 @@ export class IncrementalSvgRenderer {
     }
     for (const [toothId, layout] of this.layoutMap) {
       this.syncToothLabel(ctx, toothId, layout.label);
+      this.syncAccessibleNames(ctx, toothId);
     }
 
     // 2. Presence diffing
@@ -846,6 +941,11 @@ export class IncrementalSvgRenderer {
 
     // 4. Marks diffing
     this.syncMarks(ctx, false);
+    this.syncAccessibleText(
+      ctx,
+      [...this.toothElements.keys()].map((tooth) => this.layoutMap.get(tooth)!),
+    );
+    for (const tooth of this.toothElements.keys()) this.syncAccessibleNames(ctx, tooth);
   }
 
   destroy(ctx: ViewRenderContext): void {
@@ -862,6 +962,10 @@ export class IncrementalSvgRenderer {
       }
       this.abortController = null;
     }
+    this.accessibleSummary?.remove();
+    this.liveRegion?.remove();
+    this.accessibleSummary = null;
+    this.liveRegion = null;
 
     // Call toothWillUnmount for mounted teeth
     for (const [tooth, toothEl] of this.toothElements.entries()) {
@@ -1092,10 +1196,13 @@ export class IncrementalSvgRenderer {
     toothGroup.setAttribute("data-presence", presence);
     toothGroup.setAttribute("data-notation-label", label);
     toothGroup.setAttribute("aria-label", accessibleLabel);
-    toothGroup.setAttribute("role", "group");
-    toothGroup.setAttribute("tabindex", options.disabled ? "-1" : "0");
+    toothGroup.setAttribute("role", "button");
+    toothGroup.setAttribute(
+      "tabindex",
+      options.disabled || this.toothElements.size > 0 ? "-1" : "0",
+    );
     if (options.disabled) toothGroup.setAttribute("aria-disabled", "true");
-    toothGroup.setAttribute("aria-selected", String(isToothSelected));
+    toothGroup.setAttribute("aria-pressed", String(isToothSelected));
 
     const toothClassNames = normalizeClassNames(
       options.toothClassNames?.({ tooth, isSelected: isToothSelected }),
@@ -1151,6 +1258,11 @@ export class IncrementalSvgRenderer {
       "keydown",
       (e) => {
         if (options.disabled) return;
+        if (this.moveDentalFocus(tooth, null, e.key)) {
+          e.preventDefault();
+          return;
+        }
+        if (e.key === "Escape") return;
         if (e.key !== "Enter" && e.key !== " ") return;
         e.preventDefault();
         const mode = e.shiftKey
@@ -1161,9 +1273,11 @@ export class IncrementalSvgRenderer {
         ctx.selectTooth(tooth, mode);
         ctx.emitToothClick(tooth, e);
         ctx.emitToothDetail?.(tooth, "click", e);
+        this.announceSelection(this.toothAccessibleName(ctx, tooth));
       },
       listenerOptions,
     );
+    toothGroup.addEventListener("focus", () => this.setRovingTabStop(tooth, null), listenerOptions);
 
     anatomyLayer.appendChild(bg);
 
@@ -1484,9 +1598,12 @@ export class IncrementalSvgRenderer {
       surfaceGroup.setAttribute("data-surface", surface);
       surfaceGroup.setAttribute("data-face", face);
       surfaceGroup.setAttribute("role", "button");
-      surfaceGroup.setAttribute("tabindex", options.disabled ? "-1" : "0");
+      surfaceGroup.setAttribute("tabindex", "-1");
       if (options.disabled) surfaceGroup.setAttribute("aria-disabled", "true");
-      surfaceGroup.setAttribute("aria-label", `${surface} surface`);
+      surfaceGroup.setAttribute(
+        "aria-label",
+        `${this.toothAccessibleName(ctx, tooth)}; ${SURFACE_LABELS[surface]} surface; no marks`,
+      );
       const isSelected =
         state.selection.teeth.includes(tooth) ||
         state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
@@ -1538,6 +1655,16 @@ export class IncrementalSvgRenderer {
         "keydown",
         (e) => {
           if (options.disabled) return;
+          if (this.moveDentalFocus(tooth, surface, e.key)) {
+            e.preventDefault();
+            e.stopPropagation();
+            return;
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            this.toothElements.get(tooth)?.focus();
+            return;
+          }
           if (e.key !== "Enter" && e.key !== " ") return;
           e.preventDefault();
           e.stopPropagation();
@@ -1548,12 +1675,18 @@ export class IncrementalSvgRenderer {
           ctx.toggleSurfaceSelection(tooth, surface, mode);
           ctx.emitSurfaceClick(tooth, surface, e);
           ctx.emitSurfaceDetail?.(tooth, surface, "click", e);
+          this.announceSelection(
+            `${this.toothAccessibleName(ctx, tooth)}; ${SURFACE_LABELS[surface]} surface`,
+          );
         },
         listenerOptions,
       );
       surfaceGroup.addEventListener(
         "focus",
-        (e) => ctx.emitSurfaceDetail?.(tooth, surface, "focus", e),
+        (e) => {
+          this.setRovingTabStop(tooth, surface);
+          ctx.emitSurfaceDetail?.(tooth, surface, "focus", e);
+        },
         listenerOptions,
       );
 
@@ -1730,7 +1863,7 @@ export class IncrementalSvgRenderer {
     const toothGroup = this.toothElements.get(toothId);
     if (!toothGroup) return;
 
-    toothGroup.setAttribute("aria-selected", String(isSelected));
+    toothGroup.setAttribute("aria-pressed", String(isSelected));
     const { options, state } = ctx;
     const toothClassNames = normalizeClassNames(
       options.toothClassNames?.({ tooth: toothId, isSelected }),
@@ -1754,9 +1887,9 @@ export class IncrementalSvgRenderer {
     );
 
     if (isSelected) {
-      toothGroup.setAttribute("aria-selected", "true");
+      toothGroup.setAttribute("aria-pressed", "true");
     } else {
-      toothGroup.removeAttribute("aria-selected");
+      toothGroup.setAttribute("aria-pressed", "false");
     }
 
     const outline = toothGroup.querySelector<SVGRectElement>(

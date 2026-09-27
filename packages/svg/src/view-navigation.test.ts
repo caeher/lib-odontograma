@@ -19,6 +19,75 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
     vi.restoreAllMocks();
   });
 
+  it("exposes a named chart, a synchronized text equivalent, and roving dental keyboard navigation", () => {
+    const odontogram = new Odontogram(container, {
+      plugins: [svgPlugin],
+      initialView: "quadrant-1",
+      instanceId: "a11y-nav",
+    });
+    odontogram.addMark({
+      id: "caries-16",
+      tooth: "16",
+      surfaces: ["O"],
+      type: "caries",
+      status: "planned",
+    });
+    odontogram.setToothState("18", "missing");
+    odontogram.render();
+
+    const svg = container.querySelector("svg.odontogram-svg")!;
+    const tooth18 = container.querySelector<SVGGElement>('[data-tooth="18"]')!;
+    const tooth17 = container.querySelector<SVGGElement>('[data-tooth="17"]')!;
+    const occlusal16 = container.querySelector<SVGGElement>('[data-tooth="16"][data-surface="O"]')!;
+    expect(svg.getAttribute("role")).toBe("group");
+    expect(tooth18.getAttribute("aria-label")).toContain("FDI 18, missing");
+    expect(occlusal16.getAttribute("aria-label")).toContain("Occlusal surface");
+    expect(occlusal16.getAttribute("aria-label")).toContain("caries, planned");
+    expect(container.querySelector("[data-odontogram-text-summary]")?.textContent).toContain(
+      "missing",
+    );
+    expect(container.querySelector("[data-odontogram-text-summary]")?.textContent).toContain(
+      "caries, planned",
+    );
+    expect(tooth18.getAttribute("tabindex")).toBe("0");
+    expect(occlusal16.getAttribute("tabindex")).toBe("-1");
+
+    const focused: Element[] = [];
+    const tooth16 = container.querySelector<SVGGElement>('[data-tooth="16"]')!;
+    for (const el of [
+      tooth17,
+      ...Array.from(container.querySelectorAll<SVGGElement>(".odontogram-surface")),
+      tooth16,
+    ]) {
+      el.focus = vi.fn(function (this: Element) {
+        focused.push(this);
+        this.dispatchEvent(new FocusEvent("focus"));
+      });
+    }
+    tooth17.focus();
+    let current: Element;
+    tooth17.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+    );
+    expect(focused.at(-1)).toBe(container.querySelector('[data-tooth="17"][data-surface="M"]'));
+    const mesial17 = container.querySelector<SVGGElement>('[data-tooth="17"][data-surface="M"]')!;
+    mesial17.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }),
+    );
+    expect(focused.at(-1)).toBe(tooth17);
+    current = tooth17;
+    for (let step = 0; step < 6; step++) {
+      current.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true, cancelable: true }),
+      );
+      current = focused.at(-1)!;
+    }
+    // Arrow navigation continues through the five applicable surfaces into the next tooth.
+    expect(focused.at(-1)).toBe(tooth16);
+    expect(tooth16.getAttribute("tabindex")).toBe("0");
+    odontogram.destroy();
+  });
+
   // ==========================================================================
   // 1. Zero Data Loss Across View Transitions
   // ==========================================================================
@@ -423,7 +492,7 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
 
       const tooth36 = container.querySelector('.odontogram-tooth[data-tooth="36"]');
       expect(tooth36).toBeTruthy();
-      expect(tooth36?.getAttribute("aria-selected")).toBe("true");
+      expect(tooth36?.getAttribute("aria-pressed")).toBe("true");
 
       const outline = tooth36?.querySelector(".odontogram-tooth-outline");
       expect(outline?.getAttribute("fill")).toBe("#ff9800");

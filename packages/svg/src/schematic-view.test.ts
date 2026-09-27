@@ -51,7 +51,15 @@ describe("schematic SVG view", () => {
   it("registers permanent, deciduous, and mixed views", () => {
     const views = svgPlugin.pluginDef.views?.map((v) => v.type) ?? [];
     expect(views).toEqual(
-      expect.arrayContaining(["permanent", "deciduous", "primary", "mixed", "arch", "quadrant", "tooth"]),
+      expect.arrayContaining([
+        "permanent",
+        "deciduous",
+        "primary",
+        "mixed",
+        "arch",
+        "quadrant",
+        "tooth",
+      ]),
     );
   });
 
@@ -110,7 +118,7 @@ describe("schematic SVG view", () => {
     renderIntoDocument();
     const tooth16 = document.querySelector('.odontogram-tooth[data-tooth="16"]');
     expect(tooth16?.getAttribute("data-notation-label")).toBe("16");
-    expect(tooth16?.getAttribute("aria-label")).toBe("FDI 16");
+    expect(tooth16?.getAttribute("aria-label")).toBe("FDI 16, present; no marks");
     expect(tooth16?.querySelector("text")?.textContent).toBe("16");
   });
 
@@ -122,7 +130,7 @@ describe("schematic SVG view", () => {
 
     const tooth11 = document.querySelector('.odontogram-tooth[data-tooth="11"]');
     expect(tooth11?.getAttribute("data-notation-label")).toBe("8");
-    expect(tooth11?.getAttribute("aria-label")).toBe("Universal 8");
+    expect(tooth11?.getAttribute("aria-label")).toBe("Universal 8, present; no marks");
     expect(tooth11?.querySelector("text")?.textContent).toBe("8");
 
     const tooth18 = document.querySelector('.odontogram-tooth[data-tooth="18"]');
@@ -138,12 +146,12 @@ describe("schematic SVG view", () => {
 
     const tooth18 = document.querySelector('.odontogram-tooth[data-tooth="18"]');
     expect(tooth18?.getAttribute("data-notation-label")).toBe("8┘");
-    expect(tooth18?.getAttribute("aria-label")).toBe("UR8");
+    expect(tooth18?.getAttribute("aria-label")).toBe("UR8, present; no marks");
     expect(tooth18?.querySelector("text")?.textContent).toBe("8┘");
 
     const tooth21 = document.querySelector('.odontogram-tooth[data-tooth="21"]');
     expect(tooth21?.getAttribute("data-notation-label")).toBe("└1");
-    expect(tooth21?.getAttribute("aria-label")).toBe("UL1");
+    expect(tooth21?.getAttribute("aria-label")).toBe("UL1, present; no marks");
     expect(tooth21?.querySelector("text")?.textContent).toBe("└1");
   });
 
@@ -151,25 +159,41 @@ describe("schematic SVG view", () => {
     const toothClick = vi.fn();
     const surfaceClick = vi.fn();
     const odontogram = new Odontogram(document.body.appendChild(document.createElement("div")), {
-      plugins: [svgPlugin], initialView: "permanent", toothClick, surfaceClick,
+      plugins: [svgPlugin],
+      initialView: "permanent",
+      toothClick,
+      surfaceClick,
     });
     odontogram.render();
     const tooth16 = document.querySelector<SVGGElement>('.odontogram-tooth[data-tooth="16"]')!;
-    tooth16.querySelector(".odontogram-tooth-outline")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    tooth16
+      .querySelector(".odontogram-tooth-outline")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     const tooth17 = document.querySelector<SVGGElement>('.odontogram-tooth[data-tooth="17"]')!;
-    tooth17.querySelector(".odontogram-tooth-outline")!.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+    tooth17
+      .querySelector(".odontogram-tooth-outline")!
+      .dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
     expect(odontogram.getSelection().teeth).toEqual(["16", "17"]);
-    expect(toothClick).toHaveBeenLastCalledWith(expect.objectContaining({
-      target: { kind: "tooth", tooth: "17" }, selection: odontogram.getSelection(), jsEvent: expect.any(MouseEvent),
-    }));
+    expect(toothClick).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        target: { kind: "tooth", tooth: "17" },
+        selection: odontogram.getSelection(),
+        jsEvent: expect.any(MouseEvent),
+      }),
+    );
 
-    const surface = document.querySelector<SVGGElement>('.odontogram-surface[data-tooth="16"][data-surface="O"]')!;
+    const surface = document.querySelector<SVGGElement>(
+      '.odontogram-surface[data-tooth="16"][data-surface="O"]',
+    )!;
     surface.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
     expect(odontogram.getSelection().surfaces).toEqual([{ tooth: "16", surface: "O" }]);
-    expect(surfaceClick).toHaveBeenCalledWith(expect.objectContaining({
-      target: { kind: "surface", tooth: "16", surface: "O" }, selection: odontogram.getSelection(),
-      jsEvent: expect.any(KeyboardEvent),
-    }));
+    expect(surfaceClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: { kind: "surface", tooth: "16", surface: "O" },
+        selection: odontogram.getSelection(),
+        jsEvent: expect.any(KeyboardEvent),
+      }),
+    );
     odontogram.destroy();
   });
 
