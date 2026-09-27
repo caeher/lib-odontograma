@@ -21,6 +21,7 @@ import type {
   MarkInput,
   OdontogramCommand,
   OdontogramCommandResult,
+  HistoryChangeArg,
   OdontogramMode,
   OdontogramOptions,
   OdontogramPlugin,
@@ -65,6 +66,9 @@ export class Odontogram {
   private preBatchOptions: OdontogramOptions | null = null;
   private activeMarkCommand: OdontogramCommand | null = null;
   private evaluatingMarkCommand = false;
+  private undoStack: OdontogramState[] = [];
+  private redoStack: OdontogramState[] = [];
+  private applyingHistory = false;
 
   constructor(el?: HTMLElement | null, options: OdontogramOptions = {}) {
     if (el !== undefined && el !== null) {
@@ -189,6 +193,14 @@ export class Odontogram {
     }
 
     this.options = { ...this.options, [name]: deepClone(value) };
+    if (name === "historyLimit") {
+      if (value === 0) this.clearHistory();
+      else {
+        const before = this.undoStack.length;
+        this.trimUndoStack();
+        if (this.undoStack.length !== before) this.notifyHistoryChange();
+      }
+    }
     this.requestRender();
   }
 
@@ -239,6 +251,55 @@ export class Odontogram {
 
   getState(): OdontogramState {
     return deepClone(this.state);
+  }
+
+  /** Whether one local odontogram state change can be undone. */
+  canUndo(): boolean {
+    return this.getMode() === "internal" && this.undoStack.length > 0;
+  }
+
+  /** Whether the most recently undone local state change can be redone. */
+  canRedo(): boolean {
+    return this.getMode() === "internal" && this.redoStack.length > 0;
+  }
+
+  /** Restore the previous in-memory odontogram snapshot. Returns false when unavailable. */
+  undo(): boolean {
+    if (!this.canUndo() || this.batchDepth > 0) return false;
+    const previous = this.undoStack.pop()!;
+    this.redoStack.push(deepClone(this.state));
+    this.applyingHistory = true;
+    try {
+      this.setState(previous, { source: "undo" });
+    } catch (error) {
+      this.undoStack.push(previous);
+      this.redoStack.pop();
+      throw error;
+    } finally {
+      this.applyingHistory = false;
+    }
+    this.notifyHistoryChange();
+    return true;
+  }
+
+  /** Reapply the most recently undone in-memory odontogram snapshot. Returns false when unavailable. */
+  redo(): boolean {
+    if (!this.canRedo() || this.batchDepth > 0) return false;
+    const next = this.redoStack.pop()!;
+    this.undoStack.push(deepClone(this.state));
+    this.trimUndoStack();
+    this.applyingHistory = true;
+    try {
+      this.setState(next, { source: "redo" });
+    } catch (error) {
+      this.undoStack.pop();
+      this.redoStack.push(next);
+      throw error;
+    } finally {
+      this.applyingHistory = false;
+    }
+    this.notifyHistoryChange();
+    return true;
   }
 
   /**
@@ -309,6 +370,7 @@ export class Odontogram {
     }
 
     if (isDeepEqual(candidateState, this.state)) {
+      if (options?.source === "external" && !this.applyingHistory) this.clearHistory();
       if (options?.revision !== undefined) {
         this.revision = options.revision;
       }
@@ -381,6 +443,14 @@ export class Odontogram {
       changedProperties.push("selection");
     if (!isDeepEqual(candidateState.teeth, previousState.teeth)) changedProperties.push("teeth");
 
+    const changeSource: StateChangeSource =
+      options?.source ?? (this.batchDepth > 0 ? "batch" : "internal");
+    if (changeSource === "external" && !this.applyingHistory) {
+      this.clearHistory();
+    } else if (!this.applyingHistory && this.batchDepth === 0) {
+      this.recordHistory(previousState);
+    }
+
     this.state = candidateState;
 
     if (options?.revision !== undefined) {
@@ -389,8 +459,7 @@ export class Odontogram {
       this.revision += 1;
     }
 
-    const source: StateChangeSource =
-      options?.source ?? (this.batchDepth > 0 ? "batch" : "internal");
+    const source = changeSource;
 
     // Callback notifications (deferred if batched)
     if (!options?.silent) {
@@ -1089,6 +1158,7 @@ export class Odontogram {
         this.preBatchOptions = null;
 
         if (preState && !isDeepEqual(this.state, preState)) {
+          if (!this.applyingHistory) this.recordHistory(preState);
           this.revision += 1;
 
           const changedProperties: Array<keyof OdontogramState> = [];
@@ -1354,6 +1424,43 @@ export class Odontogram {
         VALIDATION_CODES.ERR_CONTROLLED_MUTATION,
       );
     }
+  }
+
+  private getHistoryLimit(): number {
+    return this.getOption("historyLimit") ?? 100;
+  }
+
+  private recordHistory(state: OdontogramState): void {
+    const limit = this.getHistoryLimit();
+    if (limit <= 0) return;
+    this.undoStack.push(deepClone(state));
+    this.trimUndoStack();
+    this.redoStack = [];
+    this.notifyHistoryChange();
+  }
+
+  private trimUndoStack(): void {
+    const limit = this.getHistoryLimit();
+    if (this.undoStack.length > limit) this.undoStack.splice(0, this.undoStack.length - limit);
+  }
+
+  private clearHistory(): void {
+    if (this.undoStack.length === 0 && this.redoStack.length === 0) return;
+    this.undoStack = [];
+    this.redoStack = [];
+    this.notifyHistoryChange();
+  }
+
+  private notifyHistoryChange(): void {
+    const callback = this.getOption("historyDidChange");
+    if (!callback) return;
+    const change: HistoryChangeArg = {
+      canUndo: this.canUndo(),
+      canRedo: this.canRedo(),
+      undoCount: this.undoStack.length,
+      redoCount: this.redoStack.length,
+    };
+    callback(change);
   }
 
   private requestRender(): void {

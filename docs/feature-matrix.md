@@ -36,6 +36,7 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Selection-based mark commands     |  ✅  |     —     |  —  |    —    |    —     | 05    |
 | Command validation, veto & errors |  ✅  |     —     |  —  |    —    |    —     | 05    |
 | Read-only chart interaction       |  ✅  |     —     | ✅  |    —    |    —     | 05    |
+| Local odontogram undo / redo      |  ✅  |     —     |  —  |    —    |    —     | 05    |
 
 ## Dentition
 

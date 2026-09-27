@@ -67,6 +67,28 @@ odontogram.changeView("tooth", { tooth: "16" });
 
 Return a defensive deep clone of the current state (`view`, `marks`, `selection`, `teeth` overlay). Mutations on the returned object have no effect on internal state.
 
+##### Local undo and redo
+
+`undo(): boolean`, `redo(): boolean`, `canUndo(): boolean`, and `canRedo(): boolean` operate on bounded, in-memory odontogram snapshots. The `historyLimit` option sets the maximum number of undo snapshots (default `100`; `0` disables history). Each successful mutation is one step, and an outer `batch()` or `batchRendering()` commit is one step regardless of how many marks, teeth, or surfaces it changes. A new edit after undo clears redo. Undo and redo validate and notify state callbacks like other updates; `historyDidChange` receives `{ canUndo, canRedo, undoCount, redoCount }` after stack changes.
+
+History belongs to an internal-mode instance and is discarded when the host calls `setState(..., { source: "external" })`, including when loading an imported snapshot. In controlled mode `canUndo()` and `canRedo()` are always false, and undo/redo return `false`; the host remains responsible for any history it needs. No history is serialized or persisted. This convenience feature is not a legal, durable, or complete clinical audit trail.
+
+```ts
+const chart = new Odontogram(container, {
+  historyLimit: 50,
+  historyDidChange: ({ canUndo, canRedo }) => {
+    undoButton.disabled = !canUndo;
+    redoButton.disabled = !canRedo;
+  },
+});
+
+chart.batch(() => {
+  chart.addMark({ tooth: "16", surfaces: ["M", "O"], type: "caries" });
+  chart.setToothState("18", "missing");
+});
+chart.undo(); // reverses both changes as one odontogram step
+```
+
 ##### `setState(state: OdontogramState | Partial<OdontogramState>, options?: SetStateOptions): void`
 
 Update state atomically. Partial updates merge with current state. Normalizes mark inputs, increments revision, triggers `marksSet` and `stateDidChange` callbacks, executes validation if configured (triggering `validationDidChange`), and requests a re-render.

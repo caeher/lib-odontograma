@@ -399,7 +399,16 @@ export interface MarkClassNamesArg {
 export type OdontogramMode = "internal" | "controlled";
 
 /** Source of a state change event. */
-export type StateChangeSource = "internal" | "external" | "batch" | "reset" | "interaction";
+export type StateChangeSource =
+  "internal" | "external" | "batch" | "reset" | "interaction" | "undo" | "redo";
+
+/** Availability of the in-memory odontogram undo and redo stacks. */
+export interface HistoryChangeArg {
+  canUndo: boolean;
+  canRedo: boolean;
+  undoCount: number;
+  redoCount: number;
+}
 
 /** Criteria for filtering or querying marks. */
 export interface MarkFilter {
@@ -465,6 +474,8 @@ export interface ToothStateChangeArg {
 export interface OdontogramOptions {
   plugins?: OdontogramPlugin[];
   mode?: OdontogramMode;
+  /** Maximum in-memory odontogram snapshots retained for undo (default: 100; 0 disables history). */
+  historyLimit?: number;
   initialView?: ViewType;
   notation?: Notation;
   height?: number | string;
@@ -501,6 +512,8 @@ export interface OdontogramOptions {
   marksSet?: (arg: MarksSetArg) => void;
   validationDidChange?: (arg: ValidationChangeArg) => void;
   stateDidChange?: (arg: StateChangeArg) => void;
+  /** Called when local undo/redo availability changes. */
+  historyDidChange?: (arg: HistoryChangeArg) => void;
   /** Synchronously veto a validated mark command by returning false. */
   beforeMarkCommand?: BeforeMarkCommand;
   toothStateDidChange?: (arg: ToothStateChangeArg) => void;

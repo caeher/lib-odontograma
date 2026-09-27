@@ -68,6 +68,7 @@ export type {
   MarkMountArg,
   MarkStatus,
   HookCleanup,
+  HistoryChangeArg,
   MarkStyle,
   MarkTarget,
   MarksSetArg,

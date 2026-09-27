@@ -41,6 +41,7 @@ const VALID_MODES = new Set(["internal", "controlled"]);
 const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "plugins",
   "mode",
+  "historyLimit",
   "initialView",
   "notation",
   "height",
@@ -69,6 +70,7 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "marksSet",
   "validationDidChange",
   "stateDidChange",
+  "historyDidChange",
   "beforeMarkCommand",
   "toothStateDidChange",
   "toothClassNames",
@@ -225,6 +227,19 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
       severity: "error",
       message: `Invalid mode "${options.mode}". Must be "internal" or "controlled".`,
       path: "options.mode",
+    });
+  }
+
+  if (
+    options.historyLimit !== undefined &&
+    (!Number.isInteger(options.historyLimit) || options.historyLimit < 0)
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: 'Option "historyLimit" must be a non-negative integer.',
+      path: "options.historyLimit",
     });
   }
 
