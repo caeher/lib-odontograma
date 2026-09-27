@@ -261,6 +261,15 @@ if (!docValidation.valid) throw new Error("DOCUMENT_INTEROPERABILITY_EXAMPLES.pe
 const imported = odontogram.importDocument(DOCUMENT_INTEROPERABILITY_EXAMPLES.mixedDentition);
 if (!imported.ok || odontogram.getState().view !== "mixed") throw new Error("importDocument failed");
 
+// Test Stage 07 Data Loading & Concurrency Handling
+const loadedResult = await odontogram.loadData(async () => DOCUMENT_INTEROPERABILITY_EXAMPLES.permanentRestorations);
+if (!loadedResult.ok || odontogram.getState().view !== "permanent") throw new Error("loadData failed");
+if (odontogram.isDirty()) throw new Error("odontogram should not be dirty after loadData");
+odontogram.addMark({ tooth: "11", surfaces: ["M"], type: "caries" });
+if (!odontogram.isDirty() || !odontogram.hasPendingEdits()) throw new Error("odontogram should be dirty after local edit");
+odontogram.markClean();
+if (odontogram.isDirty()) throw new Error("odontogram should be clean after markClean");
+
 // Test reset
 odontogram.reset();
 if (odontogram.getMarks().length !== 0 || Object.keys(odontogram.getTeethState()).length !== 0) {
@@ -337,8 +346,13 @@ import {
   exportOdontogramDocument,
   importOdontogramDocument,
   validateOdontogramDocument,
+  createMockDocumentLoader,
+  createMockStateLoader,
   type ComplexTarget,
   type CustomValidationRule,
+  type DataLoadingChangeArg,
+  type DataLoadFailArg,
+  type DataLoadSuccessArg,
   type DocumentMigration,
   type ExportDocumentOptions,
   type ImportDocumentOptions,
@@ -348,13 +362,18 @@ import {
   type MarkStyle,
   type MarkTarget,
   type MultiToothTarget,
+  type OdontogramDataLoader,
   type OdontogramDocument,
   type OdontogramImportResult,
+  type OdontogramLoaderContext,
+  type OdontogramLoaderPayload,
+  type OdontogramLoadResult,
   type OdontogramOptions,
   type OdontogramPlugin,
   type OdontogramState,
   type OdontogramVisualSettings,
   type OdontographicMark,
+  type RefetchOptions,
   type SelectionState,
   type SurfaceClickArg,
   type SurfaceId,
@@ -549,6 +568,17 @@ const docValidation: ValidationResult = validateOdontogramDocument(exportedDoc);
 const importResult: OdontogramImportResult = odontogram.importDocument(
   DOCUMENT_INTEROPERABILITY_EXAMPLES.withVisualSettings,
 );
+
+// Stage 07 Data Loader typed operations
+const customLoader: OdontogramDataLoader = async ({ signal, reason, params }: OdontogramLoaderContext) => {
+  if (signal.aborted) throw new Error("Aborted");
+  return DOCUMENT_INTEROPERABILITY_EXAMPLES.mixedDentition;
+};
+const loadRes: OdontogramLoadResult = await odontogram.loadData(customLoader);
+const dirtyCheck: boolean = odontogram.isDirty();
+const pendingCheck: boolean = odontogram.hasPendingEdits();
+odontogram.markClean();
+const baseline: OdontogramState | null = odontogram.getBaselineState();
 
 odontogram.reset({ keepView: true });
 
