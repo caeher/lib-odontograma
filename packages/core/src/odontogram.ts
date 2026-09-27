@@ -30,6 +30,9 @@ import type {
   BatchOptions,
   DataLoadSuccessArg,
   ExportDocumentOptions,
+  ExportSvgOptions,
+  ExportPngOptions,
+  PrintOptions,
   ImportDocumentOptions,
   MarkFilter,
   MarkInput,
@@ -641,6 +644,219 @@ export class Odontogram {
    */
   toJSON(): OdontogramDocument {
     return this.exportDocument();
+  }
+
+  /**
+   * Export a standalone, self-contained SVG vector representation of the chart.
+   */
+  exportSvg(options: ExportSvgOptions = {}): string {
+    const targetView =
+      options.view ??
+      (options.scope && options.scope !== "current" && options.scope !== "full"
+        ? options.scope
+        : options.scope === "full"
+          ? this.state.view === "deciduous" || this.state.view === "primary"
+            ? "deciduous"
+            : this.state.view === "mixed"
+              ? "mixed"
+              : "permanent"
+          : this.state.view);
+
+    const viewDef = this.resolveViewDefinition(targetView);
+    if (!viewDef) {
+      throw new OdontogramError(
+        `No view implementation registered for "${targetView}". Add a view plugin (e.g. @odontogram/svg) to export SVG.`,
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+
+    if (typeof viewDef.exportSvg === "function") {
+      const exportContext = this.viewContext
+        ? { ...this.viewContext, state: deepClone(this.state), options: this.options }
+        : this.createViewContext();
+      return viewDef.exportSvg(exportContext, options);
+    }
+
+    // Fallback if viewDef doesn't define exportSvg but is mounted
+    if (this.rendered && this.chartEl) {
+      const svg = this.chartEl.querySelector("svg");
+      if (svg) {
+        return svg.outerHTML;
+      }
+    }
+
+    throw new OdontogramError(
+      `View implementation for "${targetView}" does not support SVG export.`,
+      VALIDATION_CODES.ERR_INVALID_OPTION,
+    );
+  }
+
+  /**
+   * Export a raster PNG image of the chart (Blob or base64 Data URL).
+   */
+  async exportPng(options: ExportPngOptions = {}): Promise<Blob | string> {
+    const svgMarkup = this.exportSvg(options);
+
+    // Parse viewBox dimensions
+    const viewBoxMatch = svgMarkup.match(/viewBox=["']([^"']+)["']/);
+    let vbWidth = 800;
+    let vbHeight = 400;
+    if (viewBoxMatch && viewBoxMatch[1]) {
+      const parts = viewBoxMatch[1].trim().split(/[ ,]+/).map(Number);
+      if (parts.length === 4 && parts[2] && parts[3]) {
+        vbWidth = parts[2];
+        vbHeight = parts[3];
+      }
+    }
+
+    const scale = options.scale ?? 2;
+    const targetWidth = Math.round(vbWidth * scale);
+    const targetHeight = Math.round(vbHeight * scale);
+
+    if (
+      typeof window !== "undefined" &&
+      typeof document !== "undefined" &&
+      typeof document.createElement === "function"
+    ) {
+      return new Promise((resolve, reject) => {
+        const canvas = document.createElement("canvas");
+        canvas.width = targetWidth;
+        canvas.height = targetHeight;
+
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          if (options.format === "data-url") {
+            resolve(
+              `data:image/svg+xml;base64,${typeof Buffer !== "undefined" ? Buffer.from(svgMarkup).toString("base64") : btoa(svgMarkup)}`,
+            );
+          } else {
+            resolve(new Blob([svgMarkup], { type: "image/svg+xml" }));
+          }
+          return;
+        }
+
+        if (options.background && options.background !== "transparent") {
+          ctx.fillStyle = options.background;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else if (options.theme === "dark") {
+          ctx.fillStyle = "#1e1e1e";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        const svgBlob = new Blob([svgMarkup], { type: "image/svg+xml;charset=utf-8" });
+        const URL = window.URL || window.webkitURL || globalThis.URL;
+        const url = URL.createObjectURL(svgBlob);
+
+        const img = new Image();
+        img.onload = () => {
+          try {
+            ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+            URL.revokeObjectURL(url);
+
+            if (options.format === "data-url") {
+              resolve(canvas.toDataURL("image/png"));
+            } else {
+              canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else resolve(canvas.toDataURL("image/png"));
+              }, "image/png");
+            }
+          } catch (err) {
+            URL.revokeObjectURL(url);
+            reject(err);
+          }
+        };
+
+        img.onerror = (err) => {
+          URL.revokeObjectURL(url);
+          reject(new Error(`Failed to load SVG into raster Image: ${String(err)}`));
+        };
+
+        img.src = url;
+      });
+    }
+
+    if (options.format === "data-url") {
+      return `data:image/svg+xml;base64,${typeof Buffer !== "undefined" ? Buffer.from(svgMarkup).toString("base64") : btoa(svgMarkup)}`;
+    }
+    return new Blob([svgMarkup], { type: "image/svg+xml" });
+  }
+
+  /**
+   * Generate print-ready HTML / SVG markup.
+   */
+  getPrintMarkup(options: PrintOptions = {}): string {
+    const svgTheme = options.theme ?? "print";
+    const svgMarkup = this.exportSvg({
+      scope: options.scope,
+      view: options.view,
+      theme: svgTheme,
+      legend: options.legend ?? true,
+      includeSelection: false,
+    });
+
+    const escapeXml = (s: string) =>
+      String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&apos;");
+
+    let titleHtml = "";
+    if (options.title) {
+      titleHtml += `<h1 class="odontogram-print-title">${escapeXml(options.title)}</h1>`;
+    }
+    if (options.subtitle) {
+      titleHtml += `<p class="odontogram-print-subtitle">${escapeXml(options.subtitle)}</p>`;
+    }
+
+    const marginStyle = options.margins ? `padding: ${escapeXml(options.margins)};` : "";
+
+    return `
+      <div class="odontogram-print-container" style="${marginStyle}">
+        ${titleHtml}
+        ${svgMarkup}
+      </div>
+    `.trim();
+  }
+
+  /**
+   * Prepare and execute browser print.
+   */
+  print(options: PrintOptions = {}): void {
+    if (typeof document === "undefined") {
+      throw new OdontogramError(
+        "print() requires a DOM document environment.",
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+
+    const markup = this.getPrintMarkup(options);
+    const container = document.createElement("div");
+    container.className = "odontogram-print-overlay";
+    container.innerHTML = markup;
+
+    document.body.appendChild(container);
+
+    const cleanup = () => {
+      container.remove();
+    };
+
+    if (
+      options.autoPrint !== false &&
+      typeof window !== "undefined" &&
+      typeof window.print === "function"
+    ) {
+      const onAfterPrint = () => {
+        cleanup();
+        window.removeEventListener("afterprint", onAfterPrint);
+      };
+      window.addEventListener("afterprint", onAfterPrint);
+      setTimeout(() => {
+        window.print();
+      }, 50);
+    }
   }
 
   /**
@@ -2259,6 +2475,17 @@ export class Odontogram {
               this.invokePluginView(pluginId, `view:${view.type}:destroy`, () =>
                 view.destroy!(context),
               ),
+          }
+        : {}),
+      ...(view.exportSvg
+        ? {
+            exportSvg: (context: ViewRenderContext, options?: ExportSvgOptions) => {
+              let result = "";
+              this.invokePluginView(pluginId, `view:${view.type}:exportSvg`, () => {
+                result = view.exportSvg!(context, options);
+              });
+              return result;
+            },
           }
         : {}),
     };

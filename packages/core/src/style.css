@@ -115,3 +115,72 @@
 .odontogram-host *::after {
   box-sizing: border-box;
 }
+
+/* Print Layout & Media Queries */
+.odontogram-print-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  box-sizing: border-box;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+.odontogram-print-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem 0;
+  text-align: center;
+  color: #111827;
+}
+
+.odontogram-print-subtitle {
+  font-size: 0.875rem;
+  color: #4b5563;
+  margin: 0 0 0.75rem 0;
+  text-align: center;
+}
+
+.odontogram-print-legend {
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid #e5e7eb;
+}
+
+@media print {
+  .odontogram-toolbar {
+    display: none !important;
+  }
+
+  .odontogram-host {
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .odontogram-print-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .odontogram-view {
+    width: 100% !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

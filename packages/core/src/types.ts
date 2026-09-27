@@ -947,6 +947,7 @@ export interface ViewDefinition {
   render: (ctx: ViewRenderContext) => void;
   update?: (ctx: ViewRenderContext) => void;
   destroy?: (ctx: ViewRenderContext) => void;
+  exportSvg?: (ctx: ViewRenderContext, options?: ExportSvgOptions) => string;
 }
 
 /** Context passed to view renderers. */
@@ -1079,4 +1080,86 @@ export interface OdontogramNotationDefinition {
 /** A plugin instance created via createPlugin(). */
 export interface OdontogramPlugin {
   pluginDef: OdontogramPluginDef;
+}
+
+/** Scope of the odontogram chart to export or print. */
+export type ExportScope = "current" | "full" | ViewType;
+
+/** Visual theme applied to exported SVG, PNG, or print media. */
+export type ExportTheme = "light" | "dark" | "print";
+
+/** Options for exporting a standalone, self-contained SVG representation of the chart. */
+export interface ExportSvgOptions {
+  /**
+   * Scope of the chart to export:
+   * - "current" (default): the currently active view on screen.
+   * - "full": the complete dentition (permanent, deciduous, or mixed depending on dentition system).
+   * - A specific ViewType (e.g. "permanent", "mixed", "deciduous", "upper", "lower", "quadrant-1", "tooth-16").
+   */
+  scope?: ExportScope;
+  /** Specific view to export (alias for scope). */
+  view?: ViewType;
+  /** Visual theme to apply: "light" (default), "dark", or "print". */
+  theme?: ExportTheme;
+  /** Whether to include transient visual selection highlights. Default: false. */
+  includeSelection?: boolean;
+  /** Optional consumer-supplied chart title rendered at the top of the standalone SVG. */
+  title?: string;
+  /** Optional mark legend rendered within the standalone SVG. Default: false. */
+  legend?: boolean | LegendOptions;
+  /** Tooth numbering notation override for labels (defaults to instance notation). */
+  notation?: Notation;
+  /** Explicit width override (number in px or CSS length string). Defaults to viewBox width. */
+  width?: number | string;
+  /** Explicit height override (number in px or CSS length string). Defaults to viewBox height. */
+  height?: number | string;
+  /** Background fill color or "transparent". Default: "transparent" (or theme default). */
+  background?: string;
+  /** Custom inline CSS rules injected into the standalone SVG's <style> element. */
+  customStyles?: string;
+}
+
+/** Options for exporting a raster PNG image of the odontogram. */
+export interface ExportPngOptions extends ExportSvgOptions {
+  /**
+   * Scale / pixel density multiplier for raster rendering (e.g. 1 for standard 96 DPI, 2 for 2x Retina, 3 or 4 for high-res print).
+   * Default: 2.
+   */
+  scale?: number;
+  /** Output format: "blob" (default) returns a Blob, "data-url" returns a base64 PNG data URI string. */
+  format?: "blob" | "data-url";
+}
+
+/** Options for printing and browser PDF generation. */
+export interface PrintOptions {
+  /**
+   * Scope of the chart to print:
+   * - "current" (default): the currently active view on screen.
+   * - "full": the complete dentition.
+   * - A specific ViewType.
+   */
+  scope?: ExportScope;
+  /** Specific view to print (alias for scope). */
+  view?: ViewType;
+  /** Optional consumer-supplied title displayed at the top of the printed document. */
+  title?: string;
+  /** Optional consumer-supplied subtitle / notes displayed below the title. */
+  subtitle?: string;
+  /** Whether to include the mark legend in the printed document. Default: true. */
+  legend?: boolean | LegendOptions;
+  /** Visual theme for print output: "print" (default, high-contrast black/white lines with colored marks), "light", or "dark". */
+  theme?: ExportTheme;
+  /** Page margin override (e.g. "15mm", "1in", "0"). */
+  margins?: string;
+  /** Scaling factor or fit strategy (e.g. 1, "fit-page", "auto"). Default: "auto". */
+  scaling?: number | "fit-page" | "auto";
+  /** Whether to automatically trigger window.print(). Default: true in browser environments. */
+  autoPrint?: boolean;
+}
+
+/** Print layout structure returned by print helper functions. */
+export interface PrintLayoutResult {
+  container: HTMLElement;
+  svgElement: SVGSVGElement;
+  cleanup: () => void;
 }
