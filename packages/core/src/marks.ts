@@ -212,9 +212,9 @@ export function normalizeMark<TMetadata = Record<string, unknown>>(
 
 /** Normalizes an array of mark inputs into canonical OdontographicMark array. */
 export function normalizeMarks<TMetadata = Record<string, unknown>>(
-  marks: Array<MarkInput<TMetadata>>,
+  marks: Array<MarkInput<TMetadata>> | ReadonlyArray<MarkInput<TMetadata>>,
 ): Array<OdontographicMark<TMetadata>> {
-  return marks.map((m) => normalizeMark(m));
+  return (marks as Array<MarkInput<TMetadata>>).map((m) => normalizeMark(m));
 }
 
 /** Create a new OdontographicMark with type-safe construction. */
