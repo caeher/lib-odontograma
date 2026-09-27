@@ -539,7 +539,14 @@ export interface OdontogramOptions {
   historyLimit?: number;
   initialView?: ViewType;
   notation?: Notation;
+  /** CSS width of the odontogram host (default: 100%). */
+  width?: number | string;
   height?: number | string;
+  /** Fit the complete chart inside its host while preserving the SVG aspect ratio (default: true). */
+  fitToContainer?: boolean;
+  /** Minimum and maximum interactive zoom ratios relative to the fitted chart (defaults: 1 and 4). */
+  minZoom?: number;
+  maxZoom?: number;
   selectable?: boolean;
   /** Disable rendered interactions and integrated toolbar actions. */
   disabled?: boolean;

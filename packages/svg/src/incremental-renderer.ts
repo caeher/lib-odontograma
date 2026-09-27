@@ -398,6 +398,10 @@ export class IncrementalSvgRenderer {
   private annotationsLayer: SVGGElement | null = null;
   private abortController: AbortController | null = null;
   private resizeObserver: ResizeObserver | null = null;
+  private baseViewBox: { x: number; y: number; width: number; height: number } | null = null;
+  private viewportZoom = 1;
+  private panPointer: { id: number; x: number; y: number } | null = null;
+  private suppressNextClick = false;
 
   private activeView: string = "";
   private layoutMap: Map<ToothId, ToothLayout> = new Map();
@@ -442,6 +446,7 @@ export class IncrementalSvgRenderer {
     this.renderedResourceSignature = JSON.stringify([
       options.toothResources ?? {},
       options.toothResourceFallback ?? "schematic",
+      options.fitToContainer ?? true,
     ]);
     this.activeView = view;
     this.renderedNotation = notation;
@@ -493,12 +498,19 @@ export class IncrementalSvgRenderer {
     svg.setAttribute("data-instance-id", this.instanceId);
     svg.setAttribute("data-view", view);
     svg.setAttribute("viewBox", `${viewBoxX} ${viewBoxY} ${totalW} ${totalH}`);
+    this.baseViewBox = { x: viewBoxX, y: viewBoxY, width: totalW, height: totalH };
+    this.viewportZoom = 1;
     svg.setAttribute("width", "100%");
     svg.setAttribute("height", "100%");
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("role", "img");
+    svg.setAttribute("tabindex", "0");
     svg.setAttribute("aria-label", "Dental Chart Odontogram");
     svg.style.display = "block";
+    svg.style.width = "100%";
+    svg.style.height = options.fitToContainer === false ? "auto" : "100%";
+    svg.style.touchAction = "pan-y";
+    svg.setAttribute("data-zoom", "1");
     this.rootSvg = svg;
 
     // 1. Isolated Defs
@@ -595,13 +607,146 @@ export class IncrementalSvgRenderer {
     if (typeof RO !== "undefined") {
       try {
         this.resizeObserver = new RO(() => {
-          if (this.latestContext) this.syncMarks(this.latestContext);
+          if (!this.latestContext || !this.rootSvg || !this.baseViewBox) return;
+          const rect = el.getBoundingClientRect();
+          // ResizeObserver also fires for display:none. Preserve the last useful viewport until visible.
+          if (rect.width <= 0 || rect.height <= 0) return;
+          this.syncMarks(this.latestContext);
         });
         this.resizeObserver.observe(el);
       } catch {
         // Safe fallback in unsupported environments
       }
     }
+    const signal = this.abortController?.signal;
+    svg.addEventListener(
+      "wheel",
+      (event) => {
+        // Ctrl/Meta+wheel is the conventional trackpad pinch gesture. Plain wheel remains page scrolling.
+        if (!event.ctrlKey && !event.metaKey) return;
+        event.preventDefault();
+        const rect = svg.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const box = this.readViewBox();
+        if (!box) return;
+        const x = box.x + ((event.clientX - rect.left) / rect.width) * box.width;
+        const y = box.y + ((event.clientY - rect.top) / rect.height) * box.height;
+        this.zoomAt(this.viewportZoom * Math.exp(-event.deltaY * 0.002), x, y);
+      },
+      { passive: false, signal },
+    );
+    svg.addEventListener(
+      "pointerdown",
+      (event) => {
+        this.suppressNextClick = false;
+        const touchPan = event.pointerType === "touch" && this.viewportZoom > 1;
+        if (
+          !touchPan &&
+          !(event.pointerType === "mouse" && event.button === 1 && this.viewportZoom > 1)
+        )
+          return;
+        this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+        svg.setPointerCapture?.(event.pointerId);
+      },
+      { signal },
+    );
+    svg.addEventListener(
+      "pointermove",
+      (event) => {
+        const previous = this.panPointer;
+        if (!previous || previous.id !== event.pointerId) return;
+        const rect = svg.getBoundingClientRect();
+        const box = this.readViewBox();
+        if (!rect.width || !rect.height || !box) return;
+        if (Math.abs(event.clientX - previous.x) + Math.abs(event.clientY - previous.y) > 2) {
+          this.suppressNextClick = true;
+        }
+        this.panBy(
+          (-(event.clientX - previous.x) * box.width) / rect.width,
+          (-(event.clientY - previous.y) * box.height) / rect.height,
+        );
+        this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      },
+      { signal },
+    );
+    const endPan = (event: PointerEvent) => {
+      if (this.panPointer?.id === event.pointerId) this.panPointer = null;
+    };
+    svg.addEventListener("pointerup", endPan, { signal });
+    svg.addEventListener("pointercancel", endPan, { signal });
+    svg.addEventListener(
+      "click",
+      (event) => {
+        if (!this.suppressNextClick) return;
+        this.suppressNextClick = false;
+        event.preventDefault();
+        event.stopPropagation();
+      },
+      { capture: true, signal },
+    );
+    svg.addEventListener(
+      "dblclick",
+      (event) => {
+        event.preventDefault();
+        this.resetView();
+      },
+      { signal },
+    );
+    svg.addEventListener(
+      "keydown",
+      (event) => {
+        if (event.key === "Home") {
+          event.preventDefault();
+          this.resetView();
+        }
+        if (event.key === "+" || event.key === "=") this.zoomAt(this.viewportZoom * 1.2);
+        if (event.key === "-") this.zoomAt(this.viewportZoom / 1.2);
+      },
+      { signal },
+    );
+  }
+
+  private readViewBox(): { x: number; y: number; width: number; height: number } | null {
+    const value = this.rootSvg?.getAttribute("viewBox")?.trim().split(/[ ,]+/).map(Number);
+    return value?.length === 4 && value.every(Number.isFinite)
+      ? { x: value[0]!, y: value[1]!, width: value[2]!, height: value[3]! }
+      : null;
+  }
+
+  private zoomAt(next: number, anchorX?: number, anchorY?: number): void {
+    const base = this.baseViewBox;
+    if (!base || !this.latestContext) return;
+    const min = this.latestContext.options.minZoom ?? 1;
+    const max = this.latestContext.options.maxZoom ?? 4;
+    const zoom = Math.max(min, Math.min(max, next));
+    const old = this.readViewBox() ?? base;
+    const cx = anchorX ?? old.x + old.width / 2;
+    const cy = anchorY ?? old.y + old.height / 2;
+    const fx = (cx - old.x) / old.width;
+    const fy = (cy - old.y) / old.height;
+    const width = base.width / zoom;
+    const height = base.height / zoom;
+    this.viewportZoom = zoom;
+    this.rootSvg?.setAttribute(
+      "viewBox",
+      `${cx - fx * width} ${cy - fy * height} ${width} ${height}`,
+    );
+    this.rootSvg?.setAttribute("data-zoom", String(zoom));
+  }
+
+  private panBy(dx: number, dy: number): void {
+    const box = this.readViewBox();
+    if (!box) return;
+    this.rootSvg?.setAttribute("viewBox", `${box.x + dx} ${box.y + dy} ${box.width} ${box.height}`);
+  }
+  private resetView(): void {
+    if (!this.baseViewBox) return;
+    this.viewportZoom = 1;
+    this.rootSvg?.setAttribute(
+      "viewBox",
+      `${this.baseViewBox.x} ${this.baseViewBox.y} ${this.baseViewBox.width} ${this.baseViewBox.height}`,
+    );
+    this.rootSvg?.setAttribute("data-zoom", "1");
   }
 
   update(ctx: ViewRenderContext): void {
@@ -615,11 +760,17 @@ export class IncrementalSvgRenderer {
     const resourceSignature = JSON.stringify([
       options.toothResources ?? {},
       options.toothResourceFallback ?? "schematic",
+      options.fitToContainer ?? true,
     ]);
     if (resourceSignature !== this.renderedResourceSignature) {
       this.render(ctx);
       return;
     }
+    const boundedZoom = Math.max(
+      options.minZoom ?? 1,
+      Math.min(options.maxZoom ?? 4, this.viewportZoom),
+    );
+    if (boundedZoom !== this.viewportZoom) this.zoomAt(boundedZoom);
     this.syncCustomContents(ctx);
     for (const tooth of this.toothElements.keys()) {
       this.updateToothSelection(ctx, tooth, state.selection.teeth.includes(tooth));
@@ -783,6 +934,10 @@ export class IncrementalSvgRenderer {
     }
 
     this.rootSvg = null;
+    this.baseViewBox = null;
+    this.viewportZoom = 1;
+    this.panPointer = null;
+    this.suppressNextClick = false;
     this.annotationsLayer = null;
     this.toothElements.clear();
     this.surfaceElements.clear();

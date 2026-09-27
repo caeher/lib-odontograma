@@ -17,6 +17,23 @@ new Odontogram(el?: HTMLElement | null, options?: OdontogramOptions)
 
 #### Lifecycle & View
 
+##### Sizing and viewport interaction
+
+The SVG renderer accepts `width` and `height` as positive pixel numbers or CSS size strings (`width` defaults to `"100%"`; `height` defaults to `400`). `fitToContainer` defaults to `true` and fits the full chart in the available host area while preserving the SVG aspect ratio. Set `minZoom` / `maxZoom` to bound interactive zoom ratios relative to that fitted view (defaults `1` and `4`).
+
+The pointer and keyboard gestures are scoped to the chart. Ctrl/Command + wheel or trackpad pinch zooms around the pointer; `+` / `-` zooms around the chart center. A middle mouse drag pans at any zoom and a one-finger horizontal drag pans when zoomed in. Ordinary wheel and vertical one-finger movement remain available for page scrolling. Double-click or `Home` restores the fitted view. The SVG viewBox transforms all teeth, labels, surface hit regions, marks, and annotation anchors together. On resize, the current viewBox and selection are retained; hidden containers are ignored until they have measurable size.
+
+```ts
+const chart = new Odontogram(container, {
+  plugins: [svgPlugin],
+  width: "100%",
+  height: "min(70vh, 560px)",
+  fitToContainer: true,
+  minZoom: 1,
+  maxZoom: 5,
+});
+```
+
 ##### `render(container?: HTMLElement): void`
 
 Mount the odontogram into the container. Creates a host element and renders the active view. Safe to call once; subsequent calls trigger a re-render. If constructed headlessly without a container, passing `container` mounts the instance.
@@ -367,26 +384,29 @@ Run structural and coexistence validation against the current odontogram state s
 
 ## OdontogramOptions
 
-| Option           | Type                                                                           | Default       | Description                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------- |
-| `mode`           | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode                                                             |
-| `plugins`        | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                                                                           |
-| `initialView`    | `ViewType`                                                                     | `"permanent"` | Starting view                                                                                 |
-| `notation`       | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                                                                          |
-| `height`         | `number \| string`                                                             | `400`         | Container height                                                                              |
-| `selectable`     | `boolean`                                                                      | `true`        | Enable selection                                                                              |
-| `disabled`       | `boolean`                                                                      | `false`       | Disable rendered activation and built-in toolbar actions                                      |
-| `readOnly`       | `boolean`                                                                      | `false`       | Ignore selection mutations from rendered chart interactions; imperative APIs remain available |
-| `toolbar`        | `false \| ToolbarOptions`                                                      | `undefined`   | Optional integrated controls, their position, ordered groups, and custom buttons              |
-| `legend`         | `false \| LegendOptions`                                                       | auto          | Hide the generated mark legend or customize its heading and entries                           |
-| `markCatalog`    | `MarkCatalogEntry[]`                                                           | `[]`          | Active mark type/status labels and symbols used by controls and legend                        |
-| `toothColor`     | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                                                                            |
-| `surfaceColor`   | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                                                                          |
-| `selectionColor` | `string`                                                                       | `"#90caf9"`   | Selection highlight                                                                           |
-| `markColors`     | `Record<string, string>`                                                       | `{}`          | Type-to-color map                                                                             |
-| `statusColors`   | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed)                                                  |
-| `instanceId`     | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs                                                  |
-| `validator`      | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates                                                                |
+| Option                | Type                                                                           | Default       | Description                                                                                   |
+| --------------------- | ------------------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------- |
+| `mode`                | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode                                                             |
+| `plugins`             | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                                                                           |
+| `initialView`         | `ViewType`                                                                     | `"permanent"` | Starting view                                                                                 |
+| `notation`            | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                                                                          |
+| `height`              | `number \| string`                                                             | `400`         | Container height                                                                              |
+| `width`               | `number \| string`                                                             | `"100%"`      | Container width                                                                               |
+| `fitToContainer`      | `boolean`                                                                      | `true`        | Fit complete SVG chart in host while preserving aspect ratio                                  |
+| `minZoom` / `maxZoom` | `number`                                                                       | `1` / `4`     | Interactive zoom bounds relative to the fitted chart                                          |
+| `selectable`          | `boolean`                                                                      | `true`        | Enable selection                                                                              |
+| `disabled`            | `boolean`                                                                      | `false`       | Disable rendered activation and built-in toolbar actions                                      |
+| `readOnly`            | `boolean`                                                                      | `false`       | Ignore selection mutations from rendered chart interactions; imperative APIs remain available |
+| `toolbar`             | `false \| ToolbarOptions`                                                      | `undefined`   | Optional integrated controls, their position, ordered groups, and custom buttons              |
+| `legend`              | `false \| LegendOptions`                                                       | auto          | Hide the generated mark legend or customize its heading and entries                           |
+| `markCatalog`         | `MarkCatalogEntry[]`                                                           | `[]`          | Active mark type/status labels and symbols used by controls and legend                        |
+| `toothColor`          | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                                                                            |
+| `surfaceColor`        | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                                                                          |
+| `selectionColor`      | `string`                                                                       | `"#90caf9"`   | Selection highlight                                                                           |
+| `markColors`          | `Record<string, string>`                                                       | `{}`          | Type-to-color map                                                                             |
+| `statusColors`        | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed)                                                  |
+| `instanceId`          | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs                                                  |
+| `validator`           | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates                                                                |
 
 ### Callbacks
 

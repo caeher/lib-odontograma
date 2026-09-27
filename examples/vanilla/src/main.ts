@@ -19,7 +19,10 @@ const odontogram = new Odontogram(container, {
   plugins: [svgPlugin],
   initialView: "permanent",
   notation: "fdi",
+  width: "100%",
   height: 400,
+  minZoom: 1,
+  maxZoom: 4,
   selectable: true,
   markColors: {
     caries: "#ef5350",

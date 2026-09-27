@@ -6,6 +6,7 @@ export const DEFAULT_OPTIONS: Required<
     | "mode"
     | "initialView"
     | "notation"
+    | "width"
     | "height"
     | "selectable"
     | "disabled"
@@ -17,6 +18,7 @@ export const DEFAULT_OPTIONS: Required<
   mode: "internal",
   initialView: "permanent",
   notation: "fdi",
+  width: "100%",
   height: 400,
   selectable: true,
   disabled: false,

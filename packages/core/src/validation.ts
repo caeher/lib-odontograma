@@ -44,7 +44,11 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "historyLimit",
   "initialView",
   "notation",
+  "width",
   "height",
+  "fitToContainer",
+  "minZoom",
+  "maxZoom",
   "selectable",
   "disabled",
   "readOnly",
@@ -258,26 +262,67 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
     });
   }
 
-  if (options.height !== undefined) {
-    if (typeof options.height === "number") {
-      if (options.height <= 0 || isNaN(options.height)) {
+  for (const dimension of ["width", "height"] as const) {
+    const value = options[dimension];
+    if (value !== undefined) {
+      if (typeof value === "number") {
+        if (value <= 0 || isNaN(value)) {
+          issues.push({
+            ruleId: RULE_OPTIONS_VALIDITY,
+            code: VALIDATION_CODES.ERR_INVALID_OPTION,
+            severity: "error",
+            message: `Option "${dimension}" must be a positive number or valid CSS string.`,
+            path: `options.${dimension}`,
+          });
+        }
+      } else if (typeof value !== "string" || value.trim() === "") {
         issues.push({
           ruleId: RULE_OPTIONS_VALIDITY,
           code: VALIDATION_CODES.ERR_INVALID_OPTION,
           severity: "error",
-          message: `Option "height" must be a positive number or valid CSS string.`,
-          path: "options.height",
+          message: `Option "${dimension}" must be a non-empty string or positive number.`,
+          path: `options.${dimension}`,
         });
       }
-    } else if (typeof options.height !== "string" || options.height.trim() === "") {
+    }
+  }
+
+  if (options.fitToContainer !== undefined && typeof options.fitToContainer !== "boolean") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: 'Option "fitToContainer" must be a boolean.',
+      path: "options.fitToContainer",
+    });
+  }
+  for (const bound of ["minZoom", "maxZoom"] as const) {
+    const value = options[bound];
+    if (
+      value !== undefined &&
+      (typeof value !== "number" || !Number.isFinite(value) || value <= 0)
+    ) {
       issues.push({
         ruleId: RULE_OPTIONS_VALIDITY,
         code: VALIDATION_CODES.ERR_INVALID_OPTION,
         severity: "error",
-        message: `Option "height" must be a non-empty string or positive number.`,
-        path: "options.height",
+        message: `Option "${bound}" must be a positive finite number.`,
+        path: `options.${bound}`,
       });
     }
+  }
+  if (
+    (options.minZoom ?? 1) > 1 ||
+    (options.maxZoom ?? 4) < 1 ||
+    (options.minZoom ?? 1) > (options.maxZoom ?? 4)
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: "Zoom bounds must contain the fitted scale of 1 and minZoom cannot exceed maxZoom.",
+      path: "options.minZoom",
+    });
   }
 
   if (options.selectable !== undefined && typeof options.selectable !== "boolean") {

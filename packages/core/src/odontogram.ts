@@ -142,7 +142,8 @@ export class Odontogram {
 
     this.hostEl = document.createElement("div");
     this.hostEl.className = "odontogram-host";
-    this.hostEl.style.width = "100%";
+    const width = this.getOption("width");
+    this.hostEl.style.width = typeof width === "number" ? `${width}px` : String(width);
     const height = this.getOption("height");
     this.hostEl.style.height = typeof height === "number" ? `${height}px` : String(height);
     this.chartEl = document.createElement("div");
@@ -207,6 +208,12 @@ export class Odontogram {
     }
 
     this.options = { ...this.options, [name]: deepClone(value) };
+    if (name === "width" && this.hostEl) {
+      this.hostEl.style.width = typeof value === "number" ? `${value}px` : String(value ?? "100%");
+    }
+    if (name === "height" && this.hostEl) {
+      this.hostEl.style.height = typeof value === "number" ? `${value}px` : String(value ?? 400);
+    }
     if (name === "historyLimit") {
       if (value === 0) this.clearHistory();
       else {

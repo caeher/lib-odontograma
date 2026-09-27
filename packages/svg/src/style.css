@@ -6,8 +6,8 @@
 .odontogram-svg {
   display: block;
   max-width: 100%;
-  height: auto;
-  overflow: visible;
+  height: 100%;
+  overflow: hidden;
   font-family:
     system-ui,
     -apple-system,

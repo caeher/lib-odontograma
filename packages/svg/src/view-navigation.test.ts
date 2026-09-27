@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Odontogram } from "@odontogram/core";
 import { svgPlugin } from "./index.js";
-import { TOOTH_WIDTH, TOOTH_HEIGHT, computeMixedLayout, computeViewLayout } from "./schematic-view.js";
+import { TOOTH_WIDTH, TOOTH_HEIGHT, computeMixedLayout } from "./schematic-view.js";
 
 describe("Stage 03 · View Navigation & Multi-View Representation", () => {
   let container: HTMLElement;
@@ -34,10 +34,21 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
       // 1. Setup rich state: marks, presence overlays, selection
       odontogram.addMarks([
         { id: "m-16-occ", tooth: "16", surfaces: ["O"], type: "caries", status: "existing" },
-        { id: "m-21-mod", tooth: "21", surfaces: ["M", "I", "D"], type: "restoration", status: "completed" },
+        {
+          id: "m-21-mod",
+          tooth: "21",
+          surfaces: ["M", "I", "D"],
+          type: "restoration",
+          status: "completed",
+        },
         { id: "m-36-occ", tooth: "36", surfaces: ["O"], type: "caries", status: "planned" },
         { id: "m-55-occ", tooth: "55", surfaces: ["O"], type: "caries", status: "existing" },
-        { id: "bridge-14-16", type: "bridge", target: { teeth: ["14", "15", "16"] }, status: "planned" },
+        {
+          id: "bridge-14-16",
+          type: "bridge",
+          target: { teeth: ["14", "15", "16"] },
+          status: "planned",
+        },
       ]);
 
       odontogram.setToothState("15", "missing");
@@ -54,7 +65,9 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
       expect(initialMarks.length).toBe(5);
       expect(Object.keys(initialTeeth).length).toBe(3);
       expect(initialSelection.teeth).toContain("21");
-      expect(initialSelection.surfaces.some((s) => s.tooth === "36" && s.surface === "O")).toBe(true);
+      expect(initialSelection.surfaces.some((s) => s.tooth === "36" && s.surface === "O")).toBe(
+        true,
+      );
 
       // 2. Cycle through all views
       const viewsToTest = [
@@ -124,11 +137,7 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
           const bW = b.width ?? TOOTH_WIDTH;
           const bH = b.height ?? TOOTH_HEIGHT;
 
-          const overlaps =
-            a.x < b.x + bW &&
-            a.x + aW > b.x &&
-            a.y < b.y + bH &&
-            a.y + aH > b.y;
+          const overlaps = a.x < b.x + bW && a.x + aW > b.x && a.y < b.y + bH && a.y + aH > b.y;
 
           expect(overlaps).toBe(false);
         }
@@ -330,7 +339,9 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
       expect(occSurface).toBeTruthy();
       occSurface!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 
-      expect(odontogram.getSelection().surfaces.some((s) => s.tooth === "16" && s.surface === "O")).toBe(true);
+      expect(
+        odontogram.getSelection().surfaces.some((s) => s.tooth === "16" && s.surface === "O"),
+      ).toBe(true);
       expect(surfaceClick).toHaveBeenCalled();
 
       odontogram.destroy();
@@ -400,7 +411,9 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
       odontogram.selectSurface("36", "O", "add");
 
       expect(odontogram.getSelection().teeth).toContain("36");
-      expect(odontogram.getSelection().surfaces.some((s) => s.tooth === "36" && s.surface === "O")).toBe(true);
+      expect(
+        odontogram.getSelection().surfaces.some((s) => s.tooth === "36" && s.surface === "O"),
+      ).toBe(true);
 
       // Tooth 36 is not in DOM while in Quadrant 1
       expect(container.querySelector('.odontogram-tooth[data-tooth="36"]')).toBeNull();
@@ -478,6 +491,75 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
       odontogram.changeView("permanent");
       expect(container.querySelector(".odontogram-annotation-bridge path")).toBeTruthy();
 
+      odontogram.destroy();
+    });
+  });
+
+  describe("Stage 05 · Responsive viewport interaction", () => {
+    it("bounds zoom, keeps all chart geometry in the same SVG space, and resets", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        width: "100%",
+        height: 360,
+        maxZoom: 3,
+      });
+      odontogram.render();
+      odontogram.addMark({
+        id: "bridge-view",
+        type: "bridge",
+        target: { teeth: ["14", "15", "16"] },
+      });
+      const svg = container.querySelector<SVGSVGElement>(".odontogram-svg")!;
+      vi.spyOn(svg, "getBoundingClientRect").mockReturnValue({
+        x: 0,
+        y: 0,
+        left: 0,
+        top: 0,
+        right: 800,
+        bottom: 360,
+        width: 800,
+        height: 360,
+        toJSON: () => ({}),
+      } as DOMRect);
+      const initialViewBox = svg.getAttribute("viewBox");
+      const annotationPath = container.querySelector(".odontogram-annotation path")!;
+      const dBefore = annotationPath.getAttribute("d");
+
+      svg.dispatchEvent(
+        new WheelEvent("wheel", { deltaY: -100000, ctrlKey: true, cancelable: true }),
+      );
+      expect(svg.getAttribute("data-zoom")).toBe("3");
+      expect(svg.getAttribute("viewBox")).not.toBe(initialViewBox);
+      expect(annotationPath.getAttribute("d")).toBe(dBefore);
+      expect(container.querySelector(".odontogram-tooth-label")).toBeTruthy();
+
+      const zoomedViewBox = svg.getAttribute("viewBox");
+      const pointer = (type: string, clientX: number, clientY: number) => {
+        const event = new Event(type, { bubbles: true }) as PointerEvent;
+        Object.defineProperties(event, {
+          pointerId: { value: 7 },
+          pointerType: { value: "touch" },
+          clientX: { value: clientX },
+          clientY: { value: clientY },
+        });
+        return event;
+      };
+      svg.dispatchEvent(pointer("pointerdown", 300, 150));
+      svg.dispatchEvent(pointer("pointermove", 320, 160));
+      svg.dispatchEvent(pointer("pointerup", 320, 160));
+      expect(svg.getAttribute("viewBox")).not.toBe(zoomedViewBox);
+
+      svg.dispatchEvent(
+        new WheelEvent("wheel", { deltaY: 100000, ctrlKey: true, cancelable: true }),
+      );
+      expect(svg.getAttribute("data-zoom")).toBe("1");
+      svg.dispatchEvent(
+        new WheelEvent("wheel", { deltaY: -1000, ctrlKey: true, cancelable: true }),
+      );
+      svg.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, cancelable: true }));
+      expect(svg.getAttribute("viewBox")).toBe(initialViewBox);
+      expect(odontogram.getMark("bridge-view")).toBeTruthy();
       odontogram.destroy();
     });
   });
