@@ -939,9 +939,7 @@ export class IncrementalSvgRenderer {
     toothGroup.setAttribute("aria-label", accessibleLabel);
     toothGroup.setAttribute("role", "group");
     toothGroup.setAttribute("tabindex", "0");
-    if (isToothSelected) {
-      toothGroup.setAttribute("aria-selected", "true");
-    }
+    toothGroup.setAttribute("aria-selected", String(isToothSelected));
 
     const toothClassNames = normalizeClassNames(
       options.toothClassNames?.({ tooth, isSelected: isToothSelected }),
@@ -978,11 +976,21 @@ export class IncrementalSvgRenderer {
     bg.addEventListener(
       "click",
       (e) => {
-        ctx.selectTooth(tooth);
+        const mode = e.shiftKey || e.ctrlKey || e.metaKey
+          ? (e.ctrlKey || e.metaKey ? "toggle" : "add")
+          : (ctx.state.selection.teeth.includes(tooth) ? "toggle" : "replace");
+        ctx.selectTooth(tooth, mode);
         ctx.emitToothClick(tooth, e);
       },
       listenerOptions,
     );
+    toothGroup.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      const mode = e.shiftKey ? "add" : (ctx.state.selection.teeth.includes(tooth) ? "toggle" : "replace");
+      ctx.selectTooth(tooth, mode);
+      ctx.emitToothClick(tooth, e);
+    }, listenerOptions);
 
     anatomyLayer.appendChild(bg);
 
@@ -1302,11 +1310,12 @@ export class IncrementalSvgRenderer {
       surfaceGroup.setAttribute("data-surface", surface);
       surfaceGroup.setAttribute("data-face", face);
       surfaceGroup.setAttribute("role", "button");
-      surfaceGroup.setAttribute("tabindex", "-1");
+      surfaceGroup.setAttribute("tabindex", "0");
       surfaceGroup.setAttribute("aria-label", `${surface} surface`);
       const isSelected =
         state.selection.teeth.includes(tooth) ||
         state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
+      surfaceGroup.setAttribute("aria-pressed", String(isSelected));
       const classNames = normalizeClassNames(
         options.surfaceClassNames?.({
           tooth,
@@ -1335,11 +1344,22 @@ export class IncrementalSvgRenderer {
       path.addEventListener(
         "click",
         (e) => {
-          ctx.toggleSurfaceSelection(tooth, surface);
+          const selected = ctx.state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
+          const mode = e.shiftKey ? "add" : (e.ctrlKey || e.metaKey || selected ? "toggle" : "replace");
+          ctx.toggleSurfaceSelection(tooth, surface, mode);
           ctx.emitSurfaceClick(tooth, surface, e);
         },
         listenerOptions,
       );
+      surfaceGroup.addEventListener("keydown", (e) => {
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        e.stopPropagation();
+        const selected = ctx.state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
+        const mode = e.shiftKey ? "add" : (selected ? "toggle" : "replace");
+        ctx.toggleSurfaceSelection(tooth, surface, mode);
+        ctx.emitSurfaceClick(tooth, surface, e);
+      }, listenerOptions);
 
       surfaceGroup.appendChild(path);
 
@@ -1514,6 +1534,7 @@ export class IncrementalSvgRenderer {
     const toothGroup = this.toothElements.get(toothId);
     if (!toothGroup) return;
 
+    toothGroup.setAttribute("aria-selected", String(isSelected));
     const { options, state } = ctx;
     const toothClassNames = normalizeClassNames(
       options.toothClassNames?.({ tooth: toothId, isSelected }),
@@ -1619,6 +1640,7 @@ export class IncrementalSvgRenderer {
     } else {
       surfaceGroup.removeAttribute("aria-selected");
     }
+    surfaceGroup.setAttribute("aria-pressed", String(isSelected));
 
     const path = surfaceGroup.querySelector<SVGPathElement>("path");
     if (path) {

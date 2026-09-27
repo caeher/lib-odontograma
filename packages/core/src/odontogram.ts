@@ -789,7 +789,7 @@ export class Odontogram {
   /** Programmatically select a tooth. */
   selectTooth(tooth: ToothId, mode: "replace" | "toggle" | "add" = "replace"): void {
     this.assertMutable("select tooth");
-    if (!this.getOption("selectable")) return;
+    if (!this.getOption("selectable") || !this.canSelectTooth(tooth)) return;
 
     let teeth: ToothId[];
     let surfaces = this.state.selection.surfaces;
@@ -818,7 +818,7 @@ export class Odontogram {
     mode: "replace" | "toggle" | "add" = "replace",
   ): void {
     this.assertMutable("select surface");
-    if (!this.getOption("selectable")) return;
+    if (!this.getOption("selectable") || !this.canSelectSurface(tooth, surface)) return;
 
     let teeth = this.state.selection.teeth;
     let surfaces: Array<{ tooth: ToothId; surface: SurfaceId }>;
@@ -1162,12 +1162,12 @@ export class Odontogram {
         ? () => {
             /* selection is host-driven in controlled mode */
           }
-        : (tooth) => this.selectTooth(tooth, "replace"),
+        : (tooth, mode = "replace") => this.selectTooth(tooth, mode),
       selectSurface: controlled
         ? () => {
             /* selection is host-driven in controlled mode */
           }
-        : (tooth, surface) => this.selectSurface(tooth, surface, "replace"),
+        : (tooth, surface, mode = "replace") => this.selectSurface(tooth, surface, mode),
       selectAnnotation: controlled
         ? () => {
             /* selection is host-driven in controlled mode */
@@ -1177,7 +1177,7 @@ export class Odontogram {
         ? () => {
             /* selection is host-driven in controlled mode */
           }
-        : (tooth, surface) => this.selectSurface(tooth, surface, "toggle"),
+        : (tooth, surface, mode = "toggle") => this.selectSurface(tooth, surface, mode),
       emitToothClick: (tooth, jsEvent) => this.emitToothClick(tooth, jsEvent),
       emitSurfaceClick: (tooth, surface, jsEvent) => this.emitSurfaceClick(tooth, surface, jsEvent),
     };
@@ -1218,12 +1218,27 @@ export class Odontogram {
     }
   }
 
-  private emitToothClick(tooth: ToothId, jsEvent: MouseEvent): void {
-    this.getOption("toothClick")?.({ tooth, jsEvent });
+  private canSelectTooth(tooth: ToothId): boolean {
+    return !this.getOption("lockedTeeth")?.includes(tooth) &&
+      (this.getOption("isToothSelectable")?.(tooth) ?? true);
   }
 
-  private emitSurfaceClick(tooth: ToothId, surface: SurfaceId, jsEvent: MouseEvent): void {
-    this.getOption("surfaceClick")?.({ tooth, surface, jsEvent });
+  private canSelectSurface(tooth: ToothId, surface: SurfaceId): boolean {
+    return this.canSelectTooth(tooth) &&
+      !this.getOption("lockedSurfaces")?.some((item) => item.tooth === tooth && item.surface === surface) &&
+      (this.getOption("isSurfaceSelectable")?.(tooth, surface) ?? true);
+  }
+
+  private emitToothClick(tooth: ToothId, jsEvent?: Event): void {
+    this.getOption("toothClick")?.({
+      target: { kind: "tooth", tooth }, tooth, selection: this.getSelection(), jsEvent,
+    });
+  }
+
+  private emitSurfaceClick(tooth: ToothId, surface: SurfaceId, jsEvent?: Event): void {
+    this.getOption("surfaceClick")?.({
+      target: { kind: "surface", tooth, surface }, tooth, surface, selection: this.getSelection(), jsEvent,
+    });
   }
 
   private emitSelectionChange(): void {

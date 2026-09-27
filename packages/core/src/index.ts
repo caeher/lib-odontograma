@@ -82,6 +82,7 @@ export type {
   ResetOptions,
   SelectionChangeArg,
   SelectionState,
+  SelectionTarget,
   SetStateOptions,
   SetToothStateOptions,
   StateChangeArg,

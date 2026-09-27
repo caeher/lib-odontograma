@@ -227,6 +227,11 @@ export interface SelectionState {
   annotations?: string[];
 }
 
+/** A typed tooth or surface target that can be selected by the chart UI. */
+export type SelectionTarget =
+  | { kind: "tooth"; tooth: ToothId }
+  | { kind: "surface"; tooth: ToothId; surface: SurfaceId };
+
 /** Input state snapshot, allowing flexible / legacy mark inputs. */
 export interface OdontogramStateInput<
   TMeta extends Record<string, unknown> = Record<string, unknown>,
@@ -249,15 +254,19 @@ export interface OdontogramState {
 
 /** Callback argument for tooth click events. */
 export interface ToothClickArg {
+  target: Extract<SelectionTarget, { kind: "tooth" }>;
   tooth: ToothId;
-  jsEvent: MouseEvent;
+  selection: SelectionState;
+  jsEvent?: Event;
 }
 
 /** Callback argument for surface click events. */
 export interface SurfaceClickArg {
+  target: Extract<SelectionTarget, { kind: "surface" }>;
   tooth: ToothId;
   surface: SurfaceId;
-  jsEvent: MouseEvent;
+  selection: SelectionState;
+  jsEvent?: Event;
 }
 
 /** Callback argument for selection change events. */
@@ -429,6 +438,13 @@ export interface OdontogramOptions {
   notation?: Notation;
   height?: number | string;
   selectable?: boolean;
+  /** Teeth excluded from user and programmatic selection. */
+  lockedTeeth?: ToothId[];
+  /** Surfaces excluded from user and programmatic selection. */
+  lockedSurfaces?: Array<{ tooth: ToothId; surface: SurfaceId }>;
+  /** Optional application rules for selection eligibility. */
+  isToothSelectable?: (tooth: ToothId) => boolean;
+  isSurfaceSelectable?: (tooth: ToothId, surface: SurfaceId) => boolean;
   toothColor?: string;
   surfaceColor?: string;
   selectionColor?: string;
@@ -490,12 +506,12 @@ export interface ViewRenderContext {
   state: OdontogramState;
   viewOptions?: ViewOptions;
   requestRender: () => void;
-  selectTooth: (tooth: ToothId) => void;
-  selectSurface: (tooth: ToothId, surface: SurfaceId) => void;
+  selectTooth: (tooth: ToothId, mode?: "replace" | "add" | "toggle") => void;
+  selectSurface: (tooth: ToothId, surface: SurfaceId, mode?: "replace" | "add" | "toggle") => void;
   selectAnnotation: (markId: string) => void;
-  toggleSurfaceSelection: (tooth: ToothId, surface: SurfaceId) => void;
-  emitToothClick: (tooth: ToothId, jsEvent: MouseEvent) => void;
-  emitSurfaceClick: (tooth: ToothId, surface: SurfaceId, jsEvent: MouseEvent) => void;
+  toggleSurfaceSelection: (tooth: ToothId, surface: SurfaceId, mode?: "replace" | "add" | "toggle") => void;
+  emitToothClick: (tooth: ToothId, jsEvent?: Event) => void;
+  emitSurfaceClick: (tooth: ToothId, surface: SurfaceId, jsEvent?: Event) => void;
 }
 
 /** Plugin definition shape. */

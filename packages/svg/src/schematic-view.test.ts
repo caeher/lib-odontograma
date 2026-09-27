@@ -1,6 +1,7 @@
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
 import { svgPlugin } from "./index.js";
 import { renderSchematicView } from "./schematic-view.js";
+import { Odontogram } from "@odontogram/core";
 import { mapSurfaceToFace } from "@odontogram/dentition";
 import type { ViewRenderContext } from "@odontogram/core";
 
@@ -144,6 +145,32 @@ describe("schematic SVG view", () => {
     expect(tooth21?.getAttribute("data-notation-label")).toBe("└1");
     expect(tooth21?.getAttribute("aria-label")).toBe("UL1");
     expect(tooth21?.querySelector("text")?.textContent).toBe("└1");
+  });
+
+  it("supports modifier based multi-selection, keyboard activation, and typed click payloads", () => {
+    const toothClick = vi.fn();
+    const surfaceClick = vi.fn();
+    const odontogram = new Odontogram(document.body.appendChild(document.createElement("div")), {
+      plugins: [svgPlugin], initialView: "permanent", toothClick, surfaceClick,
+    });
+    odontogram.render();
+    const tooth16 = document.querySelector<SVGGElement>('.odontogram-tooth[data-tooth="16"]')!;
+    tooth16.querySelector(".odontogram-tooth-outline")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const tooth17 = document.querySelector<SVGGElement>('.odontogram-tooth[data-tooth="17"]')!;
+    tooth17.querySelector(".odontogram-tooth-outline")!.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+    expect(odontogram.getSelection().teeth).toEqual(["16", "17"]);
+    expect(toothClick).toHaveBeenLastCalledWith(expect.objectContaining({
+      target: { kind: "tooth", tooth: "17" }, selection: odontogram.getSelection(), jsEvent: expect.any(MouseEvent),
+    }));
+
+    const surface = document.querySelector<SVGGElement>('.odontogram-surface[data-tooth="16"][data-surface="O"]')!;
+    surface.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    expect(odontogram.getSelection().surfaces).toEqual([{ tooth: "16", surface: "O" }]);
+    expect(surfaceClick).toHaveBeenCalledWith(expect.objectContaining({
+      target: { kind: "surface", tooth: "16", surface: "O" }, selection: odontogram.getSelection(),
+      jsEvent: expect.any(KeyboardEvent),
+    }));
+    odontogram.destroy();
   });
 
   it("renders multi-surface marks across all targeted surfaces", () => {

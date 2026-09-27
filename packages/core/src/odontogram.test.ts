@@ -144,6 +144,22 @@ describe("Odontogram", () => {
     expect(state.teeth).toEqual({});
   });
 
+  it("allows API selection while respecting locked teeth and surfaces", () => {
+    const odontogram = new Odontogram(container, {
+      lockedTeeth: ["18"],
+      lockedSurfaces: [{ tooth: "16", surface: "O" }],
+      isToothSelectable: (tooth) => tooth !== "17",
+      isSurfaceSelectable: (_tooth, surface) => surface !== "M",
+    });
+
+    odontogram.selectTooth("18");
+    odontogram.selectTooth("17");
+    odontogram.selectSurface("16", "O");
+    odontogram.selectSurface("16", "M");
+    odontogram.selectTooth("16");
+    expect(odontogram.getSelection()).toEqual({ teeth: ["16"], surfaces: [] });
+  });
+
   it("teeth overlay stores explicit missing and unerupted states", () => {
     const odontogram = new Odontogram(container, { initialView: "permanent" });
 

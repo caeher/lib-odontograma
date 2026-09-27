@@ -193,6 +193,24 @@ Select, append, or toggle tooth selection programmatically.
 
 Select, append, or toggle surface selection programmatically.
 
+The SVG view uses a normal click to replace selection (clicking the selected target again clears it), Shift+click to add to the current selection, and Ctrl/Cmd+click to toggle a target in a multiple selection. Enter or Space activates the focused tooth or surface; Shift+Enter/Space adds it. Surface controls and tooth groups are keyboard focusable. Touch uses the browser's click activation, so it follows the same single activation path as a mouse click without a separate touch handler.
+
+Selection can be constrained with `lockedTeeth`, `lockedSurfaces`, `isToothSelectable`, and `isSurfaceSelectable`. Locked targets are ignored by `selectTooth` and `selectSurface` as well as chart interaction. `selectable: false` disables UI and imperative selection methods. `setSelection` and controlled `setState` remain the host synchronization APIs.
+
+```ts
+const odontogram = new Odontogram(container, {
+  selectable: true,
+  lockedTeeth: ["18"],
+  lockedSurfaces: [{ tooth: "16", surface: "O" }],
+  isSurfaceSelectable: (tooth, surface) => !(tooth === "11" && surface === "I"),
+  toothClick: ({ target, selection, jsEvent }) => {
+    console.log(target, selection, jsEvent);
+  },
+});
+```
+
+Tooth and surface click callbacks include a discriminated `target` (`{ kind: "tooth", tooth }` or `{ kind: "surface", tooth, surface }`), a defensive `selection` snapshot after the interaction, and the original `jsEvent` when the renderer has one. `jsEvent` is optional so custom renderers can report an activation without a DOM event.
+
 ##### `clearSelection(): void`
 
 Clear all selected teeth, surfaces, and annotations.
