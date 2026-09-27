@@ -279,7 +279,58 @@ export interface ValidationChangeArg {
 export interface ToothMountArg {
   tooth: ToothId;
   el: Element;
+  isSelected?: boolean;
+  presence?: ToothPresence;
+  view?: ViewType;
 }
+
+/** Read-only presentation context for one tooth. */
+export interface ToothContext {
+  tooth: ToothId;
+  isSelected: boolean;
+  presence: ToothPresence;
+  view: ViewType;
+}
+
+/** Context for a tooth's visible notation label. */
+export interface ToothLabelContext extends ToothContext {
+  label: string;
+  accessibleLabel: string;
+}
+
+/** Read-only presentation context for one clinical surface. */
+export interface SurfaceContext extends ToothContext {
+  surface: SurfaceId;
+}
+
+/** Read-only presentation context for one annotation. */
+export interface AnnotationContext {
+  mark: OdontographicMark;
+  isSelected: boolean;
+  view: ViewType;
+}
+
+/** Surface lifecycle/content hook context, including its engine-owned element. */
+export interface SurfaceHookArg extends SurfaceContext {
+  el: Element;
+}
+
+/** Hook context for an annotation (odontographic mark). */
+export interface AnnotationHookArg extends AnnotationContext {
+  el: Element;
+}
+
+/** Read-only chart context available to custom view plugins. */
+export interface ViewContext {
+  view: ViewType;
+  state: Readonly<OdontogramState>;
+}
+
+/** Strings are inserted as text; Nodes are cloned before insertion. */
+export type CustomContent = string | Node | readonly (string | Node)[] | null | undefined;
+
+/** Optional disposer returned by a custom mount hook. */
+export type HookCleanup = () => void;
 
 /** Hook argument for mark mount/unmount. */
 export interface MarkMountArg {
@@ -388,6 +439,10 @@ export interface OdontogramOptions {
   showOrientationLabels?: boolean;
   showMidline?: boolean;
   visibleTeeth?: ToothId[];
+  /** Inline contract-compliant SVG markup overrides, keyed by FDI tooth id. */
+  toothResources?: Record<ToothId, string>;
+  /** Behavior for invalid toothResources entries. Defaults to the built-in schematic. */
+  toothResourceFallback?: "schematic" | "error";
 
   validator?: boolean | ValidatorConfig | ((state: OdontogramState) => ValidationResult);
 
@@ -400,10 +455,21 @@ export interface OdontogramOptions {
   toothStateDidChange?: (arg: ToothStateChangeArg) => void;
 
   toothClassNames?: (arg: ToothClassNamesArg) => string | string[];
+  toothLabelClassNames?: (arg: ToothLabelContext) => string | string[];
+  toothLabelContent?: (arg: ToothLabelContext) => string;
+  surfaceClassNames?: (arg: SurfaceHookArg) => string | string[];
   markClassNames?: (arg: MarkClassNamesArg) => string | string[];
-  toothDidMount?: (arg: ToothMountArg) => void;
+  annotationClassNames?: (arg: AnnotationHookArg) => string | string[];
+  toothContent?: (arg: ToothMountArg & ToothContext) => CustomContent;
+  surfaceContent?: (arg: SurfaceHookArg) => CustomContent;
+  annotationContent?: (arg: AnnotationHookArg) => CustomContent;
+  toothDidMount?: (arg: ToothMountArg) => void | HookCleanup;
   toothWillUnmount?: (arg: ToothMountArg) => void;
-  markDidMount?: (arg: MarkMountArg) => void;
+  surfaceDidMount?: (arg: SurfaceHookArg) => void | HookCleanup;
+  surfaceWillUnmount?: (arg: SurfaceHookArg) => void;
+  annotationDidMount?: (arg: AnnotationHookArg) => void | HookCleanup;
+  annotationWillUnmount?: (arg: AnnotationHookArg) => void;
+  markDidMount?: (arg: MarkMountArg) => void | HookCleanup;
   markWillUnmount?: (arg: MarkMountArg) => void;
   viewDidMount?: (arg: ViewMountArg) => void;
   viewWillUnmount?: (arg: ViewMountArg) => void;

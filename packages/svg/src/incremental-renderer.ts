@@ -20,6 +20,7 @@ import {
   getApplicableSurfaces,
   getArch,
   getQuadrant,
+  getTooth,
   getTeethForView,
   mapSurfaceToFace,
   toAccessibleNotation,
@@ -27,7 +28,13 @@ import {
   type GraphicFace,
   type Notation,
 } from "@odontogram/dentition";
-import { REQUIRED_ANCHOR_IDS } from "./contract/index.js";
+import {
+  REQUIRED_ANCHOR_IDS,
+  SVG_CONTRACT_VERSION,
+  parseSvgMarkup,
+  prefixElementIds,
+  validateToothSvg,
+} from "./contract/index.js";
 
 export const TOOTH_WIDTH = 44;
 export const TOOTH_HEIGHT = 52;
@@ -257,9 +264,7 @@ export function computeViewLayout(
   // 2. Quadrant views
   if (view === "quadrant" || view.startsWith("quadrant-")) {
     const qNum =
-      (view.startsWith("quadrant-")
-        ? parseInt(view.slice("quadrant-".length), 10)
-        : undefined) ??
+      (view.startsWith("quadrant-") ? parseInt(view.slice("quadrant-".length), 10) : undefined) ??
       viewOptions.quadrant ??
       1;
 
@@ -399,6 +404,7 @@ export class IncrementalSvgRenderer {
   private toothElements: Map<ToothId, SVGGElement> = new Map();
   private surfaceElements: Map<string, SVGGElement> = new Map(); // key: toothId:surface
   private missingIndicators: Map<ToothId, SVGGElement> = new Map();
+  private resourceOutlines: Map<ToothId, SVGElement> = new Map();
   private multiToothMarks: Map<string, SVGGElement> = new Map(); // key: mark.id
 
   // Cached state for fine-grained diffing
@@ -408,6 +414,8 @@ export class IncrementalSvgRenderer {
   private renderedSelectedSurfaces: Set<string> = new Set(); // key: toothId:surface
   private renderedNotation: Notation = "fdi";
   private latestContext: ViewRenderContext | null = null;
+  private hookCleanups = new Map<string, () => void>();
+  private renderedResourceSignature = "";
 
   constructor(instancePrefix?: string) {
     if (instancePrefix && instancePrefix.trim() !== "") {
@@ -431,6 +439,10 @@ export class IncrementalSvgRenderer {
     const view = state.view;
     this.latestContext = ctx;
     const effectiveViewOptions = { ...(options.viewOptions ?? {}), ...(viewOptions ?? {}) };
+    this.renderedResourceSignature = JSON.stringify([
+      options.toothResources ?? {},
+      options.toothResourceFallback ?? "schematic",
+    ]);
     this.activeView = view;
     this.renderedNotation = notation;
 
@@ -443,7 +455,8 @@ export class IncrementalSvgRenderer {
 
     // Filter visible teeth if specified
     const visibleFilter = options.visibleTeeth ?? effectiveViewOptions.visibleTeeth;
-    const visibleSet = visibleFilter && Array.isArray(visibleFilter) ? new Set(visibleFilter) : null;
+    const visibleSet =
+      visibleFilter && Array.isArray(visibleFilter) ? new Set(visibleFilter) : null;
     const renderedLayout = visibleSet
       ? allLayout.filter((item) => visibleSet.has(item.tooth))
       : allLayout;
@@ -599,6 +612,25 @@ export class IncrementalSvgRenderer {
     }
 
     const { options, state } = ctx;
+    const resourceSignature = JSON.stringify([
+      options.toothResources ?? {},
+      options.toothResourceFallback ?? "schematic",
+    ]);
+    if (resourceSignature !== this.renderedResourceSignature) {
+      this.render(ctx);
+      return;
+    }
+    this.syncCustomContents(ctx);
+    for (const tooth of this.toothElements.keys()) {
+      this.updateToothSelection(ctx, tooth, state.selection.teeth.includes(tooth));
+    }
+    for (const [key, surfaceEl] of this.surfaceElements) {
+      const [tooth, surface] = key.split(":") as [ToothId, SurfaceId];
+      const selected =
+        state.selection.teeth.includes(tooth) ||
+        state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
+      this.updateSurfaceVisuals(ctx, tooth, surface, surfaceEl, selected);
+    }
     const notation = (options.notation ?? "fdi") as Notation;
 
     // 1. Notation update
@@ -618,6 +650,9 @@ export class IncrementalSvgRenderer {
           }
         }
       }
+    }
+    for (const [toothId, layout] of this.layoutMap) {
+      this.syncToothLabel(ctx, toothId, layout.label);
     }
 
     // 2. Presence diffing
@@ -681,9 +716,16 @@ export class IncrementalSvgRenderer {
     for (const [tooth, toothEl] of this.toothElements.entries()) {
       ctx.options.toothWillUnmount?.({ tooth, el: toothEl });
     }
+    for (const cleanup of this.hookCleanups.values()) cleanup();
+    this.hookCleanups.clear();
 
     // Call markWillUnmount for active marks
     for (const mark of this.renderedMarks.values()) {
+      if (isMultiToothMark(mark)) {
+        const annotationEl = this.multiToothMarks.get(mark.id);
+        if (annotationEl) ctx.options.markWillUnmount?.({ mark, el: annotationEl });
+        continue;
+      }
       const targetTeeth = getMarkTargetTeeth(mark);
       for (const tooth of targetTeeth) {
         const surfaces = getMarkTargetSurfaces(mark, tooth);
@@ -691,16 +733,49 @@ export class IncrementalSvgRenderer {
           for (const surface of surfaces) {
             const surfEl = this.surfaceElements.get(`${tooth}:${surface}`);
             if (surfEl) {
+              ctx.options.annotationWillUnmount?.({
+                mark,
+                isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+                view: ctx.state.view,
+                el: surfEl,
+              });
               ctx.options.markWillUnmount?.({ mark, el: surfEl });
             }
           }
         } else {
           const toothEl = this.toothElements.get(tooth);
           if (toothEl) {
+            ctx.options.annotationWillUnmount?.({
+              mark,
+              isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+              view: ctx.state.view,
+              el: toothEl,
+            });
             ctx.options.markWillUnmount?.({ mark, el: toothEl });
           }
         }
       }
+    }
+    for (const [tooth, surfaceEl] of this.surfaceElements) {
+      const [toothId, surface] = tooth.split(":") as [ToothId, SurfaceId];
+      ctx.options.surfaceWillUnmount?.({
+        tooth: toothId,
+        surface,
+        isSelected: false,
+        presence: getToothPresence(ctx.state.teeth, toothId),
+        view: ctx.state.view,
+        el: surfaceEl,
+      });
+    }
+    for (const [id, annotationEl] of this.multiToothMarks) {
+      const mark = this.renderedMarks.get(id);
+      if (mark)
+        ctx.options.annotationWillUnmount?.({
+          mark,
+          isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+          view: ctx.state.view,
+          el: annotationEl,
+        });
     }
 
     if (this.rootSvg && this.rootSvg.parentElement) {
@@ -712,6 +787,7 @@ export class IncrementalSvgRenderer {
     this.toothElements.clear();
     this.surfaceElements.clear();
     this.missingIndicators.clear();
+    this.resourceOutlines.clear();
     this.multiToothMarks.clear();
     this.renderedMarks.clear();
     this.renderedPresence.clear();
@@ -776,9 +852,7 @@ export class IncrementalSvgRenderer {
 
     if (view === "quadrant" || view.startsWith("quadrant-")) {
       const qNum =
-        (view.startsWith("quadrant-")
-          ? parseInt(view.slice("quadrant-".length), 10)
-          : undefined) ??
+        (view.startsWith("quadrant-") ? parseInt(view.slice("quadrant-".length), 10) : undefined) ??
         viewOptions.quadrant ??
         1;
       const isRight = qNum === 1 || qNum === 4 || qNum === 5 || qNum === 8;
@@ -993,7 +1067,16 @@ export class IncrementalSvgRenderer {
     labelsLayer.setAttribute("id", `${this.instanceId}tooth-${tooth}-layer-labels`);
 
     const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    text.setAttribute("class", "odontogram-tooth-label");
+    const labelContext = {
+      tooth,
+      label,
+      accessibleLabel,
+      isSelected: isToothSelected,
+      presence,
+      view: state.view,
+    };
+    const labelClasses = normalizeClassNames(options.toothLabelClassNames?.(labelContext));
+    text.setAttribute("class", ["odontogram-tooth-label", labelClasses].filter(Boolean).join(" "));
     text.setAttribute("id", `${this.instanceId}tooth-${tooth}-label`);
     text.setAttribute("data-role", "label");
     text.setAttribute("x", String(x + width / 2));
@@ -1002,7 +1085,7 @@ export class IncrementalSvgRenderer {
     text.setAttribute("font-size", isDetail ? "14" : "10");
     text.setAttribute("font-weight", isDetail ? "bold" : "normal");
     text.setAttribute("fill", "#333");
-    text.textContent = label;
+    text.textContent = options.toothLabelContent?.(labelContext) ?? label;
     labelsLayer.appendChild(text);
     toothGroup.appendChild(labelsLayer);
 
@@ -1022,8 +1105,176 @@ export class IncrementalSvgRenderer {
       listenerOptions,
     );
 
-    options.toothDidMount?.({ tooth, el: toothGroup });
+    const resourceMarkup = options.toothResources?.[tooth];
+    if (resourceMarkup) {
+      const validation = validateToothSvg(resourceMarkup, {
+        metadata: {
+          contractVersion: SVG_CONTRACT_VERSION,
+          resourceId: `consumer-${tooth}`,
+          title: `Consumer tooth ${tooth}`,
+          toothClass: getTooth(tooth)?.toothClass ?? "molar",
+          projection: "occlusal",
+          referenceToothId: tooth,
+          viewBox: { width: 44, height: 52 },
+        },
+      });
+      if (!validation.valid) {
+        if ((options.toothResourceFallback ?? "schematic") === "error") {
+          throw new Error(
+            `Invalid SVG resource for tooth ${tooth}: ${validation.issues.map((issue) => issue.ruleId).join(", ")}`,
+          );
+        }
+      } else {
+        const prefixedMarkup = prefixElementIds(resourceMarkup, {
+          prefix: `${this.instanceId}tooth-${tooth}-resource-`,
+        });
+        const resourcePrefix = `${this.instanceId}tooth-${tooth}-resource-`;
+        const resource = parseSvgMarkup(prefixedMarkup);
+        const resourceAnatomy = resource.querySelector(`#${resourcePrefix}layer-anatomy`);
+        if (resourceAnatomy) {
+          const resourceSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          resourceSvg.setAttribute("class", "odontogram-tooth-resource");
+          resourceSvg.setAttribute("x", String(x));
+          resourceSvg.setAttribute("y", String(y));
+          resourceSvg.setAttribute("width", String(width));
+          resourceSvg.setAttribute("height", String(height));
+          resourceSvg.setAttribute("viewBox", resource.getAttribute("viewBox") ?? "0 0 44 52");
+          resourceSvg.setAttribute("aria-hidden", "true");
+          for (const child of [...resourceAnatomy.children]) {
+            resourceSvg.appendChild(document.importNode(child, true));
+          }
+          const resourceOutline = resourceSvg.querySelector<SVGElement>("[id$='tooth-outline']");
+          if (resourceOutline) {
+            resourceOutline.setAttribute(
+              "data-base-fill",
+              resourceOutline.getAttribute("fill") ?? options.toothColor ?? "#f5f5f5",
+            );
+            this.resourceOutlines.set(tooth, resourceOutline);
+          }
+          anatomyLayer.appendChild(resourceSvg);
+          const missingIndicator = this.missingIndicators.get(tooth);
+          if (missingIndicator) anatomyLayer.appendChild(missingIndicator);
+        }
+      }
+    }
+    const toothHook = {
+      tooth,
+      isSelected: isToothSelected,
+      presence,
+      view: state.view,
+      el: toothGroup,
+    };
+    this.appendCustomContent(toothGroup, options.toothContent?.(toothHook));
+    const toothCleanup = options.toothDidMount?.(toothHook);
+    if (typeof toothCleanup === "function") this.hookCleanups.set(`tooth:${tooth}`, toothCleanup);
     return toothGroup;
+  }
+
+  private appendCustomContent(
+    parent: Element,
+    content: import("@odontogram/core").CustomContent,
+  ): void {
+    const wrapper = document.createElementNS("http://www.w3.org/2000/svg", "g");
+    wrapper.setAttribute("class", "odontogram-custom-content");
+    wrapper.setAttribute("data-odontogram-custom-content", "true");
+    parent.appendChild(wrapper);
+    if (content == null) return;
+    const values = Array.isArray(content) ? content : [content];
+    for (const value of values) {
+      if (typeof value === "string") wrapper.appendChild(document.createTextNode(value));
+      else if (value && typeof value === "object" && "nodeType" in value) {
+        wrapper.appendChild(document.importNode(value, true));
+      }
+    }
+  }
+
+  private syncAnnotationContent(
+    ctx: ViewRenderContext,
+    mark: OdontographicMark,
+    element: Element,
+    isSelected: boolean,
+  ): void {
+    element.querySelectorAll(":scope > [data-annotation-content-for]").forEach((node) => {
+      if (node.getAttribute("data-annotation-content-for") === mark.id) node.remove();
+    });
+    this.appendCustomContent(
+      element,
+      ctx.options.annotationContent?.({
+        mark,
+        isSelected,
+        view: ctx.state.view,
+        el: element,
+      }),
+    );
+    const wrapper = element.querySelector<SVGGElement>(
+      ":scope > [data-odontogram-custom-content]:last-child",
+    );
+    wrapper?.setAttribute("data-annotation-content-for", mark.id);
+  }
+
+  private cleanupHookPrefix(prefix: string): void {
+    for (const [key, cleanup] of this.hookCleanups) {
+      if (key === prefix || key.startsWith(`${prefix}:`)) {
+        cleanup();
+        this.hookCleanups.delete(key);
+      }
+    }
+  }
+
+  private syncToothLabel(ctx: ViewRenderContext, tooth: ToothId, label: string): void {
+    const toothEl = this.toothElements.get(tooth);
+    const labelEl = toothEl?.querySelector<SVGTextElement>('[data-role="label"]');
+    if (!labelEl) return;
+    const context = {
+      tooth,
+      label,
+      accessibleLabel: toAccessibleNotation(tooth, (ctx.options.notation ?? "fdi") as Notation),
+      isSelected: ctx.state.selection.teeth.includes(tooth),
+      presence: getToothPresence(ctx.state.teeth, tooth),
+      view: ctx.state.view,
+    };
+    labelEl.textContent = ctx.options.toothLabelContent?.(context) ?? label;
+    const classes = normalizeClassNames(ctx.options.toothLabelClassNames?.(context));
+    labelEl.setAttribute("class", ["odontogram-tooth-label", classes].filter(Boolean).join(" "));
+  }
+
+  private syncCustomContents(ctx: ViewRenderContext): void {
+    const { options, state } = ctx;
+    for (const [tooth, element] of this.toothElements) {
+      element
+        .querySelectorAll(":scope > [data-odontogram-custom-content]")
+        .forEach((node) => node.remove());
+      this.appendCustomContent(
+        element,
+        options.toothContent?.({
+          tooth,
+          isSelected: state.selection.teeth.includes(tooth),
+          presence: getToothPresence(state.teeth, tooth),
+          view: state.view,
+          el: element,
+        }),
+      );
+    }
+    for (const [key, element] of this.surfaceElements) {
+      const [tooth, surface] = key.split(":") as [ToothId, SurfaceId];
+      element
+        .querySelectorAll(":scope > [data-odontogram-custom-content]")
+        .forEach((node) => node.remove());
+      const isSelected =
+        state.selection.teeth.includes(tooth) ||
+        state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
+      this.appendCustomContent(
+        element,
+        options.surfaceContent?.({
+          tooth,
+          surface,
+          isSelected,
+          presence: getToothPresence(state.teeth, tooth),
+          view: state.view,
+          el: element,
+        }),
+      );
+    }
   }
 
   private buildSurfaceElements(
@@ -1053,6 +1304,24 @@ export class IncrementalSvgRenderer {
       surfaceGroup.setAttribute("role", "button");
       surfaceGroup.setAttribute("tabindex", "-1");
       surfaceGroup.setAttribute("aria-label", `${surface} surface`);
+      const isSelected =
+        state.selection.teeth.includes(tooth) ||
+        state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
+      const classNames = normalizeClassNames(
+        options.surfaceClassNames?.({
+          tooth,
+          surface,
+          isSelected,
+          presence,
+          view: state.view,
+          el: surfaceGroup,
+        }),
+      );
+      if (classNames)
+        surfaceGroup.setAttribute(
+          "class",
+          `odontogram-surface odontogram-surface-${surface} ${classNames}`,
+        );
 
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("class", "odontogram-surface-path");
@@ -1098,6 +1367,21 @@ export class IncrementalSvgRenderer {
 
       parentLayer.appendChild(surfaceGroup);
       this.surfaceElements.set(`${tooth}:${surface}`, surfaceGroup);
+      this.appendCustomContent(
+        surfaceGroup,
+        options.surfaceContent?.({
+          tooth,
+          surface,
+          isSelected,
+          presence,
+          view: state.view,
+          el: surfaceGroup,
+        }),
+      );
+      const hookArg = { tooth, surface, isSelected, presence, view: state.view, el: surfaceGroup };
+      const cleanup = options.surfaceDidMount?.(hookArg);
+      if (typeof cleanup === "function")
+        this.hookCleanups.set(`surface:${tooth}:${surface}`, cleanup);
     }
   }
 
@@ -1171,6 +1455,8 @@ export class IncrementalSvgRenderer {
     if (outline) {
       this.applyPresenceStyle(outline, presence);
     }
+    const resourceOutline = this.resourceOutlines.get(toothId);
+    if (resourceOutline) this.applyPresenceStyle(resourceOutline, presence);
 
     const missingInd = this.missingIndicators.get(toothId);
     if (missingInd) {
@@ -1182,6 +1468,21 @@ export class IncrementalSvgRenderer {
     );
     if (interactionLayer) {
       if (presence === "missing") {
+        for (const surface of getApplicableSurfaces(toothId)) {
+          const key = `surface:${toothId}:${surface}`;
+          this.hookCleanups.get(key)?.();
+          this.hookCleanups.delete(key);
+          const surfaceEl = this.surfaceElements.get(`${toothId}:${surface}`);
+          if (surfaceEl)
+            ctx.options.surfaceWillUnmount?.({
+              tooth: toothId,
+              surface,
+              isSelected: false,
+              presence,
+              view: ctx.state.view,
+              el: surfaceEl,
+            });
+        }
         interactionLayer.innerHTML = "";
         const applicableSurfaces = getApplicableSurfaces(toothId);
         for (const surface of applicableSurfaces) {
@@ -1217,9 +1518,22 @@ export class IncrementalSvgRenderer {
     const toothClassNames = normalizeClassNames(
       options.toothClassNames?.({ tooth: toothId, isSelected }),
     );
+    const annotationClasses = getMarksForTooth(state.marks, toothId)
+      .filter((mark) => isWholeToothMark(mark))
+      .map((mark) =>
+        normalizeClassNames(
+          options.annotationClassNames?.({
+            mark,
+            isSelected: state.selection.annotations?.includes(mark.id) ?? false,
+            view: state.view,
+            el: toothGroup,
+          }) ?? options.markClassNames?.({ mark }),
+        ),
+      )
+      .filter(Boolean);
     toothGroup.setAttribute(
       "class",
-      toothClassNames ? `odontogram-tooth ${toothClassNames}` : "odontogram-tooth",
+      ["odontogram-tooth", toothClassNames, ...annotationClasses].filter(Boolean).join(" "),
     );
 
     if (isSelected) {
@@ -1254,6 +1568,15 @@ export class IncrementalSvgRenderer {
           outline.setAttribute("fill", options.toothColor ?? "#f5f5f5");
         }
       }
+    }
+    const resourceOutline = this.resourceOutlines.get(toothId);
+    if (resourceOutline) {
+      if (isSelected) resourceOutline.setAttribute("fill", options.selectionColor ?? "#90caf9");
+      else
+        resourceOutline.setAttribute(
+          "fill",
+          resourceOutline.getAttribute("data-base-fill") ?? options.toothColor ?? "#f5f5f5",
+        );
     }
 
     // Update child surface visuals if selected via whole-tooth selection
@@ -1318,21 +1641,55 @@ export class IncrementalSvgRenderer {
       }
 
       const markClasses = surfaceMarks
-        .map((m) => normalizeClassNames(options.markClassNames?.({ mark: m })))
+        .map((mark) =>
+          normalizeClassNames(
+            options.annotationClassNames?.({
+              mark,
+              isSelected: state.selection.annotations?.includes(mark.id) ?? false,
+              view: state.view,
+              el: surfaceGroup,
+            }) ?? options.markClassNames?.({ mark }),
+          ),
+        )
         .filter(Boolean)
         .join(" ");
 
+      const customClassNames = normalizeClassNames(
+        options.surfaceClassNames?.({
+          tooth: toothId,
+          surface,
+          isSelected,
+          presence: getToothPresence(state.teeth, toothId),
+          view: state.view,
+          el: surfaceGroup,
+        }),
+      );
       surfaceGroup.setAttribute(
         "class",
-        markClasses
-          ? `odontogram-surface odontogram-surface-${surface} ${markClasses}`
-          : `odontogram-surface odontogram-surface-${surface}`,
+        ["odontogram-surface", `odontogram-surface-${surface}`, customClassNames, markClasses]
+          .filter(Boolean)
+          .join(" "),
       );
     } else {
       surfaceGroup.removeAttribute("data-mark-ids");
       surfaceGroup.removeAttribute("data-mark-types");
       surfaceGroup.removeAttribute("data-status");
-      surfaceGroup.setAttribute("class", `odontogram-surface odontogram-surface-${surface}`);
+      const customClassNames = normalizeClassNames(
+        options.surfaceClassNames?.({
+          tooth: toothId,
+          surface,
+          isSelected,
+          presence: getToothPresence(state.teeth, toothId),
+          view: state.view,
+          el: surfaceGroup,
+        }),
+      );
+      surfaceGroup.setAttribute(
+        "class",
+        ["odontogram-surface", `odontogram-surface-${surface}`, customClassNames]
+          .filter(Boolean)
+          .join(" "),
+      );
     }
   }
 
@@ -1386,8 +1743,24 @@ export class IncrementalSvgRenderer {
               ctx.state.selection.teeth.includes(tooth) ||
               ctx.state.selection.surfaces.some((s) => s.tooth === tooth && s.surface === surface);
             this.updateSurfaceVisuals(ctx, tooth, surface, surfaceGroup, isSelected);
+            this.syncAnnotationContent(
+              ctx,
+              mark,
+              surfaceGroup,
+              ctx.state.selection.annotations?.includes(mark.id) ?? false,
+            );
             if (isMount) {
-              options.markDidMount?.({ mark, el: surfaceGroup });
+              const markCleanup = options.markDidMount?.({ mark, el: surfaceGroup });
+              if (typeof markCleanup === "function")
+                this.hookCleanups.set(`mark:${mark.id}:${tooth}:${surface}`, markCleanup);
+              const cleanup = options.annotationDidMount?.({
+                mark,
+                isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+                view: ctx.state.view,
+                el: surfaceGroup,
+              });
+              if (typeof cleanup === "function")
+                this.hookCleanups.set(`annotation:${mark.id}:${tooth}:${surface}`, cleanup);
             }
           }
         }
@@ -1397,8 +1770,24 @@ export class IncrementalSvgRenderer {
         if (toothGroup) {
           const isSelected = ctx.state.selection.teeth.includes(tooth);
           this.updateToothSelection(ctx, tooth, isSelected);
+          this.syncAnnotationContent(
+            ctx,
+            mark,
+            toothGroup,
+            ctx.state.selection.annotations?.includes(mark.id) ?? false,
+          );
           if (isMount) {
-            options.markDidMount?.({ mark, el: toothGroup });
+            const markCleanup = options.markDidMount?.({ mark, el: toothGroup });
+            if (typeof markCleanup === "function")
+              this.hookCleanups.set(`mark:${mark.id}:${tooth}`, markCleanup);
+            const cleanup = options.annotationDidMount?.({
+              mark,
+              isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+              view: ctx.state.view,
+              el: toothGroup,
+            });
+            if (typeof cleanup === "function")
+              this.hookCleanups.set(`annotation:${mark.id}:${tooth}`, cleanup);
           }
         }
       }
@@ -1408,9 +1797,20 @@ export class IncrementalSvgRenderer {
   private unmountSingleMark(ctx: ViewRenderContext, mark: OdontographicMark): void {
     const { options } = ctx;
 
+    this.cleanupHookPrefix(`mark:${mark.id}`);
+    this.cleanupHookPrefix(`annotation:${mark.id}`);
+
     if (isMultiToothMark(mark)) {
+      this.cleanupHookPrefix(`mark:${mark.id}`);
+      this.cleanupHookPrefix(`annotation:${mark.id}`);
       const existingEl = this.multiToothMarks.get(mark.id);
       if (existingEl) {
+        options.annotationWillUnmount?.({
+          mark,
+          isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+          view: ctx.state.view,
+          el: existingEl,
+        });
         options.markWillUnmount?.({ mark, el: existingEl });
         existingEl.remove();
         this.multiToothMarks.delete(mark.id);
@@ -1425,6 +1825,17 @@ export class IncrementalSvgRenderer {
         for (const surface of targetedSurfaces) {
           const surfaceGroup = this.surfaceElements.get(`${tooth}:${surface}`);
           if (surfaceGroup) {
+            options.annotationWillUnmount?.({
+              mark,
+              isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+              view: ctx.state.view,
+              el: surfaceGroup,
+            });
+            surfaceGroup
+              .querySelectorAll(":scope > [data-annotation-content-for]")
+              .forEach((node) => {
+                if (node.getAttribute("data-annotation-content-for") === mark.id) node.remove();
+              });
             options.markWillUnmount?.({ mark, el: surfaceGroup });
             const isSelected =
               ctx.state.selection.teeth.includes(tooth) ||
@@ -1435,6 +1846,15 @@ export class IncrementalSvgRenderer {
       } else {
         const toothGroup = this.toothElements.get(tooth);
         if (toothGroup) {
+          options.annotationWillUnmount?.({
+            mark,
+            isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+            view: ctx.state.view,
+            el: toothGroup,
+          });
+          toothGroup.querySelectorAll(":scope > [data-annotation-content-for]").forEach((node) => {
+            if (node.getAttribute("data-annotation-content-for") === mark.id) node.remove();
+          });
           options.markWillUnmount?.({ mark, el: toothGroup });
           const isSelected = ctx.state.selection.teeth.includes(tooth);
           this.updateToothSelection(ctx, tooth, isSelected);
@@ -1485,7 +1905,14 @@ export class IncrementalSvgRenderer {
     } else {
       group.innerHTML = "";
     }
-    const annotationClasses = normalizeClassNames(options.markClassNames?.({ mark }));
+    const annotationClasses = normalizeClassNames(
+      options.annotationClassNames?.({
+        mark,
+        isSelected: ctx.state.selection.annotations?.includes(mark.id) ?? false,
+        view: ctx.state.view,
+        el: group,
+      }) ?? options.markClassNames?.({ mark }),
+    );
     group.setAttribute(
       "class",
       ["odontogram-annotation", `odontogram-annotation-${mark.type}`, annotationClasses]
@@ -1576,8 +2003,21 @@ export class IncrementalSvgRenderer {
       group.appendChild(circle);
     }
 
+    this.appendCustomContent(
+      group,
+      options.annotationContent?.({ mark, isSelected: selected, view: ctx.state.view, el: group }),
+    );
+
     if (isMount) {
-      options.markDidMount?.({ mark, el: group });
+      const markCleanup = options.markDidMount?.({ mark, el: group });
+      if (typeof markCleanup === "function") this.hookCleanups.set(`mark:${mark.id}`, markCleanup);
+      const cleanup = options.annotationDidMount?.({
+        mark,
+        isSelected: selected,
+        view: ctx.state.view,
+        el: group,
+      });
+      if (typeof cleanup === "function") this.hookCleanups.set(`annotation:${mark.id}`, cleanup);
     }
   }
 }

@@ -44,6 +44,7 @@ Set an option dynamically. Triggers a re-render.
 Switch to a different view and optional sub-view configuration. Unmounts the previous view and mounts the target view while guaranteeing **zero data loss** (all marks, biological tooth overlays, and selection states are strictly preserved in model state).
 
 **Supported View Types & Shorthands:**
+
 - **Full Dentition**: `"permanent"` (32 teeth), `"deciduous"` / `"primary"` (20 teeth), `"mixed"` (52 teeth in anatomical 4-row layout).
 - **Arch Views**: `"arch"` with `viewOptions: { arch: "upper" | "lower" }`, or shorthands `"upper"`, `"lower"`, `"maxillary"`, `"mandibular"`.
 - **Quadrant Views**: `"quadrant"` with `viewOptions: { quadrant: 1..8 }`, or shorthands `"quadrant-1"` through `"quadrant-8"`.
@@ -280,16 +281,39 @@ Run structural and coexistence validation against the current odontogram state s
 
 ### Hooks
 
-| Hook               | Argument                | When                            |
-| ------------------ | ----------------------- | ------------------------------- |
-| `toothClassNames`  | `{ tooth, isSelected }` | Returns CSS classes for a tooth |
-| `markClassNames`   | `{ mark }`              | Returns CSS classes for a mark  |
-| `toothDidMount`    | `{ tooth, el }`         | Tooth element added to DOM      |
-| `toothWillUnmount` | `{ tooth, el }`         | Tooth element removed           |
-| `markDidMount`     | `{ mark, el }`          | Mark element added              |
-| `markWillUnmount`  | `{ mark, el }`          | Mark element removed            |
-| `viewDidMount`     | `{ view, el }`          | View rendered                   |
-| `viewWillUnmount`  | `{ view, el }`          | View destroyed                  |
+| Hook                                                                | Argument                                    | When                                                        |
+| ------------------------------------------------------------------- | ------------------------------------------- | ----------------------------------------------------------- |
+| `toothClassNames` / `surfaceClassNames` / `annotationClassNames`    | Typed tooth, surface, or annotation context | Return a class string or string array                       |
+| `toothLabelClassNames` / `toothLabelContent`                        | Tooth context plus notation labels          | Customize the visible tooth label's classes or text         |
+| `toothContent` / `surfaceContent` / `annotationContent`             | Typed context including the target element  | Return text, a DOM `Node`, an array of either, or `null`    |
+| `toothDidMount` / `surfaceDidMount` / `annotationDidMount`          | Typed context including the mounted element | Mount callback; may return a cleanup function               |
+| `toothWillUnmount` / `surfaceWillUnmount` / `annotationWillUnmount` | Matching typed context                      | Called before the owned view element is removed             |
+| `markClassNames`, `markDidMount`, `markWillUnmount`                 | `{ mark, el }`                              | Compatibility hooks for annotations and surface/tooth marks |
+| `viewDidMount`                                                      | `{ view, el }`                              | View rendered                                               |
+| `viewWillUnmount`                                                   | `{ view, el }`                              | View destroyed                                              |
+
+### Custom tooth resources and content ownership
+
+`toothResources` accepts inline SVG markup keyed by FDI tooth id. Each resource must pass the `@odontogram/svg` contract: `viewBox="0 0 44 52"`, all required layers, an outline, the three anchors, and applicable clinical surfaces for that tooth. The renderer embeds the resource anatomy with per-instance prefixed ids and retains its own surface interaction groups, so selection and canonical `data-tooth` / `data-surface` identity remain stable. `toothResourceFallback` is `"schematic"` by default; invalid resources use the built-in schematic. Set it to `"error"` to make an invalid override fail during render.
+
+Content hooks may return strings, DOM nodes, arrays, or `null`/`undefined`. Strings become text nodes (never parsed as HTML). Returned DOM nodes are cloned into an engine-owned SVG group, so the original remains owned by the application. Content hooks run again after view state updates and their returned group is replaced. Mount hooks may return a disposer; the renderer calls it once before the corresponding unmount hook or when an annotation is removed. Consumers should release subscriptions, observers, or other external resources in that disposer. The view element and its children remain renderer-owned; custom code should add content through the hooks and should not detach or replace renderer nodes.
+
+The read-only `ToothContext`, `ToothLabelContext`, `SurfaceContext`, `AnnotationContext`, and `ViewContext` types, plus lifecycle contexts (`ToothMountArg`, `SurfaceHookArg`, `AnnotationHookArg`) and class hook types, are exported from `@odontogram/core`. Custom view plugins receive `ViewRenderContext` with the current chart state and selection methods. Resource validation helpers and the normative SVG structure are documented in [the SVG resource contract](svg-contract.md).
+
+```ts
+new Odontogram(container, {
+  plugins: [svgPlugin],
+  surfaceClassNames: ({ surface, isSelected }) => [
+    `surface-${surface.toLowerCase()}`,
+    ...(isSelected ? ["is-selected"] : []),
+  ],
+  surfaceContent: ({ surface }) => `Surface ${surface}`,
+  annotationDidMount: ({ mark, el }) => {
+    const observer = observeAnnotation(mark, el);
+    return () => observer.disconnect();
+  },
+});
+```
 
 ---
 
@@ -554,6 +578,7 @@ interface ViewOptions {
 ### Model-Driven Selection Retention on Hidden Targets
 
 Selection in `@odontogram` is strictly model-driven and decoupled from the active view DOM:
+
 - If a user selects teeth in full dentition (e.g. `16`, `36`, and `46`) and then transitions to a partial view (e.g. Upper Arch or Quadrant 1 where `36` and `46` are not rendered), the non-visible teeth **remain preserved** in `state.selection.teeth`.
 - When using `visibleTeeth: ToothId[]` filtering, any selected teeth that are temporarily filtered out remain in `state.selection`.
 - When switching back to a view where those teeth become visible again, their visual highlights and `aria-selected` attributes are automatically restored without losing any selection context.

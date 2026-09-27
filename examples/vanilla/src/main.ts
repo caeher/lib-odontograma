@@ -43,6 +43,12 @@ const odontogram = new Odontogram(container, {
     log(`Marks updated: ${marks.length} total`);
   },
   toothClassNames: ({ tooth, isSelected }) => (isSelected ? "tooth-selected" : `tooth-${tooth}`),
+  surfaceClassNames: ({ isSelected }) => (isSelected ? "app-surface-selected" : ""),
+  toothContent: ({ tooth }) => {
+    const title = document.createElementNS("http://www.w3.org/2000/svg", "title");
+    title.textContent = `FDI tooth ${tooth}`;
+    return title;
+  },
 });
 
 odontogram.render();
@@ -62,14 +68,18 @@ function setPresenceForSelection(presence: ToothPresence): void {
 }
 
 // View buttons
-const viewButtons = document.querySelectorAll<HTMLButtonElement>("#views-toolbar button[data-view]");
+const viewButtons = document.querySelectorAll<HTMLButtonElement>(
+  "#views-toolbar button[data-view]",
+);
 viewButtons.forEach((btn) => {
   btn.addEventListener("click", () => {
     const view = btn.dataset.view as any;
     odontogram.changeView(view);
     viewButtons.forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    log(`View changed to: ${view} (preserved ${odontogram.getMarks().length} marks, ${odontogram.getSelection().teeth.length} selected teeth)`);
+    log(
+      `View changed to: ${view} (preserved ${odontogram.getMarks().length} marks, ${odontogram.getSelection().teeth.length} selected teeth)`,
+    );
     if (view === "mixed") {
       odontogram.setTeethState({
         "55": "present",
@@ -103,10 +113,25 @@ btnToggleMidline.addEventListener("click", () => {
 });
 
 // Filter controls
-const anteriorTeeth = ["13", "12", "11", "21", "22", "23", "43", "42", "41", "31", "32", "33"] as const;
+const anteriorTeeth = [
+  "13",
+  "12",
+  "11",
+  "21",
+  "22",
+  "23",
+  "43",
+  "42",
+  "41",
+  "31",
+  "32",
+  "33",
+] as const;
 document.getElementById("btn-filter-anterior")?.addEventListener("click", () => {
   odontogram.setOption("visibleTeeth", [...anteriorTeeth]);
-  log(`Filtered visible teeth to anterior group (${anteriorTeeth.length} teeth). Selection and marks on hidden teeth are preserved in model.`);
+  log(
+    `Filtered visible teeth to anterior group (${anteriorTeeth.length} teeth). Selection and marks on hidden teeth are preserved in model.`,
+  );
 });
 document.getElementById("btn-filter-all")?.addEventListener("click", () => {
   odontogram.setOption("visibleTeeth", undefined);

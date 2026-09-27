@@ -1,4 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { Odontogram } from "@odontogram/core";
 import { svgPlugin } from "./index.js";
 import notationsFixture from "../../dentition/fixtures/notations.json";
@@ -16,6 +18,144 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
   afterEach(() => {
     document.body.innerHTML = "";
     vi.restoreAllMocks();
+  });
+
+  describe("consumer customization hooks and resources", () => {
+    it("updates custom surface content and disposes mounted custom content", () => {
+      const surfaceDidMount = vi.fn(() => vi.fn());
+      const surfaceWillUnmount = vi.fn();
+      const ownedNode = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        surfaceClassNames: ({ surface }) => `custom-${surface}`,
+        surfaceContent: ({ isSelected }) => (isSelected ? "selected" : "idle"),
+        toothLabelClassNames: () => "app-tooth-label",
+        toothLabelContent: ({ label }) => `${label}!`,
+        surfaceDidMount,
+        surfaceWillUnmount,
+        toothContent: () => ownedNode,
+      });
+      odontogram.render();
+
+      const surface = container.querySelector<SVGGElement>(
+        '.odontogram-surface[data-tooth="16"][data-surface="O"]',
+      )!;
+      expect(surface.classList.contains("custom-O")).toBe(true);
+      expect(surface.textContent).toContain("idle");
+      expect(ownedNode.parentNode).toBeNull();
+      const label = container.querySelector<SVGTextElement>(
+        '.odontogram-tooth[data-tooth="16"] [data-role="label"]',
+      )!;
+      expect(label.textContent).toBe("16!");
+      expect(label.classList.contains("app-tooth-label")).toBe(true);
+      odontogram.setOption("notation", "universal");
+      expect(label.textContent).toBe("3!");
+      surface.querySelector("path")!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect(surface.textContent).toContain("selected");
+      expect(surfaceDidMount).toHaveBeenCalled();
+
+      odontogram.destroy();
+      expect(surfaceWillUnmount).toHaveBeenCalledWith(
+        expect.objectContaining({ tooth: "16", surface: "O" }),
+      );
+      expect(
+        surfaceDidMount.mock.results.some((result) => result.value.mock.calls.length > 0),
+      ).toBe(true);
+    });
+
+    it("renders contract SVG anatomy while preserving native selection surface identity", () => {
+      const svgResource = readFileSync(
+        resolve(process.cwd(), "packages/svg/fixtures/contract/valid-molar-occlusal.svg"),
+        "utf8",
+      );
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        toothResources: { "16": svgResource },
+        instanceId: "custom-resource",
+      });
+      odontogram.render();
+
+      const originalSurface = container.querySelector<SVGGElement>(
+        "#custom-resource-tooth-16-surface-O",
+      )!;
+      expect(
+        container.querySelector(
+          ".odontogram-tooth-resource #custom-resource-tooth-16-resource-tooth-outline",
+        ),
+      ).toBeTruthy();
+      originalSurface
+        .querySelector("path")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect(odontogram.getSelection().surfaces).toContainEqual({ tooth: "16", surface: "O" });
+      expect(container.querySelector("#custom-resource-tooth-16-surface-O")).toBe(originalSurface);
+      odontogram.destroy();
+    });
+
+    it("mounts and unmounts custom annotation content with cleanup", () => {
+      const cleanup = vi.fn();
+      const annotationDidMount = vi.fn(() => cleanup);
+      const annotationWillUnmount = vi.fn();
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        annotationClassNames: () => "app-annotation",
+        annotationContent: () => "Consumer note",
+        annotationDidMount,
+        annotationWillUnmount,
+      });
+      odontogram.render();
+      odontogram.addMark({
+        id: "custom-bridge",
+        type: "bridge",
+        target: { kind: "teeth", teeth: ["14", "15"] },
+      });
+      const annotation = container.querySelector<SVGGElement>('[data-mark-id="custom-bridge"]')!;
+      expect(annotation.classList.contains("app-annotation")).toBe(true);
+      expect(annotation.textContent).toContain("Consumer note");
+      expect(annotationDidMount).toHaveBeenCalledOnce();
+
+      odontogram.addMark({
+        id: "custom-filling",
+        type: "restoration",
+        target: { tooth: "16", surfaces: ["O"] },
+      });
+      const fillingSurface = container.querySelector<SVGGElement>(
+        '.odontogram-surface[data-tooth="16"][data-surface="O"]',
+      )!;
+      expect(fillingSurface.textContent).toContain("Consumer note");
+      expect(annotationDidMount).toHaveBeenCalledTimes(2);
+
+      odontogram.removeMark("custom-bridge");
+      expect(cleanup).toHaveBeenCalledOnce();
+      expect(annotationWillUnmount).toHaveBeenCalledOnce();
+      odontogram.removeMark("custom-filling");
+      expect(cleanup).toHaveBeenCalledTimes(2);
+      expect(annotationWillUnmount).toHaveBeenCalledTimes(2);
+      odontogram.destroy();
+    });
+
+    it("falls back explicitly for incomplete resources and can reject them", () => {
+      const incomplete = '<svg viewBox="0 0 44 52"><g id="layer-anatomy"/></svg>';
+      const fallback = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        toothResources: { "16": incomplete },
+      });
+      fallback.render();
+      expect(container.querySelector('.odontogram-tooth[data-tooth="16"]')).toBeTruthy();
+      expect(container.querySelector(".odontogram-tooth-resource")).toBeNull();
+      fallback.destroy();
+
+      const strict = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        toothResources: { "16": incomplete },
+        toothResourceFallback: "error",
+      });
+      expect(() => strict.render()).toThrow(/Invalid SVG resource for tooth 16/);
+    });
   });
 
   // ==========================================================================
