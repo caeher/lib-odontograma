@@ -132,6 +132,13 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "editDidChange",
   "errorDidOccur",
   "pluginDidError",
+  "initialData",
+  "data",
+  "loader",
+  "autoload",
+  "dataLoadingDidChange",
+  "dataDidLoad",
+  "dataLoadDidFail",
 ]);
 
 /** Deeply clones any serializable object to prevent consumer mutation leakage. */
@@ -487,6 +494,82 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
       severity: "error",
       message: `Option "instanceId" must be a non-empty string.`,
       path: "options.instanceId",
+    });
+  }
+
+  if (options.loader !== undefined && typeof options.loader !== "function") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "loader" must be a function.`,
+      path: "options.loader",
+    });
+  }
+
+  if (options.autoload !== undefined && typeof options.autoload !== "boolean") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "autoload" must be a boolean.`,
+      path: "options.autoload",
+    });
+  }
+
+  if (
+    options.initialData !== undefined &&
+    (options.initialData === null || typeof options.initialData !== "object")
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "initialData" must be an object.`,
+      path: "options.initialData",
+    });
+  }
+
+  if (options.data !== undefined && (options.data === null || typeof options.data !== "object")) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "data" must be an object.`,
+      path: "options.data",
+    });
+  }
+
+  if (
+    options.dataLoadingDidChange !== undefined &&
+    typeof options.dataLoadingDidChange !== "function"
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "dataLoadingDidChange" must be a function.`,
+      path: "options.dataLoadingDidChange",
+    });
+  }
+
+  if (options.dataDidLoad !== undefined && typeof options.dataDidLoad !== "function") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "dataDidLoad" must be a function.`,
+      path: "options.dataDidLoad",
+    });
+  }
+
+  if (options.dataLoadDidFail !== undefined && typeof options.dataLoadDidFail !== "function") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "dataLoadDidFail" must be a function.`,
+      path: "options.dataLoadDidFail",
     });
   }
 

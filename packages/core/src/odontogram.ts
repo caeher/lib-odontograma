@@ -28,14 +28,19 @@ import { assertPluginApiCompatible, satisfiesVersion } from "./plugin.js";
 import { exportOdontogramDocument, importOdontogramDocument } from "./interoperability.js";
 import type {
   BatchOptions,
+  DataLoadSuccessArg,
   ExportDocumentOptions,
   ImportDocumentOptions,
   MarkFilter,
   MarkInput,
   OdontogramCommand,
   OdontogramCommandResult,
+  OdontogramDataLoader,
   OdontogramDocument,
   OdontogramImportResult,
+  OdontogramLoaderContext,
+  OdontogramLoadResult,
+  RefetchOptions,
   HistoryChangeArg,
   OdontogramMode,
   OdontogramOptions,
@@ -124,6 +129,13 @@ export class Odontogram {
   private applyingHistory = false;
   private callbackDepth = 0;
 
+  // Data loading & concurrency state
+  private baselineState: OdontogramState | null = null;
+  private currentRequestId = 0;
+  private currentAbortController: AbortController | null = null;
+  private isLoadingData = false;
+  private destroyed = false;
+
   constructor(el?: HTMLElement | null, options: OdontogramOptions = {}) {
     if (el !== undefined && el !== null) {
       if (typeof el !== "object" || !("appendChild" in el)) {
@@ -156,7 +168,57 @@ export class Odontogram {
 
     this.options = deepClone(options);
     this.state = createDefaultState(options.initialView ?? DEFAULT_OPTIONS.initialView);
+
+    const initialData = options.initialData ?? options.data;
+    if (initialData) {
+      if (
+        typeof initialData === "object" &&
+        initialData !== null &&
+        "schemaVersion" in initialData &&
+        typeof (initialData as any).schemaVersion === "string"
+      ) {
+        const importRes = importOdontogramDocument(initialData, {
+          applyVisualSettings: true,
+          validator: options.validator,
+        });
+        this.state = importRes.state;
+        if (importRes.visualSettings) {
+          for (const [k, v] of Object.entries(importRes.visualSettings)) {
+            if (v !== undefined) {
+              (this.options as any)[k] = deepClone(v);
+            }
+          }
+        }
+      } else {
+        const raw = initialData as OdontogramStateInput;
+        const normMarks = normalizeMarks(raw.marks ?? []);
+        const normState: OdontogramState = {
+          view: raw.view ?? options.initialView ?? DEFAULT_OPTIONS.initialView,
+          marks: normMarks,
+          teeth: raw.teeth ? deepClone(raw.teeth) : {},
+          selection: raw.selection ? deepClone(raw.selection) : { teeth: [], surfaces: [] },
+        };
+        const vResult = validateOdontogramState(
+          normState,
+          typeof options.validator === "object" ? options.validator : {},
+        );
+        if (!vResult.valid) {
+          throw new OdontogramValidationError(
+            `Initial data rejected due to structural validation errors: ${vResult.errors[0]?.message}`,
+            vResult.issues,
+            VALIDATION_CODES.ERR_INVALID_STATE,
+          );
+        }
+        this.state = normState;
+      }
+    }
+
+    this.baselineState = deepClone(this.state);
     this.registerPlugins(options.plugins ?? []);
+
+    if (options.loader && options.autoload !== false) {
+      this.executeLoader("initial").catch(() => {});
+    }
   }
 
   /** Current operating mode: "internal" (uncontrolled, default) or "controlled". */
@@ -229,6 +291,13 @@ export class Odontogram {
   }
 
   destroy(): void {
+    this.destroyed = true;
+    if (this.currentAbortController) {
+      this.currentAbortController.abort("destroyed");
+      this.currentAbortController = null;
+    }
+    this.isLoadingData = false;
+
     if (!this.rendered) return;
 
     this.unmountView();
@@ -468,6 +537,34 @@ export class Odontogram {
         if (this.undoStack.length !== before) this.notifyHistoryChange();
       }
     }
+    if (name === "loader") {
+      if (this.currentAbortController) {
+        this.currentAbortController.abort("superseded");
+        this.currentAbortController = null;
+      }
+      if (value && this.getOption("autoload") !== false) {
+        this.executeLoader("setOption").catch(() => {});
+      }
+    }
+    if (name === "data" || name === "initialData") {
+      if (this.currentAbortController) {
+        this.currentAbortController.abort("superseded");
+        this.currentAbortController = null;
+      }
+      if (value) {
+        if (
+          typeof value === "object" &&
+          value !== null &&
+          "schemaVersion" in value &&
+          typeof (value as any).schemaVersion === "string"
+        ) {
+          this.importDocument(value, { applyVisualSettings: true, source: "external" });
+        } else {
+          this.setState(value as OdontogramStateInput, { source: "external" });
+        }
+        this.baselineState = deepClone(this.state);
+      }
+    }
     this.renderControls();
     this.requestRender();
   }
@@ -572,6 +669,7 @@ export class Odontogram {
     this.setState(result.state, {
       source: options?.source ?? "import",
     });
+    this.baselineState = deepClone(this.state);
 
     if (this.rendered) {
       this.renderControls();
@@ -579,6 +677,229 @@ export class Odontogram {
     }
 
     return result;
+  }
+
+  /**
+   * Refetch data using the configured async loader function.
+   * Validates loaded documents or state snapshots before state application.
+   * Cancels any active in-flight requests and ignores stale responses.
+   * If local edits are pending, rejects with ERR_UNSAVED_EDITS unless options.force is true.
+   */
+  async refetch(options?: RefetchOptions): Promise<OdontogramLoadResult> {
+    this.assertNotInCallback("refetch");
+    return this.executeLoader("refetch", undefined, options);
+  }
+
+  /**
+   * Load data using a consumer-provided async loader function.
+   */
+  async loadData(
+    loader: OdontogramDataLoader,
+    options?: RefetchOptions,
+  ): Promise<OdontogramLoadResult> {
+    this.assertNotInCallback("loadData");
+    return this.executeLoader("loadData", loader, options);
+  }
+
+  /**
+   * Whether an async data loader is currently in progress.
+   */
+  isLoading(): boolean {
+    return this.isLoadingData;
+  }
+
+  /**
+   * Whether the instance has local unsaved edits relative to the last baseline state.
+   */
+  hasPendingEdits(): boolean {
+    if (!this.baselineState) return false;
+    return (
+      !isDeepEqual(this.state.marks, this.baselineState.marks) ||
+      !isDeepEqual(this.state.teeth, this.baselineState.teeth) ||
+      !isDeepEqual(this.state.view, this.baselineState.view)
+    );
+  }
+
+  /**
+   * Alias for hasPendingEdits().
+   */
+  isDirty(): boolean {
+    return this.hasPendingEdits();
+  }
+
+  /**
+   * Mark the current state snapshot as the clean baseline (e.g. after saving to a persistence layer).
+   */
+  markClean(): void {
+    this.baselineState = deepClone(this.state);
+  }
+
+  /**
+   * Get a snapshot of the clean baseline state.
+   */
+  getBaselineState(): OdontogramState | null {
+    return this.baselineState ? deepClone(this.baselineState) : null;
+  }
+
+  private async executeLoader(
+    reason: "initial" | "refetch" | "loadData" | "setOption" | (string & {}),
+    loaderFn?: OdontogramDataLoader,
+    options?: RefetchOptions,
+  ): Promise<OdontogramLoadResult> {
+    const loader = loaderFn ?? this.getOption("loader");
+    if (!loader || typeof loader !== "function") {
+      throw new OdontogramError(
+        "No data loader function is configured.",
+        VALIDATION_CODES.ERR_INVALID_OPTION,
+      );
+    }
+
+    // Check for pending local edits unless forced
+    if (this.hasPendingEdits() && options?.force !== true) {
+      const error = new OdontogramError(
+        "Cannot reload data: chart has pending local edits. Pass force: true or discard local edits to overwrite.",
+        VALIDATION_CODES.ERR_UNSAVED_EDITS,
+      );
+      this.runCallback("dataLoadDidFail", this.getOption("dataLoadDidFail"), {
+        error,
+        aborted: false,
+      });
+      this.reportCallbackError("loader", error);
+      throw error;
+    }
+
+    // Cancel any previous in-flight request
+    if (this.currentAbortController) {
+      this.currentAbortController.abort("superseded");
+      this.currentAbortController = null;
+    }
+
+    const requestId = ++this.currentRequestId;
+    const abortController = new AbortController();
+    this.currentAbortController = abortController;
+
+    const wasLoading = this.isLoadingData;
+    this.isLoadingData = true;
+    if (!wasLoading) {
+      this.runCallback("dataLoadingDidChange", this.getOption("dataLoadingDidChange"), {
+        loading: true,
+      });
+    }
+
+    const context: OdontogramLoaderContext = {
+      signal: abortController.signal,
+      odontogram: this,
+      reason,
+      params: options?.params,
+    };
+
+    try {
+      const payload = await loader(context);
+
+      // Check if stale, superseded, or destroyed
+      if (this.destroyed || this.currentRequestId !== requestId || abortController.signal.aborted) {
+        throw new OdontogramError(
+          "Load request was superseded or aborted.",
+          VALIDATION_CODES.ERR_LOAD_ABORTED,
+        );
+      }
+
+      // Handle null/undefined/void payload gracefully
+      if (payload === null || payload === undefined) {
+        this.isLoadingData = false;
+        this.runCallback("dataLoadingDidChange", this.getOption("dataLoadingDidChange"), {
+          loading: false,
+        });
+        return {
+          ok: true,
+          state: this.getState(),
+          raw: payload,
+        };
+      }
+
+      let appliedState: OdontogramState;
+      let importResult: OdontogramImportResult | undefined;
+      const source: StateChangeSource = options?.source ?? "import";
+
+      // Detect if payload is an OdontogramDocument (has schemaVersion or document shape)
+      if (
+        typeof payload === "object" &&
+        payload !== null &&
+        "schemaVersion" in payload &&
+        typeof (payload as any).schemaVersion === "string"
+      ) {
+        importResult = this.importDocument(payload, {
+          applyVisualSettings: options?.applyVisualSettings ?? true,
+          preserveSelection: options?.preserveSelection ?? false,
+          source,
+          validator: options?.validator ?? this.getOption("validator"),
+          strict: options?.strict,
+        });
+        appliedState = importResult.state;
+      } else {
+        const candidateState = payload as OdontogramState | OdontogramStateInput;
+        this.setState(candidateState, { source });
+        appliedState = this.getState();
+        this.baselineState = deepClone(this.state);
+      }
+
+      this.isLoadingData = false;
+      this.runCallback("dataLoadingDidChange", this.getOption("dataLoadingDidChange"), {
+        loading: false,
+      });
+
+      const successArg: DataLoadSuccessArg = {
+        state: deepClone(appliedState),
+        data: payload,
+        importResult,
+        source,
+      };
+      this.runCallback("dataDidLoad", this.getOption("dataDidLoad"), successArg);
+
+      return {
+        ok: true,
+        state: appliedState,
+        importResult,
+        raw: payload,
+      };
+    } catch (error) {
+      const isStale = this.destroyed || this.currentRequestId !== requestId;
+      const isAborted =
+        abortController.signal.aborted ||
+        (error instanceof OdontogramError && error.code === VALIDATION_CODES.ERR_LOAD_ABORTED) ||
+        (error instanceof Error && error.name === "AbortError");
+
+      if (!isStale) {
+        this.isLoadingData = false;
+        this.runCallback("dataLoadingDidChange", this.getOption("dataLoadingDidChange"), {
+          loading: false,
+        });
+
+        const issues = error instanceof OdontogramValidationError ? error.issues : undefined;
+
+        this.runCallback("dataLoadDidFail", this.getOption("dataLoadDidFail"), {
+          error,
+          aborted: isAborted,
+          issues,
+        });
+
+        if (!isAborted) {
+          this.reportCallbackError("loader", error);
+        }
+      }
+
+      if (
+        (isStale || isAborted) &&
+        !(error instanceof OdontogramError && error.code === VALIDATION_CODES.ERR_LOAD_ABORTED)
+      ) {
+        throw new OdontogramError(
+          "Load request was superseded or aborted.",
+          VALIDATION_CODES.ERR_LOAD_ABORTED,
+        );
+      }
+
+      throw error;
+    }
   }
 
   /** Whether one local odontogram state change can be undone. */

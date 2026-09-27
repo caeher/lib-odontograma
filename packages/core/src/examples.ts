@@ -1,4 +1,4 @@
-import type { OdontogramState } from "./types.js";
+import type { OdontogramDocument, OdontogramLoaderContext, OdontogramState } from "./types.js";
 
 /** Serialization example: Multi-surface restorations on permanent teeth. */
 export const MULTI_SURFACE_RESTORATIONS_EXAMPLE: OdontogramState = {
@@ -640,3 +640,47 @@ export const DOCUMENT_INTEROPERABILITY_EXAMPLES = {
   withVisualSettings: DOCUMENT_WITH_VISUAL_SETTINGS_EXAMPLE,
   withExtensions: DOCUMENT_WITH_EXTENSIONS_EXAMPLE,
 } as const;
+
+/** Stage 07 Interoperability Example: Async Document Loader function with simulated latency and AbortSignal support. */
+export function createMockDocumentLoader(
+  document: OdontogramDocument = DOCUMENT_PERMANENT_RESTORATIONS_EXAMPLE as unknown as OdontogramDocument,
+  delayMs = 20,
+): (context: OdontogramLoaderContext) => Promise<OdontogramDocument> {
+  return ({ signal }) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        resolve(document);
+      }, delayMs);
+
+      signal.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          reject(new Error("Loader aborted by consumer signal"));
+        },
+        { once: true },
+      );
+    });
+}
+
+/** Stage 07 Interoperability Example: Async State Loader function with simulated latency and AbortSignal support. */
+export function createMockStateLoader(
+  state: OdontogramState = MULTI_SURFACE_RESTORATIONS_EXAMPLE,
+  delayMs = 20,
+): (context: OdontogramLoaderContext) => Promise<OdontogramState> {
+  return ({ signal }) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        resolve(state);
+      }, delayMs);
+
+      signal.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          reject(new Error("Loader aborted by consumer signal"));
+        },
+        { once: true },
+      );
+    });
+}

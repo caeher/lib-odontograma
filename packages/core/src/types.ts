@@ -270,10 +270,10 @@ export interface OdontogramStateInput<
   TMeta extends Record<string, unknown> = Record<string, unknown>,
 > {
   view?: ViewType;
-  marks?: Array<MarkInput<TMeta>>;
+  marks?: Array<MarkInput<TMeta>> | ReadonlyArray<MarkInput<TMeta>>;
   selection?: SelectionState;
   /** Sparse overlay; omitted tooth ids default to present for rendering only. */
-  teeth?: Record<ToothId, ToothState>;
+  teeth?: Record<ToothId, ToothState> | Readonly<Record<ToothId, ToothState>>;
 }
 
 /** Serializable odontogram state snapshot. */
@@ -314,8 +314,8 @@ export interface OdontogramDocument<
   view: ViewType;
   dentition?: "permanent" | "primary" | "deciduous" | "mixed" | (string & {});
   viewOptions?: ViewOptions;
-  teeth: Record<ToothId, ToothState>;
-  marks: Array<OdontographicMark<TMeta>>;
+  teeth: Record<ToothId, ToothState> | Readonly<Record<ToothId, ToothState>>;
+  marks: Array<OdontographicMark<TMeta>> | ReadonlyArray<OdontographicMark<TMeta>>;
   visualSettings?: OdontogramVisualSettings;
   selection?: SelectionState;
   metadata?: Record<string, unknown>;
@@ -381,6 +381,104 @@ export interface DocumentMigration {
   fromVersion: string;
   toVersion: string;
   migrate: (doc: Record<string, unknown>) => Record<string, unknown>;
+}
+
+/**
+ * Context provided to consumer async data loader functions.
+ */
+export interface OdontogramLoaderContext {
+  /** AbortSignal connected to the current in-flight load request. */
+  signal: AbortSignal;
+  /** The target odontogram instance. */
+  odontogram: Odontogram;
+  /** Reason / origin trigger for this load operation (e.g. "initial", "refetch", "loadData", "setOption"). */
+  reason: "initial" | "refetch" | "loadData" | "setOption" | (string & {});
+  /** Arbitrary parameters passed by the consumer to refetch() or loadData(). */
+  params?: Record<string, unknown>;
+}
+
+/**
+ * Result data payload returned by a consumer-provided data loader.
+ */
+export type OdontogramLoaderPayload<
+  TMeta extends Record<string, unknown> = Record<string, unknown>,
+> =
+  | OdontogramDocument<TMeta>
+  | OdontogramState
+  | OdontogramStateInput<TMeta>
+  | Record<string, unknown>
+  | null
+  | undefined
+  | void;
+
+/**
+ * Consumer async loader function.
+ */
+export type OdontogramDataLoader<TMeta extends Record<string, unknown> = Record<string, unknown>> =
+  (
+    context: OdontogramLoaderContext,
+  ) => Promise<OdontogramLoaderPayload<TMeta>> | OdontogramLoaderPayload<TMeta>;
+
+/**
+ * Options for refetching or loading data.
+ */
+export interface RefetchOptions {
+  /** If true, bypasses pending local edits check and overwrites pending unsaved changes. Default: false. */
+  force?: boolean;
+  /** Arbitrary parameters passed to the loader context. */
+  params?: Record<string, unknown>;
+  /** Source tag for state change events. Default: "import". */
+  source?: StateChangeSource;
+  /** Whether to apply serializable visual settings if returned in an OdontogramDocument. Default: true. */
+  applyVisualSettings?: boolean;
+  /** Whether to restore transient selection if returned in an OdontogramDocument. Default: false. */
+  preserveSelection?: boolean;
+  /** Custom validator or configuration for validating the loaded payload. */
+  validator?: boolean | ValidatorConfig | ((state: OdontogramState) => ValidationResult);
+  /** Strict validation mode (elevates warnings to errors). Default: false. */
+  strict?: boolean;
+}
+
+/**
+ * Result of a completed load operation.
+ */
+export interface OdontogramLoadResult {
+  /** True when load and validation succeeded and state was applied. */
+  ok: true;
+  /** The applied state snapshot. */
+  state: OdontogramState;
+  /** If an OdontogramDocument was imported, the import result details (schemaVersion, migrations, etc.). */
+  importResult?: OdontogramImportResult;
+  /** The raw data returned by the loader function. */
+  raw: OdontogramLoaderPayload;
+}
+
+/** Callback argument when data loading state changes. */
+export interface DataLoadingChangeArg {
+  /** Whether a data loader is actively executing. */
+  loading: boolean;
+}
+
+/** Callback argument when data loading succeeds and passes validation. */
+export interface DataLoadSuccessArg {
+  /** The restored/applied odontogram state snapshot. */
+  state: OdontogramState;
+  /** The raw data returned by the loader function. */
+  data: OdontogramLoaderPayload;
+  /** If an OdontogramDocument was imported, the import result. */
+  importResult?: OdontogramImportResult;
+  /** The source identifier used for the state update. */
+  source: StateChangeSource;
+}
+
+/** Callback argument when data loading fails, rejects, is aborted, or fails validation. */
+export interface DataLoadFailArg {
+  /** The error that occurred (e.g. loader rejection, validation error, unsaved edits error, abort). */
+  error: unknown;
+  /** Whether the load operation was aborted / cancelled. */
+  aborted: boolean;
+  /** Validation issues if the failure was due to validation errors. */
+  issues?: ValidationIssue[];
 }
 
 /** Callback argument for tooth click events. */
@@ -775,6 +873,16 @@ export interface OdontogramOptions {
   /** Behavior for invalid toothResources entries. Defaults to the built-in schematic. */
   toothResourceFallback?: "schematic" | "error";
 
+  /** Initial static data snapshot or document to populate the chart baseline synchronously. */
+  initialData?:
+    OdontogramDocument | OdontogramState | OdontogramStateInput | Record<string, unknown>;
+  /** Alias for initialData. */
+  data?: OdontogramDocument | OdontogramState | OdontogramStateInput | Record<string, unknown>;
+  /** Async consumer-provided data loader function receiving AbortSignal and context. */
+  loader?: OdontogramDataLoader;
+  /** Whether to automatically trigger the loader on instantiation (default: true if loader is provided). */
+  autoload?: boolean;
+
   validator?: boolean | ValidatorConfig | ((state: OdontogramState) => ValidationResult);
 
   toothClick?: (arg: ToothClickArg) => void;
@@ -790,6 +898,12 @@ export interface OdontogramOptions {
   /** Synchronously veto a validated mark command by returning false. */
   beforeMarkCommand?: BeforeMarkCommand;
   toothStateDidChange?: (arg: ToothStateChangeArg) => void;
+  /** Called when async data loader starts or finishes. */
+  dataLoadingDidChange?: (arg: DataLoadingChangeArg) => void;
+  /** Called when data is loaded, validated, and successfully applied. */
+  dataDidLoad?: (arg: DataLoadSuccessArg) => void;
+  /** Called when data loading fails, rejects, is aborted, or fails validation. */
+  dataLoadDidFail?: (arg: DataLoadFailArg) => void;
 
   toothClassNames?: (arg: ToothClassNamesArg) => string | string[];
   toothLabelClassNames?: (arg: ToothLabelContext) => string | string[];
