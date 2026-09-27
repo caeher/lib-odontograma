@@ -1,12 +1,12 @@
 import type { LayoutArchId, ToothId } from "./ids.js";
 import { parseToothId } from "./ids.js";
 
-export type Notation = "fdi" | "universal" | "palmer";
+export type Notation = "fdi" | "universal" | "palmer" | (string & {});
 
 /** Adapter interface for tooth numbering presentation and parsing. */
 export interface NotationAdapter {
   /** Unique notation identifier. */
-  readonly id: Notation;
+  readonly id: string;
   /** Human-readable notation name. */
   readonly name: string;
   /** Clinical / standard description. */
@@ -224,7 +224,7 @@ export const palmerAdapter: NotationAdapter = {
   },
 };
 
-const NOTATION_ADAPTERS: Record<Notation, NotationAdapter> = {
+const NOTATION_ADAPTERS: Record<string, NotationAdapter> = {
   fdi: fdiAdapter,
   universal: universalAdapter,
   palmer: palmerAdapter,
@@ -232,19 +232,42 @@ const NOTATION_ADAPTERS: Record<Notation, NotationAdapter> = {
 
 export const SUPPORTED_NOTATIONS: readonly Notation[] = ["fdi", "universal", "palmer"];
 
-export function listSupportedNotations(): readonly Notation[] {
-  return SUPPORTED_NOTATIONS;
+/** Register a custom tooth numbering / notation adapter. */
+export function registerNotation(adapter: NotationAdapter): void {
+  if (!adapter || typeof adapter.id !== "string" || !adapter.id.trim()) {
+    throw new Error("Notation adapter must have a non-empty id string.");
+  }
+  if (typeof adapter.format !== "function") {
+    throw new Error(`Notation adapter "${adapter.id}" must provide a format function.`);
+  }
+  NOTATION_ADAPTERS[adapter.id] = adapter;
+}
+
+/** Unregister a custom notation adapter. Built-in notations cannot be removed. */
+export function unregisterNotation(id: string): boolean {
+  if (id === "fdi" || id === "universal" || id === "palmer") {
+    return false;
+  }
+  if (id in NOTATION_ADAPTERS) {
+    delete NOTATION_ADAPTERS[id];
+    return true;
+  }
+  return false;
+}
+
+export function listSupportedNotations(): string[] {
+  return Object.keys(NOTATION_ADAPTERS);
 }
 
 export function isValidNotation(notation: string): notation is Notation {
   return notation in NOTATION_ADAPTERS;
 }
 
-export function getNotationAdapter(notation: Notation): NotationAdapter {
+export function getNotationAdapter(notation: string): NotationAdapter {
   const adapter = NOTATION_ADAPTERS[notation];
   if (!adapter) {
     throw new Error(
-      `Unsupported notation: "${notation}". Expected "fdi", "universal", or "palmer".`,
+      `Unsupported notation: "${notation}". Expected one of: ${listSupportedNotations().join(", ")}.`,
     );
   }
   return adapter;

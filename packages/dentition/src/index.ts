@@ -52,6 +52,8 @@ export {
   isValidNotation,
   listSupportedNotations,
   palmerAdapter,
+  registerNotation,
+  unregisterNotation,
   SUPPORTED_NOTATIONS,
   toAccessibleNotation,
   toNotation,

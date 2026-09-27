@@ -15,6 +15,8 @@ import {
   fdiAdapter,
   universalAdapter,
   palmerAdapter,
+  registerNotation,
+  unregisterNotation,
   getArch,
   isPermanentTooth,
   isDeciduousTooth,
@@ -248,6 +250,51 @@ describe("dentition notation", () => {
       expect(isDeciduousTooth("55")).toBe(true);
       expect(isPermanentTooth("55")).toBe(false);
       expect(isDeciduousTooth("16")).toBe(false);
+    });
+  });
+
+  describe("dynamic notation adapter registration", () => {
+    it("registers and unregisters custom notation adapter with format and parse support", () => {
+      const customAdapter = {
+        id: "custom-test-notation",
+        name: "Custom Test Notation",
+        description: "Test notation adapter",
+        format: (toothId: string) => `T${toothId}`,
+        formatAccessible: (toothId: string) => `Custom Tooth ${toothId}`,
+        parse: (label: string) => (label.startsWith("T") ? label.slice(1) : null),
+        isValid: (label: string) => label.startsWith("T"),
+      };
+
+      expect(isValidNotation("custom-test-notation")).toBe(false);
+      registerNotation(customAdapter);
+      expect(isValidNotation("custom-test-notation")).toBe(true);
+      expect(listSupportedNotations()).toContain("custom-test-notation");
+      expect(getNotationAdapter("custom-test-notation")).toBe(customAdapter);
+
+      expect(toNotation("16", "custom-test-notation")).toBe("T16");
+      expect(toAccessibleNotation("16", "custom-test-notation")).toBe("Custom Tooth 16");
+      expect(fromNotation("T16", "custom-test-notation")).toBe("16");
+      expect(fromNotation("invalid", "custom-test-notation")).toBeNull();
+
+      expect(unregisterNotation("custom-test-notation")).toBe(true);
+      expect(isValidNotation("custom-test-notation")).toBe(false);
+      expect(listSupportedNotations()).not.toContain("custom-test-notation");
+      expect(() => getNotationAdapter("custom-test-notation")).toThrowError();
+    });
+
+    it("protects built-in notations from unregistration", () => {
+      expect(unregisterNotation("fdi")).toBe(false);
+      expect(unregisterNotation("universal")).toBe(false);
+      expect(unregisterNotation("palmer")).toBe(false);
+      expect(isValidNotation("fdi")).toBe(true);
+      expect(isValidNotation("universal")).toBe(true);
+      expect(isValidNotation("palmer")).toBe(true);
+    });
+
+    it("validates adapter arguments on registration", () => {
+      expect(() => registerNotation(null as any)).toThrow();
+      expect(() => registerNotation({ id: "" } as any)).toThrow();
+      expect(() => registerNotation({ id: "no-format" } as any)).toThrow();
     });
   });
 });
