@@ -484,33 +484,103 @@ The canonical JSON schema for exported documents is available at:
 Or bundled in the `@odontogram/core` package at:
 `@odontogram/core/schema/odontogram-document.schema.json`.
 
+#### Data Loading & Concurrency Handling (Stage 07)
+
+Odontogram supports loading data from consumer-provided asynchronous functions or static initial data snapshots while guaranteeing race-condition safety, request cancellation via standard `AbortSignal`, validation before applying results, and protection against accidental data loss of pending local edits.
+
+The data loading architecture is strictly decoupled from any backend, URL, or authentication protocol. The consumer provides a pure async loader function:
+
+```ts
+import { Odontogram, type OdontogramDataLoader } from "@odontogram/core";
+
+const fetchPatientChart: OdontogramDataLoader = async ({ signal, reason, params }) => {
+  const response = await fetch(`/api/patients/${params?.patientId}/odontogram`, { signal });
+  if (!response.ok) throw new Error("Failed to load chart from clinical backend");
+  return response.json();
+};
+
+const chart = new Odontogram(container, {
+  loader: fetchPatientChart,
+  autoload: true,
+  dataLoadingDidChange: ({ loading }) => {
+    loadingSpinner.style.display = loading ? "block" : "none";
+  },
+  dataDidLoad: ({ state, source }) => {
+    console.log("Chart loaded successfully with", state.marks.length, "marks");
+  },
+  dataLoadDidFail: ({ error, aborted }) => {
+    if (!aborted) showToast(`Failed to load chart: ${error.message}`);
+  },
+});
+```
+
+##### `refetch(options?: RefetchOptions): Promise<OdontogramLoadResult>`
+
+Trigger a data reload using the configured `loader` function.
+
+- **Concurrency & Cancellation**: Aborts any active in-flight loader request via its `AbortSignal` and increments the internal request identifier.
+- **Stale Response Dropping**: If multiple loads occur or responses arrive out-of-order, stale responses are dropped without updating instance state.
+- **Validation Before Application**: Validates the returned payload (document or state) against structural, coexistence, and clinical rules. If invalid, throws `OdontogramValidationError` and leaves existing state untouched.
+- **Pending Local Edits Safety**: If the chart contains unsaved local edits (`hasPendingEdits() === true`), `refetch()` rejects with `ERR_UNSAVED_EDITS` to prevent silent data loss. To intentionally overwrite local edits, pass `refetch({ force: true })`.
+
+```ts
+// Unforced reload (safely rejects if user made unsaved edits)
+await chart.refetch({ params: { encounterId: "enc-102" } });
+
+// Forced reload (explicitly overwrites local edits)
+await chart.refetch({ force: true });
+```
+
+##### `loadData(loader: OdontogramDataLoader, options?: RefetchOptions): Promise<OdontogramLoadResult>`
+
+Execute an ad-hoc consumer-provided loader function against the chart instance.
+
+##### `isLoading(): boolean`
+
+Returns `true` if an asynchronous data loader is currently in progress.
+
+##### `isDirty(): boolean` / `hasPendingEdits(): boolean`
+
+Returns `true` if the chart state differs from the baseline snapshot established on initialization, import, or last successful data load.
+
+##### `markClean(): void`
+
+Sets the current state snapshot as the clean baseline (e.g. after the host application saves local edits to its database).
+
+##### `getBaselineState(): OdontogramState | null`
+
+Returns a defensive copy of the current clean baseline state snapshot.
+
 ---
 
 ## OdontogramOptions
 
-| Option                | Type                                                                           | Default       | Description                                                                                   |
-| --------------------- | ------------------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------- |
-| `mode`                | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode                                                             |
-| `plugins`             | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                                                                           |
-| `initialView`         | `ViewType`                                                                     | `"permanent"` | Starting view                                                                                 |
-| `notation`            | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                                                                          |
-| `height`              | `number \| string`                                                             | `400`         | Container height                                                                              |
-| `width`               | `number \| string`                                                             | `"100%"`      | Container width                                                                               |
-| `fitToContainer`      | `boolean`                                                                      | `true`        | Fit complete SVG chart in host while preserving aspect ratio                                  |
-| `minZoom` / `maxZoom` | `number`                                                                       | `1` / `4`     | Interactive zoom bounds relative to the fitted chart                                          |
-| `selectable`          | `boolean`                                                                      | `true`        | Enable selection                                                                              |
-| `disabled`            | `boolean`                                                                      | `false`       | Disable rendered activation and built-in toolbar actions                                      |
-| `readOnly`            | `boolean`                                                                      | `false`       | Ignore selection mutations from rendered chart interactions; imperative APIs remain available |
-| `toolbar`             | `false \| ToolbarOptions`                                                      | `undefined`   | Optional integrated controls, their position, ordered groups, and custom buttons              |
-| `legend`              | `false \| LegendOptions`                                                       | auto          | Hide the generated mark legend or customize its heading and entries                           |
-| `markCatalog`         | `MarkCatalogEntry[]`                                                           | `[]`          | Active mark type/status labels and symbols used by controls and legend                        |
-| `toothColor`          | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                                                                            |
-| `surfaceColor`        | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                                                                          |
-| `selectionColor`      | `string`                                                                       | `"#90caf9"`   | Selection highlight                                                                           |
-| `markColors`          | `Record<string, string>`                                                       | `{}`          | Type-to-color map                                                                             |
-| `statusColors`        | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed)                                                  |
-| `instanceId`          | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs                                                  |
-| `validator`           | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates                                                                |
+| Option                 | Type                                                                           | Default       | Description                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------ | ------------- | --------------------------------------------------------------------------------------------- |
+| `mode`                 | `"internal" \| "controlled"`                                                   | `"internal"`  | Operational state management mode                                                             |
+| `plugins`              | `OdontogramPlugin[]`                                                           | `[]`          | Plugins to register                                                                           |
+| `initialView`          | `ViewType`                                                                     | `"permanent"` | Starting view                                                                                 |
+| `notation`             | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                                                                          |
+| `height`               | `number \| string`                                                             | `400`         | Container height                                                                              |
+| `width`                | `number \| string`                                                             | `"100%"`      | Container width                                                                               |
+| `fitToContainer`       | `boolean`                                                                      | `true`        | Fit complete SVG chart in host while preserving aspect ratio                                  |
+| `minZoom` / `maxZoom`  | `number`                                                                       | `1` / `4`     | Interactive zoom bounds relative to the fitted chart                                          |
+| `selectable`           | `boolean`                                                                      | `true`        | Enable selection                                                                              |
+| `disabled`             | `boolean`                                                                      | `false`       | Disable rendered activation and built-in toolbar actions                                      |
+| `readOnly`             | `boolean`                                                                      | `false`       | Ignore selection mutations from rendered chart interactions; imperative APIs remain available |
+| `toolbar`              | `false \| ToolbarOptions`                                                      | `undefined`   | Optional integrated controls, their position, ordered groups, and custom buttons              |
+| `legend`               | `false \| LegendOptions`                                                       | auto          | Hide the generated mark legend or customize its heading and entries                           |
+| `markCatalog`          | `MarkCatalogEntry[]`                                                           | `[]`          | Active mark type/status labels and symbols used by controls and legend                        |
+| `toothColor`           | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                                                                            |
+| `surfaceColor`         | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                                                                          |
+| `selectionColor`       | `string`                                                                       | `"#90caf9"`   | Selection highlight                                                                           |
+| `markColors`           | `Record<string, string>`                                                       | `{}`          | Type-to-color map                                                                             |
+| `statusColors`         | `Record<string, string>`                                                       | `{}`          | Status-to-color map (e.g. planned/completed)                                                  |
+| `instanceId`           | `string`                                                                       | auto-assigned | Unique DOM ID prefix for multi-instance defs                                                  |
+| `validator`            | `boolean \| ValidatorConfig \| ((state: OdontogramState) => ValidationResult)` | `undefined`   | Auto-validate on state updates                                                                |
+| `initialData` / `data` | `OdontogramDocument \| OdontogramState \| OdontogramStateInput`                | `undefined`   | Initial static snapshot to synchronously populate the chart baseline                          |
+| `loader`               | `OdontogramDataLoader`                                                         | `undefined`   | Async data loader function receiving AbortSignal and context                                  |
+| `autoload`             | `boolean`                                                                      | `true`        | Automatically trigger `loader` on instantiation                                               |
 
 ### Callbacks
 
@@ -541,6 +611,9 @@ Pre-hooks are synchronous. Odontogram mutations from any callback are rejected w
 | `toothStateDidChange`   | `{ toothId, state, previousState }`     | Tooth presence overlay changes                |
 | `validationDidChange`   | `{ result }`                            | Validation issues change on state update      |
 | `detailDidChange`       | `DetailChangeArg`                       | Tooth/surface receives focus or activation    |
+| `dataLoadingDidChange`  | `{ loading }`                           | Async data loader starts or finishes          |
+| `dataDidLoad`           | `DataLoadSuccessArg`                    | Data loader validates and applies state       |
+| `dataLoadDidFail`       | `DataLoadFailArg`                       | Data loader rejects, aborts, or fails check   |
 | `errorDidOccur`         | `{ error, phase, callback? }`           | A notification callback throws                |
 
 ### Hooks
