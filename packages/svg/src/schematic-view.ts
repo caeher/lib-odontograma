@@ -1,4 +1,5 @@
 import type { ViewRenderContext } from "@odontogram/core";
+import { exportSvg } from "./export.js";
 import {
   IncrementalSvgRenderer,
   TOOTH_WIDTH,
@@ -56,4 +57,11 @@ export function destroySchematicView(ctx: ViewRenderContext): void {
     renderer.destroy(ctx);
     rendererRegistry.delete(ctx.el);
   }
+}
+
+export function exportSchematicView(
+  ctx: ViewRenderContext,
+  options?: import("@odontogram/core").ExportSvgOptions,
+): string {
+  return exportSvg(ctx, options);
 }

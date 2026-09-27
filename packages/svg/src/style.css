@@ -99,3 +99,92 @@
 .odontogram-missing-indicator line {
   stroke-linecap: round;
 }
+
+/* Standalone SVG & Theme Styles */
+.odontogram-svg.theme-dark {
+  background-color: #1e1e1e;
+  color: #e2e8f0;
+}
+
+.odontogram-svg.theme-dark .odontogram-tooth-label,
+.odontogram-svg.theme-dark .odontogram-tooth text {
+  fill: #e2e8f0;
+}
+
+.odontogram-svg.theme-dark .odontogram-orientation-label {
+  fill: #a0aec0;
+}
+
+.odontogram-svg.theme-dark .odontogram-midline-line {
+  stroke: #718096;
+}
+
+.odontogram-svg.theme-dark .odontogram-midline-label {
+  fill: #a0aec0;
+}
+
+.odontogram-svg.theme-dark .odontogram-export-title {
+  fill: #f7fafc;
+}
+
+.odontogram-svg.theme-dark .odontogram-export-legend text {
+  fill: #e2e8f0;
+}
+
+/* Standalone Export Titles & Legends */
+.odontogram-export-title {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  fill: #111827;
+}
+
+.odontogram-export-subtitle {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 12px;
+  font-weight: 400;
+  fill: #4b5563;
+}
+
+.odontogram-export-legend text {
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  font-size: 11px;
+  font-weight: 500;
+  fill: #374151;
+}
+
+@media print {
+  .odontogram-svg {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 100vh !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .odontogram-tooth {
+    filter: none !important;
+  }
+
+  .odontogram-annotation path {
+    filter: none !important;
+  }
+}
