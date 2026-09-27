@@ -13,6 +13,7 @@ import {
   getMarksForSurface,
   getMarksForTooth,
   getToothPresence,
+  getLocaleText,
   isMultiToothMark,
   isWholeToothMark,
 } from "@odontogram/core";
@@ -25,7 +26,6 @@ import {
   mapSurfaceToFace,
   toAccessibleNotation,
   toNotation,
-  SURFACE_LABELS,
   type GraphicFace,
   type Notation,
 } from "@odontogram/dentition";
@@ -42,6 +42,30 @@ export const TOOTH_HEIGHT = 52;
 export const TOOTH_GAP = 4;
 export const ARCH_GAP = 60;
 export const SURFACE_INSET = 6;
+
+function t(
+  ctx: ViewRenderContext,
+  key: Parameters<typeof getLocaleText>[1],
+  values?: Record<string, string | number>,
+): string {
+  return getLocaleText(
+    { locale: ctx.options.locale, localeText: ctx.options.localeText },
+    key,
+    values,
+  );
+}
+
+function surfaceName(ctx: ViewRenderContext, surface: SurfaceId): string {
+  const keys = {
+    M: "surface.mesial",
+    O: "surface.occlusal",
+    I: "surface.incisal",
+    D: "surface.distal",
+    B: "surface.buccal",
+    L: "surface.lingual",
+  } as const;
+  return t(ctx, keys[surface]);
+}
 
 let globalInstanceSeq = 0;
 
@@ -421,6 +445,7 @@ export class IncrementalSvgRenderer {
   private latestContext: ViewRenderContext | null = null;
   private hookCleanups = new Map<string, () => void>();
   private renderedResourceSignature = "";
+  private renderedLocaleSignature = "";
   private accessibleSummary: HTMLDivElement | null = null;
   private liveRegion: HTMLDivElement | null = null;
 
@@ -450,6 +475,10 @@ export class IncrementalSvgRenderer {
       options.toothResources ?? {},
       options.toothResourceFallback ?? "schematic",
       options.fitToContainer ?? true,
+    ]);
+    this.renderedLocaleSignature = JSON.stringify([
+      options.locale ?? "en",
+      options.localeText ?? {},
     ]);
     this.activeView = view;
     this.renderedNotation = notation;
@@ -507,7 +536,7 @@ export class IncrementalSvgRenderer {
     svg.setAttribute("height", "100%");
     svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
     svg.setAttribute("role", "group");
-    svg.setAttribute("aria-label", "Dental chart");
+    svg.setAttribute("aria-label", t(ctx, "a11y.chart"));
     const summary = document.createElement("div");
     summary.className = "odontogram-sr-only odontogram-text-summary";
     summary.id = `${this.instanceId}text-summary`;
@@ -549,6 +578,7 @@ export class IncrementalSvgRenderer {
       maxX,
       minY,
       showOrientationLabels,
+      ctx,
     );
     svg.appendChild(orientationLayer);
 
@@ -735,21 +765,24 @@ export class IncrementalSvgRenderer {
   private syncAccessibleText(ctx: ViewRenderContext, layout: ToothLayout[]): void {
     if (!this.accessibleSummary) return;
     const lines = layout.map(({ tooth }) => this.toothAccessibleName(ctx, tooth));
-    this.accessibleSummary.textContent = `Text equivalent of the visible dental chart. ${lines.join(". ")}`;
+    this.accessibleSummary.textContent = `${t(ctx, "a11y.summary")} ${lines.join(". ")}`;
   }
 
   private toothAccessibleName(ctx: ViewRenderContext, tooth: ToothId): string {
     const notation = (ctx.options.notation ?? "fdi") as Notation;
     const presence = getToothPresence(ctx.state.teeth, tooth);
-    const presenceLabel = presence === "present" ? "present" : presence;
+    const presenceLabel = t(
+      ctx,
+      `presence.${presence}` as "presence.present" | "presence.missing" | "presence.unerupted",
+    );
     const marks = getMarksForTooth(ctx.state.marks, tooth).map((mark) => {
       const surfaces = getMarkTargetSurfaces(mark, tooth);
       const location = surfaces.length
-        ? ` on ${surfaces.map((s) => SURFACE_LABELS[s]).join(", ")}`
+        ? ` ${surfaces.map((s) => surfaceName(ctx, s)).join(", ")}`
         : "";
       return `${mark.type}${mark.status ? `, ${mark.status}` : ""}${location}`;
     });
-    return `${toAccessibleNotation(tooth, notation)}, ${presenceLabel}${marks.length ? `; marks: ${marks.join("; ")}` : "; no marks"}`;
+    return `${toAccessibleNotation(tooth, notation)}, ${presenceLabel}${marks.length ? `; ${t(ctx, "a11y.marks", { marks: marks.join("; ") })}` : `; ${t(ctx, "a11y.noMarks")}`}`;
   }
 
   private syncAccessibleNames(ctx: ViewRenderContext, tooth: ToothId): void {
@@ -763,7 +796,7 @@ export class IncrementalSvgRenderer {
       );
       el.setAttribute(
         "aria-label",
-        `${name}; ${SURFACE_LABELS[surface]} surface${marks.length ? `; marks: ${marks.join("; ")}` : "; no marks"}`,
+        `${name}; ${t(ctx, "a11y.surface", { surface: surfaceName(ctx, surface) })}${marks.length ? `; ${t(ctx, "a11y.marks", { marks: marks.join("; ") })}` : `; ${t(ctx, "a11y.noMarks")}`}`,
       );
     }
   }
@@ -847,6 +880,11 @@ export class IncrementalSvgRenderer {
     }
 
     const { options, state } = ctx;
+    const localeSignature = JSON.stringify([options.locale ?? "en", options.localeText ?? {}]);
+    if (localeSignature !== this.renderedLocaleSignature) {
+      this.render(ctx);
+      return;
+    }
     this.syncAccessibleText(
       ctx,
       [...this.toothElements.keys()].map((tooth) => this.layoutMap.get(tooth)!),
@@ -1088,6 +1126,7 @@ export class IncrementalSvgRenderer {
     maxX: number,
     minY: number,
     showOrientationLabels: boolean,
+    ctx: ViewRenderContext,
   ): void {
     if (!showOrientationLabels) return;
 
@@ -1104,7 +1143,10 @@ export class IncrementalSvgRenderer {
       text.setAttribute("font-size", "12");
       text.setAttribute("font-weight", "600");
       text.setAttribute("fill", "#555");
-      text.textContent = `Tooth ${notation} (${toAccessibleNotation(tooth, this.renderedNotation)})`;
+      text.textContent = t(ctx, "a11y.tooth", {
+        number: notation,
+        accessible: toAccessibleNotation(tooth, this.renderedNotation),
+      });
       group.appendChild(text);
       return;
     }
@@ -1124,8 +1166,8 @@ export class IncrementalSvgRenderer {
       text.setAttribute("font-weight", "600");
       text.setAttribute("fill", "#757575");
       text.textContent = isRight
-        ? `Patient Right · Quadrant ${qNum}`
-        : `Patient Left · Quadrant ${qNum}`;
+        ? `${t(ctx, "a11y.patientRight")} · ${t(ctx, "a11y.quadrant", { number: qNum })}`
+        : `${t(ctx, "a11y.patientLeft")} · ${t(ctx, "a11y.quadrant", { number: qNum })}`;
       group.appendChild(text);
       return;
     }
@@ -1139,7 +1181,7 @@ export class IncrementalSvgRenderer {
     rightText.setAttribute("font-size", "11");
     rightText.setAttribute("font-weight", "600");
     rightText.setAttribute("fill", "#757575");
-    rightText.textContent = "R (Patient Right)";
+    rightText.textContent = `R (${t(ctx, "a11y.patientRight")})`;
     group.appendChild(rightText);
 
     const leftText = document.createElementNS("http://www.w3.org/2000/svg", "text");
@@ -1150,7 +1192,7 @@ export class IncrementalSvgRenderer {
     leftText.setAttribute("font-size", "11");
     leftText.setAttribute("font-weight", "600");
     leftText.setAttribute("fill", "#757575");
-    leftText.textContent = "L (Patient Left)";
+    leftText.textContent = `L (${t(ctx, "a11y.patientLeft")})`;
     group.appendChild(leftText);
   }
 
@@ -1602,7 +1644,7 @@ export class IncrementalSvgRenderer {
       if (options.disabled) surfaceGroup.setAttribute("aria-disabled", "true");
       surfaceGroup.setAttribute(
         "aria-label",
-        `${this.toothAccessibleName(ctx, tooth)}; ${SURFACE_LABELS[surface]} surface; no marks`,
+        `${this.toothAccessibleName(ctx, tooth)}; ${t(ctx, "a11y.surface", { surface: surfaceName(ctx, surface) })}; ${t(ctx, "a11y.noMarks")}`,
       );
       const isSelected =
         state.selection.teeth.includes(tooth) ||
@@ -1676,7 +1718,7 @@ export class IncrementalSvgRenderer {
           ctx.emitSurfaceClick(tooth, surface, e);
           ctx.emitSurfaceDetail?.(tooth, surface, "click", e);
           this.announceSelection(
-            `${this.toothAccessibleName(ctx, tooth)}; ${SURFACE_LABELS[surface]} surface`,
+            `${this.toothAccessibleName(ctx, tooth)}; ${t(ctx, "a11y.surface", { surface: surfaceName(ctx, surface) })}`,
           );
         },
         listenerOptions,

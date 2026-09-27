@@ -43,6 +43,8 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "mode",
   "historyLimit",
   "initialView",
+  "locale",
+  "localeText",
   "notation",
   "width",
   "height",
@@ -396,6 +398,35 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
       severity: "error",
       message: `Option "readOnly" must be a boolean.`,
       path: "options.readOnly",
+    });
+  }
+
+  if (
+    options.locale !== undefined &&
+    (typeof options.locale !== "string" || options.locale.trim() === "")
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: 'Option "locale" must be a non-empty language tag.',
+      path: "options.locale",
+    });
+  }
+
+  if (
+    options.localeText !== undefined &&
+    (!options.localeText ||
+      typeof options.localeText !== "object" ||
+      Array.isArray(options.localeText) ||
+      Object.values(options.localeText).some((message) => typeof message !== "string"))
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: 'Option "localeText" must be an object containing string messages.',
+      path: "options.localeText",
     });
   }
 

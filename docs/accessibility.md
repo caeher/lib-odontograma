@@ -14,6 +14,8 @@ The `@odontogram/svg` schematic view exposes a labeled `group` containing keyboa
 
 The chart's `aria-describedby` points to a visually hidden text equivalent listing each visible tooth, its current presence, and marks with statuses and surface names. The SVG labels and text equivalent update after state changes. A polite status region announces explicit keyboard activation; focusing each target does not repeatedly read the complete chart. Tooth and surface controls expose toggle state through `aria-pressed`. Existing `detailDidChange` remains available for applications that need their own focused-target description or controls.
 
+Accessible names, the text equivalent, and orientation labels follow the configured odontogram `locale`. An RTL locale sets direction on the surrounding interface; the chart itself remains left to right so screen coordinates continue to match patient right/left and the canonical quadrant layout. Custom control labels and custom mark catalog labels are supplied by the application and should be localized there.
+
 ## Verification record
 
 - Automated DOM and keyboard interaction coverage is in `packages/svg/src/view-navigation.test.ts`: named chart, tooth state, marked surface name, synchronized text, roving Tab stop, arrow traversal, and Escape return.

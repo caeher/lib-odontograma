@@ -19,6 +19,7 @@ const odontogram = new Odontogram(container, {
   plugins: [svgPlugin],
   initialView: "permanent",
   notation: "fdi",
+  locale: "en",
   width: "100%",
   height: 400,
   minZoom: 1,
@@ -54,6 +55,11 @@ const odontogram = new Odontogram(container, {
 });
 
 odontogram.render();
+
+document.getElementById("ui-locale")?.addEventListener("change", (event) => {
+  odontogram.setOption("locale", (event.currentTarget as HTMLSelectElement).value);
+  log(`Interface language: ${(event.currentTarget as HTMLSelectElement).value}`);
+});
 
 function setPresenceForSelection(presence: ToothPresence): void {
   const selection = odontogram.getSelection();

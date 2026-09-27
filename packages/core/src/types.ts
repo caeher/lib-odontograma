@@ -459,6 +459,73 @@ export interface LegendOptions {
   label?: string;
 }
 
+/** Extensible text catalog for the odontogram UI. Missing keys use the selected locale's English fallback. */
+export type LocaleMessageKey =
+  | "ui.view"
+  | "ui.marks"
+  | "ui.selection"
+  | "ui.history"
+  | "ui.views"
+  | "ui.markType"
+  | "ui.markStatus"
+  | "ui.finding"
+  | "ui.existing"
+  | "ui.planned"
+  | "ui.completed"
+  | "ui.applyMark"
+  | "ui.editSelected"
+  | "ui.deleteSelected"
+  | "ui.clearSelection"
+  | "ui.undo"
+  | "ui.redo"
+  | "ui.controls"
+  | "ui.legend"
+  | "view.permanent"
+  | "view.deciduous"
+  | "view.primary"
+  | "view.mixed"
+  | "view.upper"
+  | "view.lower"
+  | "view.quadrant"
+  | "view.tooth"
+  | "mark.caries"
+  | "mark.restoration"
+  | "mark.crown"
+  | "mark.bridge"
+  | "mark.sealant"
+  | "mark.extraction"
+  | "mark.implant"
+  | "surface.mesial"
+  | "surface.occlusal"
+  | "surface.incisal"
+  | "surface.distal"
+  | "surface.buccal"
+  | "surface.lingual"
+  | "presence.present"
+  | "presence.missing"
+  | "presence.unerupted"
+  | "a11y.chart"
+  | "a11y.summary"
+  | "a11y.patientRight"
+  | "a11y.patientLeft"
+  | "a11y.quadrant"
+  | "a11y.tooth"
+  | "a11y.surface"
+  | "a11y.marks"
+  | "a11y.noMarks"
+  | "error.invalidConfiguration"
+  | "error.invalidContainer"
+  | "error.noContainer"
+  | "error.noSelection"
+  | "error.controlledMutation"
+  | "error.invalidState";
+
+/** Partial registered locale. Unspecified messages fall back to English; direction defaults to ltr. */
+export interface OdontogramLocale {
+  direction?: "ltr" | "rtl";
+  messages?: Partial<Record<LocaleMessageKey, string>>;
+}
+
 export interface DetailChangeArg {
   tooth: ToothId;
   /** Present when a single clinical surface is the detail target. */
@@ -538,6 +605,10 @@ export interface OdontogramOptions {
   /** Maximum in-memory odontogram snapshots retained for undo (default: 100; 0 disables history). */
   historyLimit?: number;
   initialView?: ViewType;
+  /** UI language tag. Defaults to `en`; independent from tooth notation and anatomical orientation. */
+  locale?: string;
+  /** Per-instance text overrides, applied after the registered locale and before English fallback. */
+  localeText?: Partial<Record<LocaleMessageKey, string>>;
   notation?: Notation;
   /** CSS width of the odontogram host (default: 100%). */
   width?: number | string;

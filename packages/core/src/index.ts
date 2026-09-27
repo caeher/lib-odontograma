@@ -1,4 +1,5 @@
 export { createDefaultState, getToothPresence } from "./defaults.js";
+export { getLocaleDirection, getLocaleText, registerLocale } from "./locale.js";
 export {
   OdontogramError,
   OdontogramValidationError,
@@ -65,6 +66,8 @@ export type {
   MarkClassNamesArg,
   MarkCatalogEntry,
   LegendOptions,
+  LocaleMessageKey,
+  OdontogramLocale,
   DetailChangeArg,
   MarkFilter,
   MarkInput,

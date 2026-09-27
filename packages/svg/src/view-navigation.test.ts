@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { Odontogram } from "@odontogram/core";
+import { registerLocale } from "@odontogram/core";
 import { svgPlugin } from "./index.js";
 import { TOOTH_WIDTH, TOOTH_HEIGHT, computeMixedLayout } from "./schematic-view.js";
 
@@ -17,6 +18,51 @@ describe("Stage 03 · View Navigation & Multi-View Representation", () => {
   afterEach(() => {
     document.body.innerHTML = "";
     vi.restoreAllMocks();
+  });
+
+  it("changes locale at runtime without data loss or reversing dental order in RTL", () => {
+    registerLocale("qz", {
+      direction: "rtl",
+      messages: { "ui.legend": "An intentionally long custom legend heading for layout checks" },
+    });
+    const chart = new Odontogram(container, {
+      plugins: [svgPlugin],
+      locale: "en",
+      initialView: "permanent",
+      toolbar: {},
+      markCatalog: [{ type: "caries", label: "Caries" }],
+    });
+    chart.addMark({ id: "finding-16", tooth: "16", surfaces: ["O"], type: "caries" });
+    chart.selectTooth("16");
+    chart.selectAnnotation("finding-16");
+    chart.render();
+
+    const getDentalOrder = () =>
+      [...container.querySelectorAll<SVGGElement>(".odontogram-tooth")].map(
+        (tooth) => tooth.dataset.tooth,
+      );
+    const originalOrder = getDentalOrder();
+    const originalState = chart.getState();
+    expect(originalOrder.indexOf("18")).toBeLessThan(originalOrder.indexOf("21"));
+
+    chart.setOption("locale", "es");
+    expect(container.querySelector(".odontogram-toolbar")?.getAttribute("aria-label")).toBe(
+      "Controles del odontograma",
+    );
+    expect(
+      container.querySelector('[data-tooth="16"][data-surface="O"]')?.getAttribute("aria-label"),
+    ).toContain("superficie Oclusal");
+    expect(chart.getState()).toEqual(originalState);
+
+    chart.setOption("locale", "qz");
+    expect((container.querySelector(".odontogram-host") as HTMLElement).dir).toBe("rtl");
+    expect((container.querySelector(".odontogram-view") as HTMLElement).dir).toBe("ltr");
+    expect(container.querySelector(".odontogram-legend h3")?.textContent).toBe(
+      "An intentionally long custom legend heading for layout checks",
+    );
+    expect(getDentalOrder()).toEqual(originalOrder);
+    expect(chart.getState()).toEqual(originalState);
+    chart.destroy();
   });
 
   it("exposes a named chart, a synchronized text equivalent, and roving dental keyboard navigation", () => {

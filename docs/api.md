@@ -15,6 +15,33 @@ new Odontogram(el?: HTMLElement | null, options?: OdontogramOptions)
 
 ### Methods
 
+#### Interface locale
+
+The `locale` option controls odontogram UI text independently from `notation`, view selection, and dental orientation. Built-in `en` and `es` catalogs cover integrated controls, legend, surface and tooth presence names, chart summary, accessible target names, orientation labels, and common runtime errors. Change language at runtime with `setOption("locale", "es")`; selection, marks, tooth state, and annotations remain in odontogram state and are preserved by the redraw.
+
+Applications can register a locale and override any subset of messages. Missing messages fall back one key at a time to English. Lookup order is per-instance `localeText`, registered locale messages, English defaults, then the message key. Tags are matched by their base language (`es-MX` uses `es`).
+
+```ts
+import { Odontogram, registerLocale } from "@odontogram/core";
+
+registerLocale("ar", {
+  direction: "rtl",
+  messages: {
+    "ui.legend": "مفتاح المخطط",
+    "surface.occlusal": "إطباقية",
+  },
+});
+
+const chart = new Odontogram(container, {
+  plugins: [svgPlugin],
+  locale: "ar",
+  localeText: { "ui.undo": "تراجع" },
+});
+chart.setOption("locale", "es"); // switches text without clearing chart state
+```
+
+`registerLocale(tag, locale)` merges messages when a tag is registered more than once. Set `direction` to `rtl` for an RTL interface. The host adopts that direction while the chart area remains `dir="ltr"`; tooth numbering, quadrant positions, surface codes, and anatomical orientation are never inferred from language direction. Custom controls and mark catalog labels remain application supplied text.
+
 #### Lifecycle & View
 
 ##### Sizing and viewport interaction
@@ -176,6 +203,8 @@ const chart = new Odontogram(container, {
 ```
 
 The legend is generated from `markCatalog` plus mark types/statuses present in the current state. Entry labels, symbols, and colors may be customized through catalog entries. Use `legend: false` to hide it or `legend: { label, items }` to supply explicit entries. This catalog is for odontogram symbols/statuses; it does not change mark validation or serialization.
+
+Built-in interface strings use `locale`. To replace one or more strings for one chart, set `localeText` to a partial message map; custom values override registered and English messages. The supported keys are the `LocaleMessageKey` TypeScript union exported by `@odontogram/core`.
 
 `detailDidChange` is called when a tooth or surface receives keyboard focus or is activated by click/touch. Its argument contains the canonical tooth id, optional single surface, selected or marked surfaces on that tooth, matching marks, trigger, and source event. Consumers can use it to update an accessible live region, tooltip, or popover. The SVG chart's surface and tooth targets are keyboard focusable, and touch activation uses the same click path.
 

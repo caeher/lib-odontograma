@@ -16,6 +16,7 @@ import {
 } from "./marks.js";
 import { deepClone, isDeepEqual, validateOdontogramState, validateOptions } from "./validation.js";
 import { renderLegend, renderToolbar } from "./controls.js";
+import { getLocaleDirection, getLocaleText } from "./locale.js";
 import type {
   BatchOptions,
   MarkFilter,
@@ -78,7 +79,10 @@ export class Odontogram {
     if (el !== undefined && el !== null) {
       if (typeof el !== "object" || !("appendChild" in el)) {
         throw new OdontogramError(
-          "A valid HTMLElement container is required to instantiate Odontogram with a container.",
+          getLocaleText(
+            { locale: options.locale, localeText: options.localeText },
+            "error.invalidContainer",
+          ),
           VALIDATION_CODES.ERR_INVALID_CONTAINER,
         );
       }
@@ -88,7 +92,10 @@ export class Odontogram {
     const optionsValidation = validateOptions(options);
     if (!optionsValidation.valid) {
       throw new OdontogramValidationError(
-        `Invalid odontogram configuration options: ${optionsValidation.errors[0]?.message}`,
+        getLocaleText(
+          { locale: options.locale, localeText: options.localeText },
+          "error.invalidConfiguration",
+        ),
         optionsValidation.issues,
         VALIDATION_CODES.ERR_INVALID_OPTION,
       );
@@ -121,7 +128,10 @@ export class Odontogram {
     if (container) {
       if (typeof container !== "object" || !("appendChild" in container)) {
         throw new OdontogramError(
-          "A valid HTMLElement container is required to render Odontogram.",
+          getLocaleText(
+            { locale: this.getOption("locale"), localeText: this.getOption("localeText") },
+            "error.invalidContainer",
+          ),
           VALIDATION_CODES.ERR_INVALID_CONTAINER,
         );
       }
@@ -130,7 +140,10 @@ export class Odontogram {
 
     if (!this.el) {
       throw new OdontogramError(
-        "No HTMLElement container available to render Odontogram. Pass a container to constructor or render(container).",
+        getLocaleText(
+          { locale: this.getOption("locale"), localeText: this.getOption("localeText") },
+          "error.noContainer",
+        ),
         VALIDATION_CODES.ERR_NO_CONTAINER,
       );
     }
@@ -142,15 +155,18 @@ export class Odontogram {
 
     this.hostEl = document.createElement("div");
     this.hostEl.className = "odontogram-host";
+    this.hostEl.dir = getLocaleDirection(this.getOption("locale"));
+    this.hostEl.lang = this.getOption("locale") ?? "en";
     const width = this.getOption("width");
     this.hostEl.style.width = typeof width === "number" ? `${width}px` : String(width);
     const height = this.getOption("height");
     this.hostEl.style.height = typeof height === "number" ? `${height}px` : String(height);
     this.chartEl = document.createElement("div");
     this.chartEl.className = "odontogram-view";
+    // Interface direction must never change canonical left/right dental orientation.
+    this.chartEl.dir = "ltr";
     this.toolbarEl = document.createElement("div");
     this.legendEl = document.createElement("aside");
-    this.legendEl.setAttribute("aria-label", "Odontogram legend");
     this.hostEl.append(this.toolbarEl, this.chartEl, this.legendEl);
     this.el.appendChild(this.hostEl);
 
@@ -208,6 +224,10 @@ export class Odontogram {
     }
 
     this.options = { ...this.options, [name]: deepClone(value) };
+    if ((name === "locale" || name === "localeText") && this.hostEl) {
+      this.hostEl.dir = getLocaleDirection(this.getOption("locale"));
+      if (name === "locale") this.hostEl.lang = String(value);
+    }
     if (name === "width" && this.hostEl) {
       this.hostEl.style.width = typeof value === "number" ? `${value}px` : String(value ?? "100%");
     }
@@ -585,7 +605,10 @@ export class Odontogram {
         const selection = this.state.selection;
         if (selection.surfaces.length === 0 && selection.teeth.length === 0) {
           throw new OdontogramError(
-            "Select at least one tooth or surface before applying a mark.",
+            getLocaleText(
+              { locale: this.getOption("locale"), localeText: this.getOption("localeText") },
+              "error.noSelection",
+            ),
             VALIDATION_CODES.ERR_INVALID_SELECTION,
           );
         }
@@ -1447,10 +1470,13 @@ export class Odontogram {
     };
   }
 
-  private assertMutable(operation: string): void {
+  private assertMutable(_operation: string): void {
     if (this.getMode() === "controlled") {
       throw new OdontogramError(
-        `Cannot ${operation} while mode is "controlled". Apply updates with setState() or reset() from the host.`,
+        getLocaleText(
+          { locale: this.getOption("locale"), localeText: this.getOption("localeText") },
+          "error.controlledMutation",
+        ),
         VALIDATION_CODES.ERR_CONTROLLED_MUTATION,
       );
     }
