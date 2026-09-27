@@ -125,6 +125,107 @@ describe("Stage 03 · Incremental SVG View & Representation", () => {
 
       odontogram.destroy();
     });
+
+    it("uses ordered support and pontic anchors and selects, edits, and removes one annotation", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        instanceId: "span-chart",
+      });
+      odontogram.render();
+      odontogram.addMark({
+        id: "span-14-16",
+        type: "bridge",
+        text: "Planned three-unit span",
+        target: {
+          kind: "teeth",
+          teeth: ["14", "15", "16"],
+          targets: [
+            { tooth: "14", role: "support", anchor: "anchor-distal" },
+            { tooth: "15", role: "pontic", anchor: "anchor-center" },
+            { tooth: "16", role: "support", anchor: "anchor-mesial" },
+          ],
+        },
+      });
+
+      const annotation = container.querySelector<SVGGElement>('[data-mark-id="span-14-16"]')!;
+      expect(annotation.getAttribute("data-target-teeth")).toBe("14 15 16");
+      expect(annotation.getAttribute("aria-label")).toBe("Planned three-unit span");
+      expect(annotation.querySelectorAll('[data-role="support"]').length).toBe(2);
+      expect(annotation.querySelector('[data-role="pontic"]')?.getAttribute("data-tooth")).toBe(
+        "15",
+      );
+      const anchorCoords = [
+        ["14", "anchor-distal"],
+        ["15", "anchor-center"],
+        ["16", "anchor-mesial"],
+      ].map(([tooth, anchor]) => {
+        const point = container.querySelector<SVGCircleElement>(
+          `.odontogram-tooth[data-tooth="${tooth}"] [data-contract-anchor="${anchor}"]`,
+        )!;
+        return [point.getAttribute("cx"), point.getAttribute("cy")].join(" ");
+      });
+      expect(annotation.querySelector("path")?.getAttribute("d")).toBe(
+        `M ${anchorCoords[0]} L ${anchorCoords[1]} M ${anchorCoords[1]} L ${anchorCoords[2]}`,
+      );
+
+      annotation.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+      expect(odontogram.isAnnotationSelected("span-14-16")).toBe(true);
+      expect(annotation.getAttribute("aria-pressed")).toBe("true");
+
+      odontogram.updateMark("span-14-16", { text: "Updated span" });
+      expect(annotation.getAttribute("aria-label")).toBe("Updated span");
+      const permanentPath = annotation.querySelector("path")?.getAttribute("d");
+      odontogram.changeView("quadrant-1");
+      const quadrantPath = container
+        .querySelector('[data-mark-id="span-14-16"] path')
+        ?.getAttribute("d");
+      expect(quadrantPath).not.toBe(permanentPath);
+      odontogram.removeMark("span-14-16");
+      expect(container.querySelector('[data-mark-id="span-14-16"]')).toBeNull();
+      expect(odontogram.isAnnotationSelected("span-14-16")).toBe(false);
+      odontogram.destroy();
+    });
+
+    it("keeps ordered target identity when targets are hidden or unavailable", () => {
+      const odontogram = new Odontogram(container, {
+        plugins: [svgPlugin],
+        initialView: "permanent",
+        visibleTeeth: ["14", "16"],
+      });
+      odontogram.render();
+      odontogram.addMark({
+        id: "partially-visible-span",
+        type: "bridge",
+        target: {
+          teeth: ["14", "15", "16"],
+          targets: [
+            { tooth: "14", role: "support", anchor: "anchor-distal" },
+            { tooth: "15", role: "pontic" },
+            { tooth: "16", role: "support" },
+          ],
+        },
+      });
+      const annotation = container.querySelector<SVGGElement>(
+        '[data-mark-id="partially-visible-span"]',
+      )!;
+      expect(annotation.getAttribute("data-target-teeth")).toBe("14 15 16");
+      expect(annotation.getAttribute("data-visible-target-teeth")).toBe("14 16");
+      expect(annotation.querySelectorAll("circle")).toHaveLength(2);
+      expect(annotation.querySelector("path")).toBeNull();
+
+      odontogram.changeView("tooth-detail", { tooth: "31" });
+      const unavailable = container.querySelector<SVGGElement>(
+        '[data-mark-id="partially-visible-span"]',
+      )!;
+      expect(unavailable.getAttribute("data-visible-target-teeth")).toBe("");
+      expect(unavailable.getAttribute("aria-label")).toContain("bridge annotation");
+      expect(unavailable.querySelector("path")).toBeNull();
+
+      odontogram.removeMarksForTooth("15");
+      expect(container.querySelector('[data-mark-id="partially-visible-span"]')).toBeNull();
+      odontogram.destroy();
+    });
   });
 
   // ==========================================================================

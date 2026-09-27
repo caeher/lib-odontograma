@@ -5,6 +5,7 @@ import type {
   ToothPresence,
   ViewOptions,
   ViewRenderContext,
+  MultiToothTargetEntry,
 } from "@odontogram/core";
 import {
   getMarkTargetSurfaces,
@@ -26,6 +27,7 @@ import {
   type GraphicFace,
   type Notation,
 } from "@odontogram/dentition";
+import { REQUIRED_ANCHOR_IDS } from "./contract/index.js";
 
 export const TOOTH_WIDTH = 44;
 export const TOOTH_HEIGHT = 52;
@@ -405,6 +407,7 @@ export class IncrementalSvgRenderer {
   private renderedSelectedTeeth: Set<ToothId> = new Set();
   private renderedSelectedSurfaces: Set<string> = new Set(); // key: toothId:surface
   private renderedNotation: Notation = "fdi";
+  private latestContext: ViewRenderContext | null = null;
 
   constructor(instancePrefix?: string) {
     if (instancePrefix && instancePrefix.trim() !== "") {
@@ -426,6 +429,7 @@ export class IncrementalSvgRenderer {
     const { el, options, state, viewOptions } = ctx;
     const notation = (options.notation ?? "fdi") as Notation;
     const view = state.view;
+    this.latestContext = ctx;
     const effectiveViewOptions = { ...(options.viewOptions ?? {}), ...(viewOptions ?? {}) };
     this.activeView = view;
     this.renderedNotation = notation;
@@ -562,6 +566,8 @@ export class IncrementalSvgRenderer {
     if (lowerArchGroup.children.length > 0) {
       svg.appendChild(lowerArchGroup);
     }
+    // Keep connected overlays above teeth so their annotation unit remains pointer-selectable.
+    svg.appendChild(annotationsLayer);
 
     // Initial state caches & mark overlays
     this.syncSelectionCaches(ctx);
@@ -572,10 +578,11 @@ export class IncrementalSvgRenderer {
     el.appendChild(svg);
 
     // Setup optional ResizeObserver
-    if (typeof ResizeObserver !== "undefined") {
+    const RO = el.ownerDocument.defaultView?.ResizeObserver ?? globalThis.ResizeObserver;
+    if (typeof RO !== "undefined") {
       try {
-        this.resizeObserver = new ResizeObserver(() => {
-          // Responsive viewBox handles scaling automatically
+        this.resizeObserver = new RO(() => {
+          if (this.latestContext) this.syncMarks(this.latestContext);
         });
         this.resizeObserver.observe(el);
       } catch {
@@ -585,6 +592,7 @@ export class IncrementalSvgRenderer {
   }
 
   update(ctx: ViewRenderContext): void {
+    this.latestContext = ctx;
     if (!this.rootSvg || this.activeView !== ctx.state.view) {
       this.render(ctx);
       return;
@@ -710,6 +718,7 @@ export class IncrementalSvgRenderer {
     this.renderedSelectedTeeth.clear();
     this.renderedSelectedSurfaces.clear();
     this.layoutMap.clear();
+    this.latestContext = null;
   }
 
   // ==========================================================================
@@ -902,6 +911,33 @@ export class IncrementalSvgRenderer {
     );
 
     anatomyLayer.appendChild(bg);
+
+    // Stable points in the tooth SVG coordinate space used by annotation geometry.
+    const center = { x: x + width / 2, y: y + height / 2 };
+    const mesialTowardRight = [1, 4, 5, 8].includes(quadrant);
+    const anchorPoints = {
+      "anchor-center": center,
+      "anchor-mesial": {
+        x: x + width * (mesialTowardRight ? 0.72 : 0.28),
+        y: center.y,
+      },
+      "anchor-distal": {
+        x: x + width * (mesialTowardRight ? 0.28 : 0.72),
+        y: center.y,
+      },
+    } as const;
+    for (const anchor of REQUIRED_ANCHOR_IDS) {
+      const point = anchorPoints[anchor];
+      const marker = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      marker.setAttribute("id", `${this.instanceId}tooth-${tooth}-${anchor}`);
+      marker.setAttribute("data-contract-anchor", anchor);
+      marker.setAttribute("cx", String(point.x));
+      marker.setAttribute("cy", String(point.y));
+      marker.setAttribute("r", "0");
+      marker.setAttribute("aria-hidden", "true");
+      marker.style.pointerEvents = "none";
+      anatomyLayer.appendChild(marker);
+    }
 
     // Missing indicator lines container
     const missingGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
@@ -1417,6 +1453,8 @@ export class IncrementalSvgRenderer {
     const { options } = ctx;
     const targetTeeth = getMarkTargetTeeth(mark);
     if (targetTeeth.length === 0) return;
+    const accessibleDescription =
+      mark.text?.trim() || `${mark.type} annotation on teeth ${targetTeeth.join(", ")}`;
 
     let group = this.multiToothMarks.get(mark.id);
     if (!group) {
@@ -1426,28 +1464,69 @@ export class IncrementalSvgRenderer {
       group.setAttribute("data-mark-id", mark.id);
       group.setAttribute("data-mark-type", mark.type);
       group.setAttribute("data-target-teeth", targetTeeth.join(" "));
+      group.setAttribute("role", "button");
+      group.setAttribute("tabindex", "0");
+      group.setAttribute("aria-label", accessibleDescription);
+      group.addEventListener("click", () => ctx.selectAnnotation(mark.id), {
+        signal: this.abortController?.signal,
+      });
+      group.addEventListener(
+        "keydown",
+        (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            ctx.selectAnnotation(mark.id);
+          }
+        },
+        { signal: this.abortController?.signal },
+      );
       this.annotationsLayer.appendChild(group);
       this.multiToothMarks.set(mark.id, group);
     } else {
       group.innerHTML = "";
     }
+    const annotationClasses = normalizeClassNames(options.markClassNames?.({ mark }));
+    group.setAttribute(
+      "class",
+      ["odontogram-annotation", `odontogram-annotation-${mark.type}`, annotationClasses]
+        .filter(Boolean)
+        .join(" "),
+    );
+    group.setAttribute("data-target-teeth", targetTeeth.join(" "));
+    group.setAttribute("aria-label", accessibleDescription);
+    group.setAttribute("data-mark-type", mark.type);
 
     // Find layout coordinates for mounted/visible target teeth
-    const coords = targetTeeth
-      .map((t) => {
-        const layout = this.layoutMap.get(t);
+    const targetEntries: MultiToothTargetEntry[] =
+      mark.target && "targets" in mark.target && mark.target.targets?.length
+        ? mark.target.targets
+        : targetTeeth.map((tooth) => ({ tooth }));
+    const coords: Array<{ tooth: ToothId; index: number; role?: string; x: number; y: number }> =
+      targetEntries.flatMap((entry, index) => {
+        const t = entry.tooth;
         const toothEl = this.toothElements.get(t);
-        if (!layout || !toothEl) return null;
-        const w = layout.width ?? TOOTH_WIDTH;
-        const h = layout.height ?? TOOTH_HEIGHT;
-        return {
-          tooth: t,
-          x: layout.x + w / 2,
-          y: layout.y + h / 2,
-        };
-      })
-      .filter((c): c is { tooth: ToothId; x: number; y: number } => c !== null);
+        if (!toothEl) return [];
+        const anchorId = entry.anchor ?? "anchor-center";
+        if (!(REQUIRED_ANCHOR_IDS as readonly string[]).includes(anchorId)) return [];
+        const anchor = toothEl.querySelector<SVGCircleElement>(
+          `[data-contract-anchor="${anchorId}"]`,
+        );
+        if (!anchor) return [];
+        return [
+          {
+            tooth: t,
+            index,
+            role: entry.role,
+            x: Number(anchor.getAttribute("cx")),
+            y: Number(anchor.getAttribute("cy")),
+          },
+        ];
+      });
 
+    group.setAttribute("data-visible-target-teeth", coords.map((c) => c.tooth).join(" "));
+    const selected = ctx.state.selection.annotations?.includes(mark.id) ?? false;
+    group.setAttribute("aria-pressed", String(selected));
+    group.classList.toggle("is-selected", selected);
     if (coords.length === 0) return;
 
     const strokeColor = resolveMarkFill(
@@ -1457,13 +1536,24 @@ export class IncrementalSvgRenderer {
       "#1976d2",
     );
 
-    if (coords.length >= 2) {
-      // Connecting path/line
+    const segments: Array<[(typeof coords)[number], (typeof coords)[number]]> = [];
+    for (let i = 1; i < coords.length; i += 1) {
+      const previous = coords[i - 1]!;
+      const current = coords[i]!;
+      if (current.index === previous.index + 1) segments.push([previous, current]);
+    }
+    if (segments.length > 0) {
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-      const d = coords.reduce((acc, c, idx) => `${acc} ${idx === 0 ? "M" : "L"} ${c.x} ${c.y}`, "");
+      const d = segments.map(([from, to]) => `M ${from.x} ${from.y} L ${to.x} ${to.y}`).join(" ");
       path.setAttribute("d", d);
-      path.setAttribute("stroke", mark.style?.stroke ?? strokeColor);
-      path.setAttribute("stroke-width", String(mark.style?.strokeWidth ?? 3));
+      path.setAttribute(
+        "stroke",
+        mark.style?.stroke ?? (selected ? options.selectionColor : strokeColor) ?? strokeColor,
+      );
+      path.setAttribute(
+        "stroke-width",
+        String((mark.style?.strokeWidth ?? 3) + (selected ? 1 : 0)),
+      );
       path.setAttribute("stroke-linecap", "round");
       path.setAttribute("fill", "none");
       if (mark.style?.opacity !== undefined) {
@@ -1477,7 +1567,9 @@ export class IncrementalSvgRenderer {
       const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       circle.setAttribute("cx", String(c.x));
       circle.setAttribute("cy", String(c.y));
-      circle.setAttribute("r", "4");
+      circle.setAttribute("r", selected ? "5" : "4");
+      circle.setAttribute("data-tooth", c.tooth);
+      if (c.role) circle.setAttribute("data-role", c.role);
       circle.setAttribute("fill", strokeColor);
       circle.setAttribute("stroke", "#ffffff");
       circle.setAttribute("stroke-width", "1.5");

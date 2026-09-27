@@ -28,6 +28,7 @@ function createContext(
     requestRender: () => {},
     selectTooth: () => {},
     selectSurface: () => {},
+    selectAnnotation: () => {},
     toggleSurfaceSelection: () => {},
     emitToothClick: () => {},
     emitSurfaceClick: () => {},

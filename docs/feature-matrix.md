@@ -61,6 +61,7 @@ Legend: ✅ implemented · 🔲 planned · — not applicable
 | Fine-grained incremental SVG   |  ✅  |     —     | ✅  |    —    |    —     | 03    |
 | Multi-instance defs isolation  |  ✅  |     —     | ✅  |    —    |    —     | 03    |
 | Multi-tooth annotation layer   |  ✅  |     —     | ✅  |    —    |    —     | 03    |
+| Stable span anchors            |  ✅  |     —     | ✅  |    —    |    —     | 04    |
 | Focus & selection preservation |  ✅  |     —     | ✅  |    —    |    —     | 03    |
 | Hidden container resilience    |  —   |     —     | ✅  |    —    |    —     | 03    |
 | SVG resource contract          |  —   |     —     | ✅  |    —    |    —     | 03    |

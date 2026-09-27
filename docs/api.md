@@ -178,7 +178,7 @@ Clear all tooth presence overlays, resetting all teeth to default present.
 
 ##### `getSelection(): SelectionState`
 
-Return a defensive clone of current selection (`{ teeth: ToothId[]; surfaces: ToothSurfaceRef[] }`).
+Return a defensive clone of current selection (`{ teeth; surfaces; annotations? }`). `annotations` contains selected mark ids.
 
 ##### `setSelection(selection: SelectionState): void`
 
@@ -194,7 +194,7 @@ Select, append, or toggle surface selection programmatically.
 
 ##### `clearSelection(): void`
 
-Clear all selected teeth and surfaces.
+Clear all selected teeth, surfaces, and annotations.
 
 ##### `resetSelection(): void`
 
@@ -207,6 +207,10 @@ Returns `true` if the specified tooth is selected.
 ##### `isSurfaceSelected(toothId: ToothId, surface: SurfaceId): boolean`
 
 Returns `true` if the specified surface is selected.
+
+##### `selectAnnotation(markId: string): void` and `isAnnotationSelected(markId: string): boolean`
+
+Select a mark, including a multi-tooth annotation, as one unit. The selected id is exposed in `getSelection().annotations`. In controlled mode, set the host-owned selection through `setState()`.
 
 #### Atomic Batch Transactions & Maintenance
 
@@ -320,7 +324,15 @@ export type MarkStatus = "existing" | "planned" | "completed" | "proposed" | "re
 export type MarkTarget =
   | { kind?: "surface" | "surfaces"; tooth: ToothId; surfaces: SurfaceId[] } // Single tooth surfaces
   | { kind?: "tooth"; tooth: ToothId } // Whole single tooth
-  | { kind?: "teeth" | "group"; teeth: ToothId[] } // Multi-tooth annotation (e.g. bridge)
+  | {
+      kind?: "teeth" | "group";
+      teeth: ToothId[]; // ordered target ids
+      targets?: Array<{
+        tooth: ToothId;
+        role?: "support" | "pontic" | string;
+        anchor?: "anchor-center" | "anchor-mesial" | "anchor-distal";
+      }>;
+    } // Multi-tooth annotation (e.g. bridge)
   | { kind?: "complex"; elements: Array<{ tooth: ToothId; surfaces?: SurfaceId[] }> };
 
 export interface OdontographicMark<TMetadata = Record<string, unknown>> {
@@ -337,6 +349,27 @@ export interface OdontographicMark<TMetadata = Record<string, unknown>> {
   surfaces?: SurfaceId[];
 }
 ```
+
+For connected symbols, keep `teeth` in drawing order. `targets`, when provided, must list the same tooth ids in the same order; roles and anchor names remain explicit data. A bridge example:
+
+```ts
+odontogram.addMark({
+  id: "bridge-14-16",
+  type: "bridge",
+  text: "Planned three-unit span",
+  target: {
+    kind: "teeth",
+    teeth: ["14", "15", "16"],
+    targets: [
+      { tooth: "14", role: "support", anchor: "anchor-distal" },
+      { tooth: "15", role: "pontic", anchor: "anchor-center" },
+      { tooth: "16", role: "support", anchor: "anchor-mesial" },
+    ],
+  },
+});
+```
+
+The SVG renderer reads the named anchors from the tooth SVG coordinate space and recomputes annotation geometry after view changes and resize notifications. Hidden targets keep their place in the mark data; only visible targets render, and a connector is drawn only between adjacent visible entries. If no target is visible, the annotation remains in state without geometry. Removing a referenced tooth with `removeMarksForTooth()` removes the whole annotation. Select, edit, and delete the annotation as one mark using `selectAnnotation()`, `updateMark()`, and `removeMark()`; its SVG group has a keyboard focus target and an accessible description from `text` or type and tooth ids. These renderings record annotation geometry and do not infer clinical decisions.
 
 ### Mark Utilities
 
