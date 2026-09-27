@@ -379,3 +379,264 @@ export const SERIALIZATION_EXAMPLES = {
   programmaticOperations: PROGRAMMATIC_OPERATIONS_EXAMPLE,
   controlledMode: CONTROLLED_MODE_EXAMPLE,
 } as const;
+
+/** Stage 07 Interoperability Example: Standard Permanent Dentition Document. */
+export const DOCUMENT_PERMANENT_RESTORATIONS_EXAMPLE = {
+  $schema: "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  schemaVersion: "1.0.0",
+  view: "permanent",
+  dentition: "permanent",
+  teeth: {
+    "18": { presence: "missing" },
+    "28": { presence: "missing" },
+    "38": { presence: "unerupted" },
+    "48": { presence: "unerupted" },
+  },
+  marks: [
+    {
+      id: "restoration-16-mod",
+      type: "restoration",
+      status: "completed",
+      target: {
+        kind: "surface",
+        tooth: "16",
+        surfaces: ["M", "O", "D"],
+      },
+      text: "MOD composite resin",
+      metadata: {
+        material: "composite-resin",
+        shade: "A2",
+      },
+      style: {
+        fill: "#42a5f5",
+        stroke: "#1e88e5",
+      },
+      tooth: "16",
+      surfaces: ["M", "O", "D"],
+    },
+    {
+      id: "caries-26-o",
+      type: "caries",
+      status: "planned",
+      target: {
+        kind: "surface",
+        tooth: "26",
+        surfaces: ["O"],
+      },
+      text: "Occlusal pit caries",
+      metadata: {
+        icdasScore: 3,
+      },
+      tooth: "26",
+      surfaces: ["O"],
+    },
+  ],
+  metadata: {
+    exportDate: "2026-09-27T00:00:00Z",
+    chartingClinicId: "clinic-central",
+  },
+} as const;
+
+/** Stage 07 Interoperability Example: Deciduous / Primary Dentition Document. */
+export const DOCUMENT_DECIDUOUS_PULPOTOMY_EXAMPLE = {
+  $schema: "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  schemaVersion: "1.0.0",
+  view: "deciduous",
+  dentition: "deciduous",
+  teeth: {
+    "51": { presence: "missing" },
+    "61": { presence: "missing" },
+  },
+  marks: [
+    {
+      id: "pulpotomy-54",
+      type: "pulpotomy",
+      status: "completed",
+      target: {
+        kind: "tooth",
+        tooth: "54",
+      },
+      text: "Primary molar ferric sulfate pulpotomy",
+      metadata: {
+        medicament: "MTA",
+      },
+      tooth: "54",
+      surfaces: [],
+    },
+    {
+      id: "ssc-54",
+      type: "crown",
+      status: "completed",
+      target: {
+        kind: "tooth",
+        tooth: "54",
+      },
+      text: "Stainless steel crown (SSC)",
+      metadata: {
+        crownType: "stainless-steel",
+        size: "4",
+      },
+      tooth: "54",
+      surfaces: [],
+    },
+  ],
+} as const;
+
+/** Stage 07 Interoperability Example: Mixed Dentition 4-Row Document. */
+export const DOCUMENT_MIXED_DENTITION_EXAMPLE = {
+  $schema: "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  schemaVersion: "1.0.0",
+  view: "mixed",
+  dentition: "mixed",
+  teeth: {
+    "16": { presence: "present" },
+    "55": { presence: "present" },
+    "54": { presence: "missing" },
+    "14": { presence: "unerupted" },
+  },
+  marks: [
+    {
+      id: "sealant-16-o",
+      type: "sealant",
+      status: "completed",
+      target: {
+        kind: "surface",
+        tooth: "16",
+        surfaces: ["O"],
+      },
+      text: "Pit and fissure sealant on first permanent molar",
+      tooth: "16",
+      surfaces: ["O"],
+    },
+    {
+      id: "caries-55-m",
+      type: "caries",
+      status: "existing",
+      target: {
+        kind: "surface",
+        tooth: "55",
+        surfaces: ["M"],
+      },
+      text: "Interproximal caries on second primary molar",
+      tooth: "55",
+      surfaces: ["M"],
+    },
+  ],
+} as const;
+
+/** Stage 07 Interoperability Example: Multi-Tooth Bridge & Splint Document. */
+export const DOCUMENT_MULTI_TOOTH_BRIDGE_EXAMPLE = {
+  $schema: "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  schemaVersion: "1.0.0",
+  view: "permanent",
+  teeth: {
+    "15": { presence: "missing" },
+  },
+  marks: [
+    {
+      id: "bridge-14-15-16",
+      type: "bridge",
+      status: "planned",
+      target: {
+        teeth: ["14", "15", "16"],
+        targets: [
+          { tooth: "14", role: "support", anchor: "anchor-center" },
+          { tooth: "15", role: "pontic", anchor: "anchor-center" },
+          { tooth: "16", role: "support", anchor: "anchor-center" },
+        ],
+      },
+      text: "Fixed partial denture 14-16",
+      metadata: {
+        retainers: ["14", "16"],
+        pontics: ["15"],
+        material: "zirconia",
+      },
+      style: {
+        fill: "#ab47bc",
+        stroke: "#7b1fa2",
+      },
+    },
+  ],
+} as const;
+
+/** Stage 07 Interoperability Example: Document with Visual Settings. */
+export const DOCUMENT_WITH_VISUAL_SETTINGS_EXAMPLE = {
+  $schema: "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  schemaVersion: "1.0.0",
+  view: "permanent",
+  teeth: {},
+  marks: [
+    {
+      id: "mark-11-mid",
+      type: "restoration",
+      status: "completed",
+      target: {
+        tooth: "11",
+        surfaces: ["M", "I", "D"],
+      },
+    },
+  ],
+  visualSettings: {
+    notation: "palmer",
+    locale: "es",
+    showOrientationLabels: true,
+    showMidline: true,
+    toothColor: "#f8f9fa",
+    surfaceColor: "#e9ecef",
+    selectionColor: "#cfe2ff",
+    markColors: {
+      caries: "#dc3545",
+      restoration: "#0d6efd",
+    },
+    statusColors: {
+      completed: "#198754",
+      planned: "#fd7e14",
+    },
+    fitToContainer: true,
+    minZoom: 1,
+    maxZoom: 4,
+  },
+} as const;
+
+/** Stage 07 Interoperability Example: Document with Unknown Extensions & Custom Metadata. */
+export const DOCUMENT_WITH_EXTENSIONS_EXAMPLE = {
+  $schema: "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  schemaVersion: "1.0.0",
+  view: "permanent",
+  teeth: {},
+  marks: [
+    {
+      id: "mark-custom-sensor-46",
+      type: "periodontal-probing-telemetry",
+      status: "existing",
+      target: {
+        tooth: "46",
+      },
+      metadata: {
+        sensorId: "perio-probe-9000",
+        depths: [3, 2, 4, 3, 3, 5],
+        calibratedAt: "2026-09-20T08:00:00Z",
+      },
+      customSensorVendorPayload: {
+        rawVoltage: [1.2, 0.9, 1.4],
+      },
+    },
+  ],
+  metadata: {
+    integrationSystem: "CustomEHR-v4",
+    encounterId: "enc-89471",
+  },
+  customTelemetryExtension: {
+    sessionKey: "sess-abc-123",
+    diagnosticLevel: "research",
+  },
+} as const;
+
+export const DOCUMENT_INTEROPERABILITY_EXAMPLES = {
+  permanentRestorations: DOCUMENT_PERMANENT_RESTORATIONS_EXAMPLE,
+  deciduousPulpotomy: DOCUMENT_DECIDUOUS_PULPOTOMY_EXAMPLE,
+  mixedDentition: DOCUMENT_MIXED_DENTITION_EXAMPLE,
+  multiToothBridge: DOCUMENT_MULTI_TOOTH_BRIDGE_EXAMPLE,
+  withVisualSettings: DOCUMENT_WITH_VISUAL_SETTINGS_EXAMPLE,
+  withExtensions: DOCUMENT_WITH_EXTENSIONS_EXAMPLE,
+} as const;

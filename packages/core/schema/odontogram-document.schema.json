@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lib-odontograma.dev/schemas/odontogram-document.schema.json",
+  "title": "OdontogramDocument",
+  "description": "JSON schema for an exported odontogram data document containing dentition, teeth, marks, visual settings, and metadata.",
+  "type": "object",
+  "required": ["schemaVersion", "view", "teeth", "marks"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional URI of this JSON schema."
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+",
+      "description": "Semantic schema version of the document (e.g. 1.0.0)."
+    },
+    "view": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The active dental view descriptor (e.g. permanent, deciduous, mixed, upper, lower, quadrant-1)."
+    },
+    "dentition": {
+      "type": "string",
+      "enum": ["permanent", "primary", "deciduous", "mixed"],
+      "description": "Optional explicit dentition system classification."
+    },
+    "viewOptions": {
+      "type": "object",
+      "description": "Optional view configuration options.",
+      "properties": {
+        "dentition": {
+          "type": "string",
+          "enum": ["permanent", "primary", "deciduous", "mixed"]
+        },
+        "arch": {
+          "type": "string",
+          "enum": ["maxillary", "mandibular", "upper", "lower"]
+        },
+        "quadrant": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "tooth": {
+          "type": "string",
+          "pattern": "^[1-8][1-8]$"
+        },
+        "visibleTeeth": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[1-8][1-8]$"
+          }
+        },
+        "showOrientationLabels": { "type": "boolean" },
+        "showMidline": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "teeth": {
+      "type": "object",
+      "description": "Sparse per-tooth presence overlay (omitted teeth default to present).",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["presence"],
+        "properties": {
+          "presence": {
+            "type": "string",
+            "enum": ["present", "missing", "unerupted"]
+          }
+        },
+        "additionalProperties": true
+      },
+      "propertyNames": {
+        "pattern": "^[1-8][1-8]$"
+      }
+    },
+    "marks": {
+      "type": "array",
+      "description": "Odontographic clinical marks and multi-tooth annotations.",
+      "items": {
+        "$ref": "#/$defs/odontographicMark"
+      }
+    },
+    "visualSettings": {
+      "type": "object",
+      "description": "Optional serializable visual presentation settings.",
+      "properties": {
+        "notation": { "type": "string" },
+        "locale": { "type": "string" },
+        "showOrientationLabels": { "type": "boolean" },
+        "showMidline": { "type": "boolean" },
+        "toothColor": { "type": "string" },
+        "surfaceColor": { "type": "string" },
+        "selectionColor": { "type": "string" },
+        "markColors": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "statusColors": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "fitToContainer": { "type": "boolean" },
+        "minZoom": { "type": "number", "minimum": 0 },
+        "maxZoom": { "type": "number", "minimum": 0 }
+      },
+      "additionalProperties": true
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Optional arbitrary consumer/application metadata.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "surfaceCode": {
+      "type": "string",
+      "enum": ["M", "O", "I", "D", "B", "L"]
+    },
+    "toothId": {
+      "type": "string",
+      "pattern": "^[1-8][1-8]$"
+    },
+    "markStyle": {
+      "type": "object",
+      "properties": {
+        "fill": { "type": "string" },
+        "stroke": { "type": "string" },
+        "strokeWidth": { "type": "number", "minimum": 0 },
+        "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+      },
+      "additionalProperties": true
+    },
+    "surfaceTarget": {
+      "type": "object",
+      "required": ["tooth", "surfaces"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["surface", "surfaces"] },
+        "tooth": { "$ref": "#/$defs/toothId" },
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/surfaceCode" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "wholeToothTarget": {
+      "type": "object",
+      "required": ["tooth"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["tooth"] },
+        "tooth": { "$ref": "#/$defs/toothId" }
+      },
+      "additionalProperties": true
+    },
+    "multiToothTargetEntry": {
+      "type": "object",
+      "required": ["tooth"],
+      "properties": {
+        "tooth": { "$ref": "#/$defs/toothId" },
+        "role": { "type": "string" },
+        "anchor": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "multiToothTarget": {
+      "type": "object",
+      "required": ["teeth"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["teeth", "group"] },
+        "teeth": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/toothId" }
+        },
+        "targets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/multiToothTargetEntry" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "complexTargetElement": {
+      "type": "object",
+      "required": ["tooth"],
+      "properties": {
+        "tooth": { "$ref": "#/$defs/toothId" },
+        "surfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/surfaceCode" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "complexTarget": {
+      "type": "object",
+      "required": ["elements"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["complex", "elements"] },
+        "elements": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/complexTargetElement" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "odontographicMark": {
+      "type": "object",
+      "required": ["id", "type", "target"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "status": { "type": "string" },
+        "target": {
+          "oneOf": [
+            { "$ref": "#/$defs/surfaceTarget" },
+            { "$ref": "#/$defs/wholeToothTarget" },
+            { "$ref": "#/$defs/multiToothTarget" },
+            { "$ref": "#/$defs/complexTarget" }
+          ]
+        },
+        "text": { "type": "string" },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "style": { "$ref": "#/$defs/markStyle" },
+        "tooth": { "$ref": "#/$defs/toothId" },
+        "surfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/surfaceCode" }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -174,6 +174,7 @@ export function normalizeMark<TMetadata = Record<string, unknown>>(
 ): OdontographicMark<TMetadata> {
   const target = normalizeTarget(input);
   const mark: OdontographicMark<TMetadata> = {
+    ...(input as Record<string, unknown>),
     id: input.id ?? generateMarkId(),
     type: input.type,
     target,

@@ -15,7 +15,7 @@ export interface ToothState {
 }
 
 /** Supported tooth numbering notations. */
-export type Notation = "fdi" | "universal" | "palmer";
+export type Notation = "fdi" | "universal" | "palmer" | (string & {});
 
 /** Built-in view types; plugins may register additional views. */
 export type ViewType =
@@ -285,6 +285,104 @@ export interface OdontogramState {
   teeth: Record<ToothId, ToothState>;
 }
 
+/** Serializable visual presentation settings for the odontogram. */
+export interface OdontogramVisualSettings {
+  notation?: Notation;
+  locale?: string;
+  showOrientationLabels?: boolean;
+  showMidline?: boolean;
+  toothColor?: string;
+  surfaceColor?: string;
+  selectionColor?: string;
+  markColors?: Record<string, string>;
+  statusColors?: Record<string, string>;
+  fitToContainer?: boolean;
+  minZoom?: number;
+  maxZoom?: number;
+  [key: string]: unknown;
+}
+
+/**
+ * Public interoperability document representing a serialized odontogram.
+ * Excludes DOM nodes, event listeners, callbacks, and transient selection by default.
+ */
+export interface OdontogramDocument<
+  TMeta extends Record<string, unknown> = Record<string, unknown>,
+> {
+  $schema?: string;
+  schemaVersion: string;
+  view: ViewType;
+  dentition?: "permanent" | "primary" | "deciduous" | "mixed" | (string & {});
+  viewOptions?: ViewOptions;
+  teeth: Record<ToothId, ToothState>;
+  marks: Array<OdontographicMark<TMeta>>;
+  visualSettings?: OdontogramVisualSettings;
+  selection?: SelectionState;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+/** Options for exporting an odontogram to a serializable document. */
+export interface ExportDocumentOptions {
+  /** Target schema version to export (defaults to CURRENT_SCHEMA_VERSION: "1.0.0"). */
+  schemaVersion?: string;
+  /** Whether to include serializable visual presentation settings. Default: false. */
+  includeVisualSettings?: boolean;
+  /** Whether to include transient selection state. Default: false. */
+  includeSelection?: boolean;
+  /** Arbitrary document-level metadata to attach to the exported document. */
+  metadata?: Record<string, unknown>;
+  /** Optional schema URI to populate $schema. */
+  schemaUrl?: string;
+  /** Custom root extension properties to preserve and emit. */
+  extensions?: Record<string, unknown>;
+}
+
+/** Options for importing an odontogram document into an instance. */
+export interface ImportDocumentOptions {
+  /** Whether to apply serializable visual settings found in the document. Default: true. */
+  applyVisualSettings?: boolean;
+  /** Whether to restore transient selection if present in the document. Default: false. */
+  preserveSelection?: boolean;
+  /** Source tag for state change events. Default: "import". */
+  source?: StateChangeSource;
+  /** Custom validation configuration or validator function. */
+  validator?: boolean | ValidatorConfig | ((state: OdontogramState) => ValidationResult);
+  /** Strict validation mode (elevates warnings to errors). */
+  strict?: boolean;
+  /** Custom migrations to register or evaluate during import. */
+  migrations?: DocumentMigration[];
+}
+
+/** Result of an import operation. */
+export interface OdontogramImportResult {
+  /** True when import succeeds. */
+  ok: true;
+  /** The restored odontogram state. */
+  state: OdontogramState;
+  /** The effective schemaVersion after any migrations. */
+  schemaVersion: string;
+  /** Whether a migration was applied during import. */
+  migrated: boolean;
+  /** The original schema version prior to migration, if migrated. */
+  migratedFromVersion?: string;
+  /** Restored visual presentation settings, if present. */
+  visualSettings?: OdontogramVisualSettings;
+  /** Restored document metadata, if present. */
+  metadata?: Record<string, unknown>;
+  /** Unknown extension fields preserved from the original document. */
+  extensions?: Record<string, unknown>;
+  /** Validation result computed during import. */
+  validation: ValidationResult;
+}
+
+/** Definition of a schema version migration function. */
+export interface DocumentMigration {
+  fromVersion: string;
+  toVersion: string;
+  migrate: (doc: Record<string, unknown>) => Record<string, unknown>;
+}
+
 /** Callback argument for tooth click events. */
 export interface ToothClickArg {
   target: Extract<SelectionTarget, { kind: "tooth" }>;
@@ -421,7 +519,7 @@ export type OdontogramMode = "internal" | "controlled";
 
 /** Source of a state change event. */
 export type StateChangeSource =
-  "internal" | "external" | "batch" | "reset" | "interaction" | "undo" | "redo";
+  "internal" | "external" | "batch" | "reset" | "interaction" | "undo" | "redo" | "import";
 
 /** Availability of the in-memory odontogram undo and redo stacks. */
 export interface HistoryChangeArg {
@@ -765,6 +863,10 @@ export interface ViewRenderContext {
   getDentalRenderers?: () => DentalRendererDefinition[];
   /** Find a registered symbol for one odontographic mark type. */
   getSymbol?: (markType: string) => OdontogramSymbolDefinition | undefined;
+  /** Find a registered notation system definition by identifier. */
+  getNotation?: (notation: string) => OdontogramNotationDefinition | undefined;
+  /** All registered notation system definitions. */
+  getNotations?: () => OdontogramNotationDefinition[];
 }
 
 /** Plugin definition shape. */
@@ -787,6 +889,7 @@ export interface OdontogramPluginDef {
   dentalRenderers?: DentalRendererDefinition[];
   symbols?: OdontogramSymbolDefinition[];
   tools?: OdontogramToolDefinition[];
+  notations?: OdontogramNotationDefinition[];
 }
 
 export interface OdontogramPluginDependency {
@@ -846,6 +949,17 @@ export interface OdontogramToolContext {
   canUndo: boolean;
   canRedo: boolean;
   executeCommand: (command: OdontogramCommand) => OdontogramCommandResult;
+}
+
+/** Custom tooth numbering / notation system registered by a plugin. */
+export interface OdontogramNotationDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  format: (toothId: ToothId) => string;
+  formatAccessible?: (toothId: ToothId) => string;
+  parse?: (label: string) => ToothId | null;
+  isValid?: (label: string) => boolean;
 }
 
 /** A plugin instance created via createPlugin(). */

@@ -35,8 +35,28 @@ export const RULE_OPTIONS_VALIDITY = "options-validity";
 
 const VALID_SURFACES = new Set<SurfaceId>(["M", "O", "I", "D", "B", "L"]);
 const VALID_PRESENCE_VALUES = new Set(["present", "missing", "unerupted"]);
-const VALID_NOTATIONS = new Set(["fdi", "universal", "palmer"]);
+const VALID_NOTATIONS = new Set<string>(["fdi", "universal", "palmer"]);
 const VALID_MODES = new Set(["internal", "controlled"]);
+
+/** Register a valid notation identifier for options validation. */
+export function registerValidNotation(id: string): void {
+  if (id && typeof id === "string") {
+    VALID_NOTATIONS.add(id.trim());
+  }
+}
+
+/** Unregister a valid custom notation identifier. Built-ins are protected. */
+export function unregisterValidNotation(id: string): boolean {
+  if (id === "fdi" || id === "universal" || id === "palmer") {
+    return false;
+  }
+  return VALID_NOTATIONS.delete(id);
+}
+
+/** Check if a notation identifier is recognized. */
+export function isValidNotationOption(id: string): boolean {
+  return VALID_NOTATIONS.has(id);
+}
 
 const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "plugins",
@@ -263,7 +283,15 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
     });
   }
 
-  if (options.notation !== undefined && !VALID_NOTATIONS.has(options.notation)) {
+  const declaredNotations = new Set<string>(VALID_NOTATIONS);
+  for (const plugin of options.plugins ?? []) {
+    for (const notation of plugin?.pluginDef?.notations ?? []) {
+      if (notation?.id && typeof notation.id === "string")
+        declaredNotations.add(notation.id.trim());
+    }
+  }
+
+  if (options.notation !== undefined && !declaredNotations.has(options.notation)) {
     issues.push({
       ruleId: RULE_OPTIONS_VALIDITY,
       code: VALIDATION_CODES.ERR_INVALID_OPTION,
