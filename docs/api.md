@@ -115,7 +115,52 @@ In controlled mode, compound host updates should use a **single** `setState` cal
 
 #### Read-only interaction mode
 
-Set `readOnly: true` to make rendered chart selection handlers no-ops. Tooth and surface click callbacks still run, and existing selection, marks, and query methods remain available. Changing a selection through `setSelection()` and executing commands are programmatic operations and remain available in internal mode; `mode: "controlled"` continues to reject imperative mutations. Applications that provide their own mark controls should disable those controls when read-only. The option does not clear selection or mark data.
+Set `readOnly: true` to make rendered chart selection handlers no-ops. Tooth and surface click callbacks still run, and existing selection, marks, and query methods remain available. The integrated toolbar disables its mutation controls in read-only and controlled modes. Changing a selection through `setSelection()` and executing commands are programmatic operations and remain available in internal mode; `mode: "controlled"` continues to reject imperative mutations. Consumer-owned controls can use `ToolbarContext.readOnly` when deciding whether to enable actions. The option does not clear selection or mark data.
+
+Set `disabled: true` to disable rendered tooth and surface activation and integrated toolbar actions. Unlike `readOnly`, disabled mode does not dispatch tooth or surface click callbacks. Both options preserve chart data.
+
+#### Optional integrated controls, legends, and detail hooks
+
+The built-in controls are opt-in. Omit `toolbar` or set it to `false` for a chart without controls. `toolbar: {}` renders the standard view, mark, selection, and history groups. Set `position` to `top`, `bottom`, `left`, or `right`. Supply `groups` to replace and order the groups; each group's `controls` list can contain built-in ids (`views`, `marks`, `selection`, `history`) or custom buttons. The built-in mark group uses `executeCommand()` and history availability, and disables unavailable actions.
+
+```ts
+const chart = new Odontogram(container, {
+  plugins: [svgPlugin],
+  toolbar: {
+    position: "top",
+    groups: [
+      { id: "navigation", label: "View", controls: ["views"] },
+      { id: "editing", label: "Edit", controls: ["marks", "selection", "history"] },
+      {
+        id: "custom",
+        controls: [
+          {
+            id: "apply-caries",
+            label: "Apply caries",
+            disabled: ({ readOnly, state }) =>
+              readOnly ||
+              (state.selection.teeth.length === 0 && state.selection.surfaces.length === 0),
+            onClick: ({ executeCommand }) =>
+              executeCommand({
+                type: "apply-mark",
+                mark: { type: "caries", status: "planned" },
+              }),
+          },
+        ],
+      },
+    ],
+  },
+  markCatalog: [
+    { type: "caries", status: "planned", label: "Caries", symbol: "×", color: "#d32f2f" },
+  ],
+});
+```
+
+The legend is generated from `markCatalog` plus mark types/statuses present in the current state. Entry labels, symbols, and colors may be customized through catalog entries. Use `legend: false` to hide it or `legend: { label, items }` to supply explicit entries. This catalog is for odontogram symbols/statuses; it does not change mark validation or serialization.
+
+`detailDidChange` is called when a tooth or surface receives keyboard focus or is activated by click/touch. Its argument contains the canonical tooth id, optional single surface, selected or marked surfaces on that tooth, matching marks, trigger, and source event. Consumers can use it to update an accessible live region, tooltip, or popover. The SVG chart's surface and tooth targets are keyboard focusable, and touch activation uses the same click path.
+
+See the [integrated and consumer-owned UI example](../examples/controls/index.html) for both approaches using the same chart methods.
 
 #### Marks CRUD Operations
 
@@ -330,7 +375,11 @@ Run structural and coexistence validation against the current odontogram state s
 | `notation`       | `"fdi" \| "universal" \| "palmer"`                                             | `"fdi"`       | Tooth label notation                                                                          |
 | `height`         | `number \| string`                                                             | `400`         | Container height                                                                              |
 | `selectable`     | `boolean`                                                                      | `true`        | Enable selection                                                                              |
+| `disabled`       | `boolean`                                                                      | `false`       | Disable rendered activation and built-in toolbar actions                                      |
 | `readOnly`       | `boolean`                                                                      | `false`       | Ignore selection mutations from rendered chart interactions; imperative APIs remain available |
+| `toolbar`        | `false \| ToolbarOptions`                                                      | `undefined`   | Optional integrated controls, their position, ordered groups, and custom buttons              |
+| `legend`         | `false \| LegendOptions`                                                       | auto          | Hide the generated mark legend or customize its heading and entries                           |
+| `markCatalog`    | `MarkCatalogEntry[]`                                                           | `[]`          | Active mark type/status labels and symbols used by controls and legend                        |
 | `toothColor`     | `string`                                                                       | `"#f5f5f5"`   | Default tooth fill                                                                            |
 | `surfaceColor`   | `string`                                                                       | `"#e0e0e0"`   | Default surface fill                                                                          |
 | `selectionColor` | `string`                                                                       | `"#90caf9"`   | Selection highlight                                                                           |
@@ -351,6 +400,7 @@ Run structural and coexistence validation against the current odontogram state s
 | `beforeMarkCommand`   | `{ command, previousState, nextState }`   | Synchronous pre-commit veto for mark commands |
 | `toothStateDidChange` | `{ toothId, presence, previousPresence }` | Tooth presence overlay changes                |
 | `validationDidChange` | `{ result }`                              | Validation issues change on state update      |
+| `detailDidChange`     | `DetailChangeArg`                         | Tooth/surface receives focus or activation    |
 
 ### Hooks
 

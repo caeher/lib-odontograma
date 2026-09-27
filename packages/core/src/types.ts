@@ -410,6 +410,67 @@ export interface HistoryChangeArg {
   redoCount: number;
 }
 
+/** Built-in odontogram toolbar controls. */
+export type ToolbarControlId = "views" | "marks" | "selection" | "history";
+
+/** State exposed to consumer-owned toolbar buttons. */
+export interface ToolbarContext {
+  state: OdontogramState;
+  readOnly: boolean;
+  disabled: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  executeCommand: (command: OdontogramCommand) => OdontogramCommandResult;
+}
+
+export interface ToolbarCustomButton {
+  id: string;
+  label: string;
+  title?: string;
+  disabled?: boolean | ((context: ToolbarContext) => boolean);
+  onClick: (context: ToolbarContext) => void;
+}
+
+export interface ToolbarGroup {
+  id: string;
+  label?: string;
+  controls: Array<ToolbarControlId | ToolbarCustomButton>;
+}
+
+/** Opt-in integrated toolbar arrangement. Groups and controls are rendered in array order. */
+export interface ToolbarOptions {
+  position?: "top" | "bottom" | "left" | "right";
+  groups?: ToolbarGroup[];
+}
+
+/** A mark type/status supported by the active odontogram symbol catalog. */
+export interface MarkCatalogEntry {
+  type: string;
+  status?: MarkStatus;
+  label?: string;
+  symbol?: string;
+  color?: string;
+}
+
+export interface LegendOptions {
+  /** Explicit entries replace entries generated from `markCatalog` and current marks. */
+  items?: MarkCatalogEntry[];
+  /** Change the accessible heading for the generated legend. */
+  label?: string;
+}
+
+export interface DetailChangeArg {
+  tooth: ToothId;
+  /** Present when a single clinical surface is the detail target. */
+  surface?: SurfaceId;
+  /** Surfaces in the tooth's current selection or represented by its marks. */
+  surfaces: SurfaceId[];
+  /** Marks on the tooth, narrowed to the target surface when `surface` is present. */
+  marks: OdontographicMark[];
+  trigger: "focus" | "click";
+  jsEvent?: Event;
+}
+
 /** Criteria for filtering or querying marks. */
 export interface MarkFilter {
   tooth?: ToothId;
@@ -480,8 +541,16 @@ export interface OdontogramOptions {
   notation?: Notation;
   height?: number | string;
   selectable?: boolean;
+  /** Disable rendered interactions and integrated toolbar actions. */
+  disabled?: boolean;
   /** Disable mutations originating from rendered chart interactions; imperative APIs remain available. */
   readOnly?: boolean;
+  /** Optional integrated odontogram controls. Omit or set false for a chart-only instance. */
+  toolbar?: false | ToolbarOptions;
+  /** Hide the built-in mark legend, or customize its items and heading. */
+  legend?: false | LegendOptions;
+  /** Active mark type/status catalog used by the legend and mark controls. */
+  markCatalog?: MarkCatalogEntry[];
   /** Teeth excluded from user and programmatic selection. */
   lockedTeeth?: ToothId[];
   /** Surfaces excluded from user and programmatic selection. */
@@ -514,6 +583,8 @@ export interface OdontogramOptions {
   stateDidChange?: (arg: StateChangeArg) => void;
   /** Called when local undo/redo availability changes. */
   historyDidChange?: (arg: HistoryChangeArg) => void;
+  /** Receives focus and activation details for accessible consumer-owned popovers. */
+  detailDidChange?: (arg: DetailChangeArg) => void;
   /** Synchronously veto a validated mark command by returning false. */
   beforeMarkCommand?: BeforeMarkCommand;
   toothStateDidChange?: (arg: ToothStateChangeArg) => void;
@@ -564,6 +635,13 @@ export interface ViewRenderContext {
   ) => void;
   emitToothClick: (tooth: ToothId, jsEvent?: Event) => void;
   emitSurfaceClick: (tooth: ToothId, surface: SurfaceId, jsEvent?: Event) => void;
+  emitToothDetail?: (tooth: ToothId, trigger: "focus" | "click", jsEvent?: Event) => void;
+  emitSurfaceDetail?: (
+    tooth: ToothId,
+    surface: SurfaceId,
+    trigger: "focus" | "click",
+    jsEvent?: Event,
+  ) => void;
 }
 
 /** Plugin definition shape. */

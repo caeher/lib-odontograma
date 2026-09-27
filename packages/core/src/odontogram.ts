@@ -15,6 +15,7 @@ import {
   normalizeMarks,
 } from "./marks.js";
 import { deepClone, isDeepEqual, validateOdontogramState, validateOptions } from "./validation.js";
+import { renderLegend, renderToolbar } from "./controls.js";
 import type {
   BatchOptions,
   MarkFilter,
@@ -59,6 +60,9 @@ export class Odontogram {
   private batchDepth = 0;
   private renderQueued = false;
   private hostEl: HTMLElement | null = null;
+  private chartEl: HTMLElement | null = null;
+  private toolbarEl: HTMLElement | null = null;
+  private legendEl: HTMLElement | null = null;
 
   // Transactional batch state
   private preBatchState: OdontogramState | null = null;
@@ -141,9 +145,16 @@ export class Odontogram {
     this.hostEl.style.width = "100%";
     const height = this.getOption("height");
     this.hostEl.style.height = typeof height === "number" ? `${height}px` : String(height);
+    this.chartEl = document.createElement("div");
+    this.chartEl.className = "odontogram-view";
+    this.toolbarEl = document.createElement("div");
+    this.legendEl = document.createElement("aside");
+    this.legendEl.setAttribute("aria-label", "Odontogram legend");
+    this.hostEl.append(this.toolbarEl, this.chartEl, this.legendEl);
     this.el.appendChild(this.hostEl);
 
     this.rendered = true;
+    this.renderControls();
     this.mountView();
   }
 
@@ -155,6 +166,9 @@ export class Odontogram {
       this.hostEl.remove();
       this.hostEl = null;
     }
+    this.chartEl = null;
+    this.toolbarEl = null;
+    this.legendEl = null;
     this.rendered = false;
   }
 
@@ -201,6 +215,7 @@ export class Odontogram {
         if (this.undoStack.length !== before) this.notifyHistoryChange();
       }
     }
+    this.renderControls();
     this.requestRender();
   }
 
@@ -1352,15 +1367,15 @@ export class Odontogram {
       return;
     }
 
-    if (!this.hostEl) return;
+    if (!this.chartEl) return;
 
     this.activeView = viewDef;
     this.viewContext = this.createViewContext();
     viewDef.render(this.viewContext);
 
     const viewDidMount = this.getOption("viewDidMount");
-    if (viewDidMount && this.hostEl.firstElementChild) {
-      viewDidMount({ view: this.state.view, el: this.hostEl.firstElementChild });
+    if (viewDidMount && this.chartEl?.firstElementChild) {
+      viewDidMount({ view: this.state.view, el: this.chartEl.firstElementChild });
     }
   }
 
@@ -1368,14 +1383,14 @@ export class Odontogram {
     if (!this.activeView || !this.viewContext) return;
 
     const viewWillUnmount = this.getOption("viewWillUnmount");
-    if (viewWillUnmount && this.hostEl?.firstElementChild) {
-      viewWillUnmount({ view: this.state.view, el: this.hostEl.firstElementChild });
+    if (viewWillUnmount && this.chartEl?.firstElementChild) {
+      viewWillUnmount({ view: this.state.view, el: this.chartEl.firstElementChild });
     }
 
     this.activeView.destroy?.(this.viewContext);
 
-    if (this.hostEl) {
-      this.hostEl.innerHTML = "";
+    if (this.chartEl) {
+      this.chartEl.innerHTML = "";
     }
 
     this.activeView = null;
@@ -1383,9 +1398,13 @@ export class Odontogram {
   }
 
   private createViewContext(): ViewRenderContext {
-    const el = this.hostEl!;
+    const el = this.chartEl!;
     const controlled = this.getMode() === "controlled";
-    const uiReadOnly = controlled || Boolean(this.getOption("readOnly"));
+    const uiReadOnly =
+      controlled ||
+      Boolean(this.getOption("readOnly")) ||
+      Boolean(this.getOption("disabled")) ||
+      !this.getOption("selectable");
     return {
       el,
       options: this.options,
@@ -1414,6 +1433,10 @@ export class Odontogram {
         : (tooth, surface, mode = "toggle") => this.selectSurface(tooth, surface, mode),
       emitToothClick: (tooth, jsEvent) => this.emitToothClick(tooth, jsEvent),
       emitSurfaceClick: (tooth, surface, jsEvent) => this.emitSurfaceClick(tooth, surface, jsEvent),
+      emitToothDetail: (tooth, trigger, jsEvent) =>
+        this.emitDetail(tooth, undefined, trigger, jsEvent),
+      emitSurfaceDetail: (tooth, surface, trigger, jsEvent) =>
+        this.emitDetail(tooth, surface, trigger, jsEvent),
     };
   }
 
@@ -1475,7 +1498,8 @@ export class Odontogram {
   }
 
   private performRender(): void {
-    if (!this.activeView || !this.viewContext || !this.hostEl) return;
+    this.renderControls();
+    if (!this.activeView || !this.viewContext || !this.chartEl) return;
 
     this.viewContext.state = deepClone(this.state);
     this.viewContext.options = this.options;
@@ -1484,7 +1508,7 @@ export class Odontogram {
       this.activeView.update(this.viewContext);
     } else {
       this.activeView.destroy?.(this.viewContext);
-      this.hostEl.innerHTML = "";
+      this.chartEl.innerHTML = "";
       this.activeView.render(this.viewContext);
     }
   }
@@ -1584,5 +1608,51 @@ export class Odontogram {
         : {}),
     };
     this.getOption("selectionDidChange")?.({ selection });
+  }
+
+  private emitDetail(
+    tooth: ToothId,
+    surface: SurfaceId | undefined,
+    trigger: "focus" | "click",
+    jsEvent?: Event,
+  ): void {
+    const marks = surface
+      ? filterMarksForSurface(this.state.marks, tooth, surface)
+      : filterMarksForTooth(this.state.marks, tooth);
+    const targetSurfaces = new Set<SurfaceId>(surface ? [surface] : []);
+    if (!surface) {
+      for (const selected of this.state.selection.surfaces) {
+        if (selected.tooth === tooth) targetSurfaces.add(selected.surface);
+      }
+      for (const mark of marks) {
+        for (const targetSurface of getMarkTargetSurfaces(mark, tooth))
+          targetSurfaces.add(targetSurface);
+      }
+    }
+    this.getOption("detailDidChange")?.({
+      tooth,
+      ...(surface ? { surface } : {}),
+      surfaces: [...targetSurfaces],
+      marks: deepClone(marks),
+      trigger,
+      jsEvent,
+    });
+  }
+
+  private renderControls(): void {
+    if (!this.rendered || !this.toolbarEl || !this.legendEl) return;
+    renderToolbar(this, this.toolbarEl);
+    renderLegend(this, this.legendEl);
+    const toolbar = this.getOption("toolbar");
+    const position = toolbar && typeof toolbar === "object" ? (toolbar.position ?? "top") : "top";
+    this.hostEl?.classList.toggle(
+      "odontogram-layout-horizontal",
+      position === "left" || position === "right",
+    );
+    if (position === "bottom" || position === "right") {
+      if (this.hostEl?.lastElementChild !== this.toolbarEl) this.hostEl?.append(this.toolbarEl);
+    } else if (this.hostEl?.firstElementChild !== this.toolbarEl) {
+      this.hostEl?.prepend(this.toolbarEl);
+    }
   }
 }

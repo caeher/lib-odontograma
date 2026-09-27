@@ -938,7 +938,8 @@ export class IncrementalSvgRenderer {
     toothGroup.setAttribute("data-notation-label", label);
     toothGroup.setAttribute("aria-label", accessibleLabel);
     toothGroup.setAttribute("role", "group");
-    toothGroup.setAttribute("tabindex", "0");
+    toothGroup.setAttribute("tabindex", options.disabled ? "-1" : "0");
+    if (options.disabled) toothGroup.setAttribute("aria-disabled", "true");
     toothGroup.setAttribute("aria-selected", String(isToothSelected));
 
     const toothClassNames = normalizeClassNames(
@@ -976,21 +977,38 @@ export class IncrementalSvgRenderer {
     bg.addEventListener(
       "click",
       (e) => {
-        const mode = e.shiftKey || e.ctrlKey || e.metaKey
-          ? (e.ctrlKey || e.metaKey ? "toggle" : "add")
-          : (ctx.state.selection.teeth.includes(tooth) ? "toggle" : "replace");
+        if (options.disabled) return;
+        const mode =
+          e.shiftKey || e.ctrlKey || e.metaKey
+            ? e.ctrlKey || e.metaKey
+              ? "toggle"
+              : "add"
+            : ctx.state.selection.teeth.includes(tooth)
+              ? "toggle"
+              : "replace";
         ctx.selectTooth(tooth, mode);
         ctx.emitToothClick(tooth, e);
+        ctx.emitToothDetail?.(tooth, "click", e);
       },
       listenerOptions,
     );
-    toothGroup.addEventListener("keydown", (e) => {
-      if (e.key !== "Enter" && e.key !== " ") return;
-      e.preventDefault();
-      const mode = e.shiftKey ? "add" : (ctx.state.selection.teeth.includes(tooth) ? "toggle" : "replace");
-      ctx.selectTooth(tooth, mode);
-      ctx.emitToothClick(tooth, e);
-    }, listenerOptions);
+    toothGroup.addEventListener(
+      "keydown",
+      (e) => {
+        if (options.disabled) return;
+        if (e.key !== "Enter" && e.key !== " ") return;
+        e.preventDefault();
+        const mode = e.shiftKey
+          ? "add"
+          : ctx.state.selection.teeth.includes(tooth)
+            ? "toggle"
+            : "replace";
+        ctx.selectTooth(tooth, mode);
+        ctx.emitToothClick(tooth, e);
+        ctx.emitToothDetail?.(tooth, "click", e);
+      },
+      listenerOptions,
+    );
 
     anatomyLayer.appendChild(bg);
 
@@ -1100,8 +1118,9 @@ export class IncrementalSvgRenderer {
     // Keyboard focus listeners
     toothGroup.addEventListener(
       "focus",
-      () => {
+      (e) => {
         focusRect.style.display = "block";
+        ctx.emitToothDetail?.(tooth, "focus", e);
       },
       listenerOptions,
     );
@@ -1310,7 +1329,8 @@ export class IncrementalSvgRenderer {
       surfaceGroup.setAttribute("data-surface", surface);
       surfaceGroup.setAttribute("data-face", face);
       surfaceGroup.setAttribute("role", "button");
-      surfaceGroup.setAttribute("tabindex", "0");
+      surfaceGroup.setAttribute("tabindex", options.disabled ? "-1" : "0");
+      if (options.disabled) surfaceGroup.setAttribute("aria-disabled", "true");
       surfaceGroup.setAttribute("aria-label", `${surface} surface`);
       const isSelected =
         state.selection.teeth.includes(tooth) ||
@@ -1344,22 +1364,43 @@ export class IncrementalSvgRenderer {
       path.addEventListener(
         "click",
         (e) => {
-          const selected = ctx.state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
-          const mode = e.shiftKey ? "add" : (e.ctrlKey || e.metaKey || selected ? "toggle" : "replace");
+          if (options.disabled) return;
+          const selected = ctx.state.selection.surfaces.some(
+            (item) => item.tooth === tooth && item.surface === surface,
+          );
+          const mode = e.shiftKey
+            ? "add"
+            : e.ctrlKey || e.metaKey || selected
+              ? "toggle"
+              : "replace";
           ctx.toggleSurfaceSelection(tooth, surface, mode);
           ctx.emitSurfaceClick(tooth, surface, e);
+          ctx.emitSurfaceDetail?.(tooth, surface, "click", e);
         },
         listenerOptions,
       );
-      surfaceGroup.addEventListener("keydown", (e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        e.stopPropagation();
-        const selected = ctx.state.selection.surfaces.some((item) => item.tooth === tooth && item.surface === surface);
-        const mode = e.shiftKey ? "add" : (selected ? "toggle" : "replace");
-        ctx.toggleSurfaceSelection(tooth, surface, mode);
-        ctx.emitSurfaceClick(tooth, surface, e);
-      }, listenerOptions);
+      surfaceGroup.addEventListener(
+        "keydown",
+        (e) => {
+          if (options.disabled) return;
+          if (e.key !== "Enter" && e.key !== " ") return;
+          e.preventDefault();
+          e.stopPropagation();
+          const selected = ctx.state.selection.surfaces.some(
+            (item) => item.tooth === tooth && item.surface === surface,
+          );
+          const mode = e.shiftKey ? "add" : selected ? "toggle" : "replace";
+          ctx.toggleSurfaceSelection(tooth, surface, mode);
+          ctx.emitSurfaceClick(tooth, surface, e);
+          ctx.emitSurfaceDetail?.(tooth, surface, "click", e);
+        },
+        listenerOptions,
+      );
+      surfaceGroup.addEventListener(
+        "focus",
+        (e) => ctx.emitSurfaceDetail?.(tooth, surface, "focus", e),
+        listenerOptions,
+      );
 
       surfaceGroup.appendChild(path);
 

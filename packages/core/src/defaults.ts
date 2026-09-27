@@ -8,6 +8,7 @@ export const DEFAULT_OPTIONS: Required<
     | "notation"
     | "height"
     | "selectable"
+    | "disabled"
     | "toothColor"
     | "surfaceColor"
     | "selectionColor"
@@ -18,6 +19,7 @@ export const DEFAULT_OPTIONS: Required<
   notation: "fdi",
   height: 400,
   selectable: true,
+  disabled: false,
   toothColor: "#f5f5f5",
   surfaceColor: "#e0e0e0",
   selectionColor: "#90caf9",

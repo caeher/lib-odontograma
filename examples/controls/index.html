@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Odontogram interaction controls</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 1.5rem;
+        color: #263238;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        background: #f5f7fa;
+      }
+      main {
+        max-width: 1100px;
+        margin: auto;
+      }
+      section {
+        margin: 1.5rem 0;
+        padding: 1rem;
+        background: white;
+        border: 1px solid #d7dde4;
+        border-radius: 8px;
+      }
+      #integrated,
+      #external {
+        min-height: 420px;
+      }
+      .external-controls {
+        display: flex;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+      .detail {
+        min-height: 1.5rem;
+        padding: 0.5rem;
+        background: #eef3f8;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Odontogram interaction controls</h1>
+      <p>Use the chart keyboard focus or touch/click actions to inspect tooth details.</p>
+      <section>
+        <h2>Integrated UI</h2>
+        <div id="integrated"></div>
+        <p class="detail" id="integrated-detail" aria-live="polite"></p>
+      </section>
+      <section>
+        <h2>Consumer-owned UI</h2>
+        <div class="external-controls" id="external-controls">
+          <button type="button" data-action="apply">Apply caries</button>
+          <button type="button" data-action="undo">Undo</button>
+          <button type="button" data-action="redo">Redo</button>
+          <button type="button" data-action="clear">Clear selection</button>
+        </div>
+        <div id="external"></div>
+        <p class="detail" id="external-detail" aria-live="polite"></p>
+      </section>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

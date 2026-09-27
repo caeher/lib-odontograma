@@ -46,7 +46,11 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "notation",
   "height",
   "selectable",
+  "disabled",
   "readOnly",
+  "toolbar",
+  "legend",
+  "markCatalog",
   "lockedTeeth",
   "lockedSurfaces",
   "isToothSelectable",
@@ -71,6 +75,7 @@ const KNOWN_OPTION_KEYS = new Set<keyof OdontogramOptions>([
   "validationDidChange",
   "stateDidChange",
   "historyDidChange",
+  "detailDidChange",
   "beforeMarkCommand",
   "toothStateDidChange",
   "toothClassNames",
@@ -282,6 +287,60 @@ export function validateOptions(options: OdontogramOptions): ValidationResult {
       severity: "error",
       message: `Option "selectable" must be a boolean.`,
       path: "options.selectable",
+    });
+  }
+
+  if (options.disabled !== undefined && typeof options.disabled !== "boolean") {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "disabled" must be a boolean.`,
+      path: "options.disabled",
+    });
+  }
+
+  if (
+    options.toolbar !== undefined &&
+    options.toolbar !== false &&
+    typeof options.toolbar !== "object"
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "toolbar" must be false or a toolbar configuration object.`,
+      path: "options.toolbar",
+    });
+  }
+
+  if (
+    options.legend !== undefined &&
+    options.legend !== false &&
+    typeof options.legend !== "object"
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "legend" must be false or a legend configuration object.`,
+      path: "options.legend",
+    });
+  }
+
+  if (
+    options.markCatalog !== undefined &&
+    (!Array.isArray(options.markCatalog) ||
+      options.markCatalog.some(
+        (entry) => !entry || typeof entry.type !== "string" || entry.type.trim() === "",
+      ))
+  ) {
+    issues.push({
+      ruleId: RULE_OPTIONS_VALIDITY,
+      code: VALIDATION_CODES.ERR_INVALID_OPTION,
+      severity: "error",
+      message: `Option "markCatalog" must contain entries with non-empty mark types.`,
+      path: "options.markCatalog",
     });
   }
 
