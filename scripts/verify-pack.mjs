@@ -99,9 +99,11 @@ global.MouseEvent = dom.window.MouseEvent;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const coreCssPath = path.resolve(__dirname, "node_modules/@odontogram/core/dist/style.css");
 const svgCssPath = path.resolve(__dirname, "node_modules/@odontogram/svg/dist/style.css");
+const coreSchemaPath = path.resolve(__dirname, "node_modules/@odontogram/core/schema/odontogram-document.schema.json");
 
 if (!fs.existsSync(coreCssPath)) throw new Error("Missing @odontogram/core/dist/style.css");
 if (!fs.existsSync(svgCssPath)) throw new Error("Missing @odontogram/svg/dist/style.css");
+if (!fs.existsSync(coreSchemaPath)) throw new Error("Missing @odontogram/core/schema/odontogram-document.schema.json");
 
 // 2. Import packages from installed tarballs
 const {
@@ -112,6 +114,11 @@ const {
   getMarksForSurface,
   normalizeMark,
   SERIALIZATION_EXAMPLES,
+  CURRENT_SCHEMA_VERSION,
+  DOCUMENT_INTEROPERABILITY_EXAMPLES,
+  exportOdontogramDocument,
+  importOdontogramDocument,
+  validateOdontogramDocument,
 } = await import("@odontogram/core");
 const { svgPlugin } = await import("@odontogram/svg");
 const {
@@ -238,6 +245,22 @@ if (odontogram.getState().view !== "deciduous") {
   throw new Error("changeView inside batch failed");
 }
 
+// Test Stage 07 Interoperability: exportDocument, importDocument, toJSON, and validateOdontogramDocument
+odontogram.addMark({ tooth: "16", surfaces: ["M", "O", "D"], type: "restoration", text: "MOD" });
+const exportedDoc = odontogram.exportDocument({ includeVisualSettings: true });
+if (exportedDoc.schemaVersion !== CURRENT_SCHEMA_VERSION) throw new Error("exportDocument schemaVersion mismatch");
+if (!Array.isArray(exportedDoc.marks) || exportedDoc.marks.length === 0) throw new Error("exportDocument marks mismatch");
+
+const jsonExport = JSON.stringify(odontogram);
+const parsedJson = JSON.parse(jsonExport);
+if (parsedJson.schemaVersion !== "1.0.0") throw new Error("toJSON() stringify failed");
+
+const docValidation = validateOdontogramDocument(DOCUMENT_INTEROPERABILITY_EXAMPLES.permanentRestorations);
+if (!docValidation.valid) throw new Error("DOCUMENT_INTEROPERABILITY_EXAMPLES.permanentRestorations validation failed");
+
+const imported = odontogram.importDocument(DOCUMENT_INTEROPERABILITY_EXAMPLES.mixedDentition);
+if (!imported.ok || odontogram.getState().view !== "mixed") throw new Error("importDocument failed");
+
 // Test reset
 odontogram.reset();
 if (odontogram.getMarks().length !== 0 || Object.keys(odontogram.getTeethState()).length !== 0) {
@@ -309,18 +332,28 @@ import {
   validateOdontogramState,
   getMarksForTooth,
   getMarksForSurface,
-  SERIALIZATION_EXAMPLES,
+  CURRENT_SCHEMA_VERSION,
+  DOCUMENT_INTEROPERABILITY_EXAMPLES,
+  exportOdontogramDocument,
+  importOdontogramDocument,
+  validateOdontogramDocument,
   type ComplexTarget,
   type CustomValidationRule,
+  type DocumentMigration,
+  type ExportDocumentOptions,
+  type ImportDocumentOptions,
   type MarkInput,
   type MarkMountArg,
   type MarkStatus,
   type MarkStyle,
   type MarkTarget,
   type MultiToothTarget,
+  type OdontogramDocument,
+  type OdontogramImportResult,
   type OdontogramOptions,
   type OdontogramPlugin,
   type OdontogramState,
+  type OdontogramVisualSettings,
   type OdontographicMark,
   type SelectionState,
   type SurfaceClickArg,
@@ -506,6 +539,16 @@ odontogram.batch(() => {
   ]);
   odontogram.setToothState("48", "unerupted");
 });
+
+// Stage 07 Interoperability typed operations
+const exportedDoc: OdontogramDocument = odontogram.exportDocument({
+  includeVisualSettings: true,
+  metadata: { clinicId: "test-clinic" },
+});
+const docValidation: ValidationResult = validateOdontogramDocument(exportedDoc);
+const importResult: OdontogramImportResult = odontogram.importDocument(
+  DOCUMENT_INTEROPERABILITY_EXAMPLES.withVisualSettings,
+);
 
 odontogram.reset({ keepView: true });
 
